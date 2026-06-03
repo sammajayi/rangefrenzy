@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["fef3-105-119-2-153.ngrok-free.app"],
   images: {
     remotePatterns: [
       {
@@ -24,9 +25,9 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
-  webpack: (config) => {
-    return config;
-  },
+  // webpack: (config) => {
+  //   return config;
+  // },
 };
 
 export default nextConfig;

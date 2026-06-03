@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 
 interface SplashScreenProps {
@@ -30,9 +28,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         <h1 className="mb-2 font-display text-4xl font-bold tracking-tight text-white">
           RangeFrenzy
         </h1>
-        <p className="text-sm text-white/70">
-          Predict the range. Win the game.
-        </p>
+        <p className="text-sm text-white/70">Predict the range. Win the game.</p>
       </div>
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
         <div className="flex gap-1.5">

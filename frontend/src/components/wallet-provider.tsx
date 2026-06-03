@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { WagmiProvider, createConfig, http, useConnect } from "wagmi";
 import { celo, celoSepolia } from "wagmi/chains";
 import { ConnectButton } from "./connect-button";
+import { env } from "@/lib/env";
 
 const connectors = connectorsForWallets(
   [
@@ -22,7 +23,7 @@ const connectors = connectorsForWallets(
   ],
   {
     appName: "Pickoo",
-    projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
+    projectId: env.NEXT_PUBLIC_WC_PROJECT_ID,
   }
 );
 

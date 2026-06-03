@@ -14,9 +14,11 @@ export type PredictionMarket = {
   volumeLabel: string;
   ranges: PredictionRange[];
   image?: string;
+  status?: "active" | "resolved";
 };
 
-export const PREDICTION_MARKETS: PredictionMarket[] = [
+// Fallback static markets used when Supabase has no data yet
+export const FALLBACK_MARKETS: PredictionMarket[] = [
   {
     id: "btc-24h",
     title: "BTC move in 24h",
@@ -76,3 +78,13 @@ export const MOCK_WEEKLY_CAMPAIGN = [
   { rank: 4, username: "daily_grind", poolShare: "$410", picks: 11, badge: null },
   { rank: 5, username: "you", poolShare: "$0", picks: 0, badge: null },
 ];
+
+export function formatDeadline(deadline: string): string {
+  const d = new Date(deadline);
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+  if (diffMs <= 0) return "Resolved";
+  const diffH = Math.floor(diffMs / 3600000);
+  const diffM = Math.floor((diffMs % 3600000) / 60000);
+  return `Resolves in ${diffH}h ${diffM}m`;
+}

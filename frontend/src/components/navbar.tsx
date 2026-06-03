@@ -1,101 +1,64 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, ExternalLink } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { ConnectButton } from "@/components/connect-button"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ExternalLink } from "lucide-react";
+import { ConnectButton } from "@/components/connect-button";
 
 const navLinks = [
-  { name: "Play", href: "/" },
+  { name: "Play", href: "/", external: false },
   { name: "Celo docs", href: "https://docs.celo.org", external: true },
 ];
 
 export function Navbar() {
-  const pathname = usePathname()
-  
+  const pathname = usePathname();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          {/* Mobile menu button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80">
-              <div className="flex items-center gap-2 mb-8">
-
-                <span className="font-display text-lg font-bold tracking-tight">
-                  Pickoo
-                </span>
-              </div>
-              <nav className="flex flex-col gap-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    target={link.external ? "_blank" : undefined}
-                    rel={link.external ? "noopener noreferrer" : undefined}
-                    className={`flex items-center gap-2 text-base font-medium transition-colors hover:text-primary ${
-                      pathname === link.href ? "text-foreground" : "text-foreground/70"
-                    }`}
-                  >
-                    {link.name}
-                    {link.external && <ExternalLink className="h-4 w-4" />}
-                  </Link>
-                ))}
-                <div className="mt-6 pt-6 border-t">
-                  <Button asChild className="w-full">
-                    <ConnectButton />
-                  </Button>
-                </div>
-              </nav>
-            </SheetContent>
-          </Sheet>
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-
-            <span className="font-display hidden text-xl font-bold tracking-tight sm:inline-block">
-              Pickoo
-            </span>
-          </Link>
-        </div>
-        
-        {/* Desktop navigation */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              target={link.external ? "_blank" : undefined}
-              rel={link.external ? "noopener noreferrer" : undefined}
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
-                pathname === link.href
-                  ? "text-foreground"
-                  : "text-foreground/70"
-              }`}
-            >
-              {link.name}
-              {link.external && <ExternalLink className="h-4 w-4" />}
-            </Link>
-          ))}
-          
-          <div className="flex items-center gap-3">
-            <ConnectButton />
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#07955F]">
+            <span className="text-xs font-bold text-white">RF</span>
           </div>
+          <span className="font-display text-lg font-bold tracking-tight">
+            RangeFrenzy
+          </span>
+        </Link>
+
+        {/* Desktop nav links */}
+        <nav className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) =>
+            link.external ? (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-foreground/70"
+              >
+                {link.name}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  pathname === link.href ? "text-foreground" : "text-foreground/70"
+                }`}
+              >
+                {link.name}
+              </Link>
+            )
+          )}
         </nav>
+
+       
+        <div className="flex items-center gap-3">
+          <ConnectButton />
+        </div>
       </div>
     </header>
-  )
+  );
 }

@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 /** Celo mainnet token addresses for balance reads */
 export const CELO_TOKEN = {
   cUSD: "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const,
@@ -7,6 +9,6 @@ export const CELO_TOKEN = {
 
 /** Set `NEXT_PUBLIC_USDM_CELO` when your USDm contract is known on this chain. */
 export function getUsdmTokenAddress(): `0x${string}` | undefined {
-  const v = process.env.NEXT_PUBLIC_USDM_CELO;
+  const v = env.NEXT_PUBLIC_USDM_CELO;
   return v && v.startsWith("0x") ? (v as `0x${string}`) : undefined;
 }
