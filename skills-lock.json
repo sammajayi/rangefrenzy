@@ -7,6 +7,12 @@
       "skillPath": "skills/celopedia-skill/SKILL.md",
       "computedHash": "cda6ce0774206a8071fb71189c4b9c5d22652e25cab1f63129dad3ca1c9c44a2"
     },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "efc547df91cc56b69792532db54607027884cb5873718c7ca1ebf6d6f1e4cb53"
+    },
     "web3auth": {
       "source": "web3auth/skill",
       "sourceType": "github",

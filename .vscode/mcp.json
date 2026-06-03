@@ -1,14 +1,9 @@
 {
 	"servers": {
-		"my-mcp-server-a7c45b30": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"@hugeicons/mcp-server"
-			]
+		"GoodDocs": {
+			"url": "https://docs.gooddollar.org/~gitbook/mcp",
+			"type": "http"
 		}
 	},
 	"inputs": []
 }
-
-
