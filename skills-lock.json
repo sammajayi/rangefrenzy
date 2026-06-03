@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "celopedia-skill": {
+      "source": "celo-org/celopedia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/celopedia-skill/SKILL.md",
+      "computedHash": "cda6ce0774206a8071fb71189c4b9c5d22652e25cab1f63129dad3ca1c9c44a2"
+    },
+    "web3auth": {
+      "source": "web3auth/skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "9e90dfcb587f04d9dd11f51ba6b63b29046c6e016cb9a9f3c740d2a786f86602"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+node_modules
+.env
+.env*.local
+
+# Hardhat (contracts workspace)
+contracts/cache
+contracts/artifacts
+contracts/typechain
+contracts/typechain-types
+contracts/coverage
+contracts/coverage.json
+contracts/ignition/deployments/chain-31337
+
+# Next.js (frontend workspace)
+frontend/.next
+frontend/out
+frontend/next-env.d.ts
