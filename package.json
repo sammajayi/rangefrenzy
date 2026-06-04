@@ -10,5 +10,8 @@
     "build": "npm run build --workspace=frontend",
     "compile": "npm run compile --workspace=contracts",
     "test:contracts": "npm run test --workspace=contracts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts-upgradeable": "^5.6.1"
   }
 }

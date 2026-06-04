@@ -4,7 +4,7 @@ import "./globals.css";
 
 import { Navbar } from "@/components/navbar";
 import { WalletProvider } from "@/components/wallet-provider";
-import { RegisterSW } from "@/components/register-sw";
+import RegisterSW from "@/components/register-sw";
 
 const display = Archivo({
   subsets: ["latin"],

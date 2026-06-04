@@ -39,6 +39,7 @@ export default defineConfig({
       chainType: "l1",
       url: "https://forno.celo.org",
       accounts: [configVariable("CELO_PRIVATE_KEY")],
+      chainId: 42220,
     },
   },
 });

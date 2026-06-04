@@ -1,6 +1,35 @@
-import { ethers, upgrades } from "hardhat";
+import { network } from "hardhat";
+import type { Contract, Signer } from "ethers";
+import ERC1967ProxyArtifact from "@openzeppelin/contracts/build/contracts/ERC1967Proxy.json" with { type: "json" };
+
+async function deployUUPSProxy(
+    contractName: string,
+    initArgs: unknown[],
+    initializer = "initialize"
+): Promise<{ impl: Contract; proxy: Contract }> {
+    const { ethers } = await network.create();
+    const Impl = await ethers.getContractFactory(contractName);
+    const impl = await Impl.deploy();
+    await impl.waitForDeployment();
+
+    const initData = Impl.interface.encodeFunctionData(initializer, initArgs);
+    const [deployer] = await ethers.getSigners();
+    const ProxyFactory = new ethers.ContractFactory(
+        ERC1967ProxyArtifact.abi,
+        ERC1967ProxyArtifact.bytecode,
+        deployer
+    );
+    const proxy = await ProxyFactory.deploy(await impl.getAddress(), initData);
+    await proxy.waitForDeployment();
+
+    return {
+        impl,
+        proxy: await ethers.getContractAt(contractName, await proxy.getAddress()),
+    };
+}
 
 async function main(): Promise<void> {
+    const { ethers } = await network.create();
     const [deployer] = await ethers.getSigners();
     console.log("\n═══════════════════════════════════════════");
     console.log("  RangeFrenzy Deployment");
@@ -41,21 +70,12 @@ async function main(): Promise<void> {
     console.log(`  Implementation: ${marketImplAddress}`);
 
     console.log("\n[2/3] Deploying MarketFactory proxy (UUPS)...");
-    const Factory = await ethers.getContractFactory("MarketFactory");
-    const factory = await upgrades.deployProxy(
-        Factory,
-        [
-            deployer.address,
-            stakeTokenAddress,
-            feeRecipient,
-            marketImplAddress,
-        ],
-        {
-            kind: "uups",
-            initializer: "initialize",
-        }
-    );
-    await factory.waitForDeployment();
+    const { proxy: factory } = await deployUUPSProxy("MarketFactory", [
+        deployer.address,
+        stakeTokenAddress,
+        feeRecipient,
+        marketImplAddress,
+    ]);
     const factoryAddress = await factory.getAddress();
     console.log(`  Factory proxy:  ${factoryAddress}`);
 
