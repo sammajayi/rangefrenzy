@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(216 33% 97.3%);
   --color-ring: hsl(215 20.2% 65.1%);

@@ -1,22 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, DM_Sans } from "next/font/google";
 import "./globals.css";
 
 import { Navbar } from "@/components/navbar";
 import { WalletProvider } from "@/components/wallet-provider";
 import RegisterSW from "@/components/register-sw";
-
-const display = Archivo({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["600", "700", "800"],
-});
-
-const body = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "RangeFrenzy",
@@ -44,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>

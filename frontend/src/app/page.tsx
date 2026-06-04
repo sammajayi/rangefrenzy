@@ -4,7 +4,7 @@ import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
 import { useAppStore } from "@/lib/store";
-import { useWeb3AuthDisconnect } from "@web3auth/modal/react";
+import { useLogout } from "@privy-io/react-auth";
 
 export default function HomePage() {
   const phase = useAppStore((s) => s.phase);
@@ -13,7 +13,7 @@ export default function HomePage() {
   const setPhase = useAppStore((s) => s.setPhase);
   const setAuthenticated = useAppStore((s) => s.setAuthenticated);
   const signOut = useAppStore((s) => s.signOut);
-  const { disconnect } = useWeb3AuthDisconnect();
+  const { logout } = useLogout();
 
   const handleSplashFinish = () => {
     setPhase("auth");
@@ -21,7 +21,7 @@ export default function HomePage() {
 
   const handleSignOut = async () => {
     try {
-      await disconnect();
+      await logout();
     } catch {
       // ignore
     }
