@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { ConnectButton } from "@/components/connect-button";
 
 const navLinks = [
   { name: "Play", href: "/", external: false },
@@ -55,9 +54,7 @@ export function Navbar() {
         </nav>
 
        
-        <div className="flex items-center gap-3">
-          <ConnectButton />
-        </div>
+        <div className="flex items-center gap-3" />
       </div>
     </header>
   );
