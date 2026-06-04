@@ -75,8 +75,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setAuthError("");
     setStep("email_loading");
     try {
+      // 5 minutes — user needs to open their email and click the magic link
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Login timed out. Please try again.")), 90_000)
+        setTimeout(() => reject(new Error("Login timed out. Please try again.")), 300_000)
       );
       const connection = await Promise.race([
         connectTo("auth", {
@@ -210,10 +211,24 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         )}
 
         {step === "email_loading" && (
-          <div className="text-center py-8 space-y-3">
+          <div className="text-center py-8 space-y-4">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-            <p className="text-sm text-muted-foreground">Opening login window…</p>
-            <p className="text-xs text-muted-foreground">Complete the login in the popup, then come back here.</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Check your email</p>
+              <p className="text-xs text-muted-foreground">
+                We sent a magic link to <span className="font-medium text-foreground">{email}</span>.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Click the link in the email — the popup will close automatically once you're signed in.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setStep("email_input"); setAuthError(""); }}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Use a different email
+            </button>
             {authError && <p className="text-xs text-destructive">{authError}</p>}
           </div>
         )}
