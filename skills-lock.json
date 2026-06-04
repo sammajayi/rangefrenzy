@@ -7,6 +7,11 @@
       "skillPath": "skills/celopedia-skill/SKILL.md",
       "computedHash": "cda6ce0774206a8071fb71189c4b9c5d22652e25cab1f63129dad3ca1c9c44a2"
     },
+    "privy": {
+      "source": "docs.privy.io",
+      "sourceType": "well-known",
+      "computedHash": "5803959ebd82ea627a0d57b8631c65c42b7b404dcdeae0dc91e9dc396ffbe813"
+    },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",

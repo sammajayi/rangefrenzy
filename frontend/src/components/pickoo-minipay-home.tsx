@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Activity02Icon, User02Icon, Camera01Icon, ArrowRight01Icon } from "hugeicons-react";
 import { Chart01Icon } from "hugeicons-react";
+import { FilterHorizontalIcon, Search01Icon, Cancel01Icon } from "hugeicons-react";
+import { MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import type { Market } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { FALLBACK_MARKETS, MOCK_LEADERBOARD, MOCK_WEEKLY_CAMPAIGN, formatDeadline } from "@/lib/markets";
-import type { PredictionMarket, PredictionRange } from "@/lib/markets";
+import type { PredictionMarket, PredictionRange, LeaderboardEntry } from "@/lib/markets";
 import { cn } from "@/lib/utils";
 import { ProfileView } from "@/components/profile-view";
 
@@ -46,6 +48,16 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const [markets, setMarkets] = useState<PredictionMarket[]>([]);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
 
+  const [showFilter, setShowFilter] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [filterSearch, setFilterSearch] = useState("");
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filteredMarkets, setFilteredMarkets] = useState<PredictionMarket[]>([]);
+
+  const timeFilters = ["Today", "24 Hours", "Popular", "Trending", "This Week"];
+  const categories = ["Sports", "Crypto", "Politics", "Entertainment", "Tech"];
+
   useEffect(() => {
     async function fetchMarkets() {
       const { data, error } = await supabase
@@ -62,6 +74,25 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
     }
     fetchMarkets();
   }, []);
+
+  useEffect(() => {
+    let result = markets;
+    if (filterSearch.trim()) {
+      const q = filterSearch.toLowerCase();
+      result = result.filter(
+        (m) =>
+          m.title.toLowerCase().includes(q) ||
+          m.category.toLowerCase().includes(q) ||
+          m.asset.toLowerCase().includes(q)
+      );
+    }
+    if (selectedCategory) {
+      result = result.filter(
+        (m) => m.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+    setFilteredMarkets(result);
+  }, [filterSearch, selectedCategory, markets]);
 
   const handleImageUpload = (marketId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,17 +133,49 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
         {/* ── PLAY TAB ── */}
         {tab === "play" && (
           <div className="space-y-5">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <h2 className="font-display text-2xl font-bold tracking-tight">Live ranges</h2>
-                <p className="text-sm text-muted-foreground">
-                  Crypto, sports, weather & more — tap a market to view details.
-                </p>
+            {/* Header with filter, title, search */}
+            {showSearch ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Search markets..."
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  className="h-10 flex-1 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => { setShowSearch(false); setFilterSearch(""); }}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+                >
+                  <Cancel01Icon className="h-5 w-5" />
+                </button>
               </div>
-              <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-secondary-foreground">
-                {loadingMarkets ? "..." : "Live"}
-              </span>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowFilter(true)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+                >
+                  <FilterHorizontalIcon className="h-5 w-5" />
+                </button>
+                <div className="text-center flex-1">
+                  <h2 className="font-display text-2xl font-bold tracking-tight">Live ranges</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Crypto, sports, weather & more — tap a market to view details.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSearch(true)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+                >
+                  <Search01Icon className="h-5 w-5" />
+                </button>
+              </div>
+            )}
 
             {loadingMarkets ? (
               <div className="flex justify-center py-16">
@@ -155,10 +218,16 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                           </p>
                           <p className="font-display text-lg font-semibold">{market.title}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {market.windowLabel} · {market.volumeLabel}
+                            {market.windowLabel}
                           </p>
                         </div>
-                        <ArrowRight01Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary tabular-nums">
+                            <Chart01Icon className="h-3 w-3" />
+                            {market.volumeLabel.split(" ")[0]}
+                          </span>
+                          <ArrowRight01Icon className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {market.ranges.map((r) => (
@@ -178,6 +247,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
         {/* ── BOARD TAB ── */}
         {tab === "board" && (
           <div className="space-y-4 pt-2">
+            {/* Board header - just the sub-tab switcher */}
             <div className="flex gap-1 rounded-2xl border border-border bg-muted/40 p-1">
               {(["leaderboard", "weekly"] as const).map((sub) => (
                 <button
@@ -194,42 +264,106 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
               ))}
             </div>
 
-            {boardSub === "leaderboard" ? (
-              <>
-                <div>
-                  <h2 className="font-display text-xl font-bold">Top earners</h2>
-                  <p className="text-sm text-muted-foreground">All-time standings (sample).</p>
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-border">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2">#</th>
-                        <th className="px-3 py-2">User</th>
-                        <th className="px-3 py-2 text-right">Earned</th>
-                        <th className="px-3 py-2 text-right">Win</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_LEADERBOARD.map((row) => (
-                        <tr key={row.rank} className="border-t border-border bg-card">
-                          <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{row.rank}</td>
-                          <td className="px-3 py-3 font-medium">@{row.username}</td>
-                          <td className="px-3 py-3 text-right tabular-nums">${row.earnings}</td>
-                          <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                            {row.winRate === 0 ? "—" : `${Math.round(row.winRate * 100)}%`}
-                          </td>
-                        </tr>
+            {/* Filter panel overlay */}
+            {showFilter && (
+              <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center">
+                <div className="w-full max-w-md rounded-t-3xl border border-border bg-card p-6 shadow-xl sm:rounded-3xl">
+                  <div className="mb-5 flex items-center justify-between">
+                    <h3 className="font-display text-lg font-bold">Filter Markets</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowFilter(false)}
+                      className="text-muted-foreground hover:text-foreground transition"
+                    >
+                      <Cancel01Icon className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search markets..."
+                      value={filterSearch}
+                      onChange={(e) => setFilterSearch(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30"
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Time</p>
+                    <div className="flex flex-wrap gap-2">
+                      {timeFilters.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSelectedTime(selectedTime === t ? null : t)}
+                          className={cn(
+                            "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                            selectedTime === t
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/40",
+                          )}
+                        >
+                          {t}
+                        </button>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Categories</p>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setSelectedCategory(selectedCategory === c ? null : c)}
+                          className={cn(
+                            "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                            selectedCategory === c
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/40",
+                          )}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setFilterSearch("");
+                        setSelectedTime(null);
+                        setSelectedCategory(null);
+                        setShowFilter(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-1"
+                      onClick={() => setShowFilter(false)}
+                    >
+                      Apply
+                    </Button>
+                  </div>
                 </div>
-              </>
+              </div>
+            )}
+
+            {boardSub === "leaderboard" ? (
+              <LeaderboardSection />
             ) : (
               <>
                 <div>
                   <h2 className="font-display text-xl font-bold">Weekly campaign</h2>
-                  <p className="text-sm text-muted-foreground">This week's pool (demo).</p>
+                  <p className="text-sm text-muted-foreground">This week&apos;s pool (demo).</p>
                 </div>
                 <div className="overflow-hidden rounded-2xl border border-border">
                   <table className="w-full text-left text-sm">
@@ -315,8 +449,14 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
             </p>
             <h3 className="font-display text-xl font-bold">{selected.market.title}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {selected.market.windowLabel} · {selected.market.volumeLabel}
+              {selected.market.windowLabel}
             </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary tabular-nums">
+                <Chart01Icon className="h-3.5 w-3.5" />
+                {selected.market.volumeLabel.split(" ")[0]}
+              </span>
+            </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {selected.market.ranges.map((r) => (
                 <button
@@ -342,6 +482,106 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Leaderboard Section ── */
+const PODIUM_COLORS = [
+  "bg-yellow-100 border-yellow-400 text-yellow-800",
+  "bg-gray-100 border-gray-400 text-gray-700",
+  "bg-orange-100 border-orange-400 text-orange-800",
+];
+const PODIUM_ICONS = [MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon];
+
+function LeaderboardSection() {
+  const top3 = MOCK_LEADERBOARD.slice(0, 3);
+  const rest = MOCK_LEADERBOARD.slice(3);
+
+  return (
+    <div>
+      <div className="mb-1">
+        <h2 className="font-display text-xl font-bold">Leaderboard</h2>
+        <p className="text-sm text-muted-foreground">Top performers this week</p>
+      </div>
+
+      {/* Top 3 Podium */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {top3.map((entry, i) => {
+          const Icon = PODIUM_ICONS[i];
+          return (
+            <div
+              key={entry.rank}
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center",
+                PODIUM_COLORS[i]
+              )}
+            >
+              <Icon className="h-6 w-6" />
+              <LeaderboardAvatar entry={entry} size="md" />
+              <div>
+                <p className="text-xs font-bold leading-tight">@{entry.username}</p>
+                <p className="text-sm font-bold tabular-nums">${entry.earnings}</p>
+                <p className="text-[10px] opacity-70">
+                  {entry.winRate === 0 ? "—" : `${Math.round(entry.winRate * 100)}%`} win
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 4th+ in a list */}
+      <div className="overflow-hidden rounded-2xl border border-border">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2">#</th>
+              <th className="px-3 py-2">User</th>
+              <th className="px-3 py-2 text-right">Earned</th>
+              <th className="px-3 py-2 text-right">Win</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rest.map((row) => (
+              <tr key={row.rank} className="border-t border-border bg-card">
+                <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{row.rank}</td>
+                <td className="px-3 py-3 font-medium">
+                  <div className="flex items-center gap-2">
+                    <LeaderboardAvatar entry={row} size="sm" />
+                    @{row.username}
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-right tabular-nums">${row.earnings}</td>
+                <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
+                  {row.winRate === 0 ? "—" : `${Math.round(row.winRate * 100)}%`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardAvatar({ entry, size }: { entry: LeaderboardEntry; size: "sm" | "md" }) {
+  const dim = size === "sm" ? "h-6 w-6 text-[10px]" : "h-9 w-9 text-sm";
+  const initial = entry.username.charAt(0).toUpperCase();
+  if (entry.avatar_url) {
+    return (
+      <img
+        src={entry.avatar_url}
+        alt={entry.username}
+        className={`${dim} shrink-0 rounded-full object-cover`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${dim} flex shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary`}
+    >
+      {initial}
     </div>
   );
 }

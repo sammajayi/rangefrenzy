@@ -3,24 +3,20 @@
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
-import { useState } from "react";
-import type { Profile } from "@/lib/supabase";
+import { useAppStore } from "@/lib/store";
 import { useWeb3AuthDisconnect } from "@web3auth/modal/react";
 
 export default function HomePage() {
-  const [phase, setPhase] = useState<"splash" | "auth" | "home">("splash");
-  const [address, setAddress] = useState<string>("");
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const phase = useAppStore((s) => s.phase);
+  const address = useAppStore((s) => s.address);
+  const profile = useAppStore((s) => s.profile);
+  const setPhase = useAppStore((s) => s.setPhase);
+  const setAuthenticated = useAppStore((s) => s.setAuthenticated);
+  const signOut = useAppStore((s) => s.signOut);
   const { disconnect } = useWeb3AuthDisconnect();
 
   const handleSplashFinish = () => {
     setPhase("auth");
-  };
-
-  const handleAuthenticated = (addr: string, prof: Profile | null) => {
-    setAddress(addr);
-    setProfile(prof);
-    setPhase("home");
   };
 
   const handleSignOut = async () => {
@@ -29,15 +25,13 @@ export default function HomePage() {
     } catch {
       // ignore
     }
-    setAddress("");
-    setProfile(null);
-    setPhase("auth");
+    signOut();
   };
 
   return (
     <>
       {phase === "splash" && <SplashScreen onFinish={handleSplashFinish} />}
-      {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
+      {phase === "auth" && <AuthPage onAuthenticated={setAuthenticated} />}
       {phase === "home" && (
         <RangeFrenzyHome
           address={address}

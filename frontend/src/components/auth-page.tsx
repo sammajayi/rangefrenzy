@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useWeb3AuthConnect } from "@web3auth/modal/react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
-import { Mail01Icon, Wallet01Icon } from "hugeicons-react";
+import { Mail01Icon, Wallet01Icon, Upload01Icon } from "hugeicons-react";
 
 interface AuthPageProps {
   onAuthenticated: (address: string, profile: Profile | null) => void;
@@ -18,12 +18,14 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [step, setStep] = useState<Step>("choose");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [authError, setAuthError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [pendingAddress, setPendingAddress] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const { connectTo, connect, loading: connectLoading, error: connectError } = useWeb3AuthConnect();
   // address is populated by wagmi after a successful Web3Auth connection
@@ -75,14 +77,17 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setAuthError("");
     setStep("email_loading");
     try {
-      // 5 minutes — user needs to open their email and click the magic link
+      if (wagmiAddress) {
+        await checkAndProceed(wagmiAddress, email);
+        return;
+      }
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Login timed out. Please try again.")), 300_000)
       );
       const connection = await Promise.race([
         connectTo("auth", {
           authConnection: "email_passwordless",
-          loginHint: email,
+          extraLoginOptions: { login_hint: email },
         } as any),
         timeout,
       ]);
@@ -92,9 +97,23 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       await checkAndProceed(addr, email);
     } catch (err: any) {
       console.error("Web3Auth login error:", err);
-      setAuthError(err?.message ?? "Login failed. Please try again.");
+      if (wagmiAddress && err?.message?.toLowerCase().includes("already connected")) {
+        await checkAndProceed(wagmiAddress, email);
+        return;
+      }
+      const msg = typeof err === "string" ? err : err?.message ?? "Login failed. Please try again.";
+      setAuthError(msg);
       setStep("email_input");
     }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -103,11 +122,16 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setUsernameError("");
     setProfileLoading(true);
     try {
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        avatarUrl = await uploadAvatar(pendingAddress, avatarFile);
+      }
+
       const profile: Profile = {
         wallet_address: pendingAddress.toLowerCase(),
         username: username.trim().toLowerCase(),
         email: pendingEmail,
-        avatar_url: avatarUrl.trim() || null,
+        avatar_url: avatarUrl,
         created_at: new Date().toISOString(),
       };
 
@@ -202,7 +226,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               />
             </div>
             <Button type="submit" className="h-12 w-full text-base font-semibold" size="lg" disabled={!email}>
-              Send login link
+              Send OTP
             </Button>
             <button type="button" onClick={() => setStep("choose")} className="block w-full text-center text-sm text-muted-foreground hover:text-foreground">
               Back
@@ -252,15 +276,26 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                Avatar URL <span className="text-xs">(optional)</span>
+                Avatar <span className="text-xs">(optional)</span>
               </label>
               <input
-                type="url"
-                placeholder="https://..."
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
               />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted/30 hover:border-primary/50 transition"
+              >
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Preview" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  <Upload01Icon className="h-6 w-6 text-muted-foreground" />
+                )}
+              </button>
             </div>
             <Button
               type="submit"

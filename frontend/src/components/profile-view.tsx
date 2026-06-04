@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Copy01Icon, Logout01Icon, Setting07Icon } from "hugeicons-react";
+import { useState, useRef } from "react";
+import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
+import { useAppStore } from "@/lib/store";
 
 type TxRow = {
   id: string;
@@ -29,6 +31,9 @@ interface Props {
 export function ProfileView({ address, profile, onSignOut }: Props) {
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const setProfile = useAppStore((s) => s.setProfile);
 
   const short = `${address.slice(0, 6)}…${address.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
@@ -36,6 +41,23 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
     ? profile.username.charAt(0).toUpperCase() + profile.username.slice(1)
     : "Player";
   const handle = profile?.username ? `@${profile.username}` : "@player";
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(address, file);
+      if (profile) {
+        await supabase.from("profiles").update({ avatar_url: url }).eq("wallet_address", address.toLowerCase());
+        setProfile({ ...profile, avatar_url: url });
+      }
+    } catch (err) {
+      console.error("Avatar upload error:", err);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const copy = () => {
     void navigator.clipboard.writeText(address);
@@ -55,13 +77,37 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
       <div className="px-4 pt-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={displayName} className="h-14 w-14 shrink-0 rounded-full object-cover" />
-            ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
-                {initials}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="group relative"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={displayName} className="h-14 w-14 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
+                    {initials}
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition group-hover:opacity-100">
+                  <Upload01Icon className="h-5 w-5 text-white" />
+                </div>
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              {avatarUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                </div>
+              )}
+            </div>
             <div>
               <h2 className="font-display text-xl font-bold tracking-tight">{displayName}</h2>
               <p className="text-sm text-muted-foreground">{handle}</p>
@@ -96,6 +142,14 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                 <div className="absolute right-0 top-11 z-[90] min-w-[160px] rounded-2xl border border-border bg-card p-1 shadow-lg">
                   <button
                     type="button"
+                    onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                  >
+                    <Upload01Icon className="h-4 w-4" />
+                    Change avatar
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setShowSettings(false); onSignOut(); }}
                     className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
                   >
@@ -120,11 +174,10 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
 
         {/* Wallet balances */}
         <section className="mt-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet balances (Celo)</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet balances</h3>
           <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
             <BalanceRow label="CELO" sub="Native" value="0.00" />
-            <BalanceRow label="cUSD" sub="Celo Dollar" value="0.00" />
-            <BalanceRow label="USDC" sub="Bridged" value="0.00" />
+            <BalanceRow label="G$" sub="Celo Dollar" value="0.00" />
           </div>
         </section>
 
