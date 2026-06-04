@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useConnect } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { initWeb3Auth, loginWithWeb3Auth, getWeb3AuthAddress } from "@/lib/web3auth-connector";
+import { initWeb3Auth, loginWithWeb3Auth, getAddressFromProvider } from "@/lib/web3auth-connector";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { Mail01Icon, Wallet01Icon } from "hugeicons-react";
@@ -17,6 +17,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [walletError, setWalletError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [pendingAddress, setPendingAddress] = useState<string | null>(null);
@@ -44,13 +45,22 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   };
 
   const handleConnectWallet = () => {
+    setWalletError("");
     const connector = connectors.find((c) => c.id === "injected") || connectors[0];
-    if (connector) {
-      connect({ connector, onSuccess: (data) => {
+    if (!connector) {
+      setWalletError("No wallet found. Please install a wallet extension.");
+      return;
+    }
+    connect({
+      connector,
+      onSuccess: (data) => {
         const address = data.accounts[0];
         if (address) checkAndProceed(address);
-      }});
-    }
+      },
+      onError: (err) => {
+        setWalletError(err.message ?? "Wallet connection failed. Please try again.");
+      },
+    });
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -58,9 +68,12 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     if (!email) return;
     setStep("email_loading");
     try {
-      const provider = await loginWithWeb3Auth(email);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Login timed out. Please try again.")), 60_000)
+      );
+      const provider = await Promise.race([loginWithWeb3Auth(email), timeout]);
       if (!provider) throw new Error("No provider returned");
-      const address = await getWeb3AuthAddress();
+      const address = await getAddressFromProvider(provider);
       if (!address) throw new Error("Could not get address");
       await checkAndProceed(address, email);
     } catch (err) {
@@ -75,18 +88,6 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setUsernameError("");
     setProfileLoading(true);
     try {
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("username", username.trim().toLowerCase())
-        .single();
-
-      if (existing) {
-        setUsernameError("That username is already taken. Try another.");
-        setProfileLoading(false);
-        return;
-      }
-
       const profile: Profile = {
         wallet_address: pendingAddress.toLowerCase(),
         username: username.trim().toLowerCase(),
@@ -96,7 +97,14 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       };
 
       const { error } = await supabase.from("profiles").insert(profile);
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") {
+          setUsernameError("That username is already taken. Try another.");
+        } else {
+          throw error;
+        }
+        return;
+      }
       onAuthenticated(pendingAddress, profile);
     } catch (err) {
       console.error("Profile create error:", err);
@@ -150,7 +158,10 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               <Wallet01Icon className="mr-2 h-5 w-5" />
               Connect Wallet
             </Button>
-            <p className="mt-6 text-center text-xs text-muted-foreground">
+            {walletError && (
+              <p className="text-center text-xs text-destructive">{walletError}</p>
+            )}
+            <p className="mt-2 text-center text-xs text-muted-foreground">
               By continuing, you agree to our Terms of Service and Privacy Policy.
             </p>
           </div>

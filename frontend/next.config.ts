@@ -25,9 +25,18 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
-  // webpack: (config) => {
-  //   return config;
-  // },
+  webpack: (config) => {
+    // pino-pretty is an optional CLI formatter — not needed in the browser.
+    // WalletConnect's pino logger tries to require it; stub it out.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "pino-pretty": false,
+      // MetaMask SDK pulls in React Native async-storage in its browser bundle.
+      // Stub it out so webpack doesn't error on the missing native module.
+      "@react-native-async-storage/async-storage": false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { Navbar } from "@/components/navbar";
 import { WalletProvider } from "@/components/wallet-provider";
+import { RegisterSW } from "@/components/register-sw";
 
 const display = Archivo({
   subsets: ["latin"],
@@ -54,17 +55,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
           </WalletProvider>
         </div>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
+        <RegisterSW />
       </body>
     </html>
   );
