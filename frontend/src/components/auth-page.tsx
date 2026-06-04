@@ -221,10 +221,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               className="h-12 w-full text-base font-semibold"
               size="lg"
               onClick={() => setStep("email_input")}
-              disabled={!ready}
             >
               <Mail01Icon className="mr-2 h-5 w-5" />
-              {ready ? "Continue with Email" : "Loading…"}
+              Continue with Email
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
