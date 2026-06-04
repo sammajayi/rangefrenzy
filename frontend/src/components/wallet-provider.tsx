@@ -1,26 +1,39 @@
 "use client";
 
-import { Web3AuthProvider } from "@web3auth/modal/react";
-import { WagmiProvider } from "@web3auth/modal/react/wagmi";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { web3AuthContextConfig } from "@/lib/web3auth-connector";
+import { celo } from "viem/chains";
+import { http } from "viem";
+
+const wagmiConfig = createConfig({
+  chains: [celo],
+  transports: {
+    [celo.id]: http("https://forno.celo.org"),
+  },
+});
 
 const queryClient = new QueryClient();
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
-
   return (
-    <Web3AuthProvider config={web3AuthContextConfig}>
+    <PrivyProvider
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+      clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID!}
+      config={{
+        loginMethods: ["email", "wallet"],
+        embeddedWallets: {
+          ethereum: { createOnLogin: "users-without-wallets" },
+        },
+        defaultChain: celo,
+        supportedChains: [celo],
+      }}
+    >
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider>
+        <WagmiProvider config={wagmiConfig}>
           {children}
         </WagmiProvider>
       </QueryClientProvider>
-    </Web3AuthProvider>
+    </PrivyProvider>
   );
 }

@@ -1,77 +1,66 @@
 import type { NextConfig } from "next";
+import path from "path";
+
+const solanaStubAbs = path.resolve("./src/lib/stubs/solana.js");
+const solanaStubRel = "./src/lib/stubs/solana.js";
+
+// Turbopack has no regex alias support — list every known package in the chain.
+// Webpack uses NormalModuleReplacementPlugin below (one regex covers all of them).
+const turbopackSolanaAliases: Record<string, string> = {
+  "x402": solanaStubRel,
+  "@solana-program/system": solanaStubRel,
+  "@solana-program/token": solanaStubRel,
+  "@solana-program/token-2022": solanaStubRel,
+  "@solana/web3.js": solanaStubRel,
+  "@solana/spl-token": solanaStubRel,
+  "@solana/addresses": solanaStubRel,
+  "@solana/rpc-types": solanaStubRel,
+  "@solana/sysvars": solanaStubRel,
+  "@solana/codecs-core": solanaStubRel,
+  "@solana/codecs-strings": solanaStubRel,
+  "@solana/codecs-data-structures": solanaStubRel,
+  "@solana/codecs-numbers": solanaStubRel,
+  "@solana/assertions": solanaStubRel,
+  "@solana/errors": solanaStubRel,
+  "@solana/keys": solanaStubRel,
+  "@solana/signers": solanaStubRel,
+  "@solana/transactions": solanaStubRel,
+  "@solana/rpc": solanaStubRel,
+  "@solana/kit": solanaStubRel,
+  "@solana-program/compute-budget": solanaStubRel,
+  "@solana-program/associated-token-account": solanaStubRel,
+};
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["fef3-105-119-2-153.ngrok-free.app"],
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   headers: async () => [
     {
       source: "/sw.js",
       headers: [
-        {
-          key: "Cache-Control",
-          value: "public, max-age=0, must-revalidate",
-        },
-        {
-          key: "Service-Worker-Allowed",
-          value: "/",
-        },
+        { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        { key: "Service-Worker-Allowed", value: "/" },
       ],
     },
   ],
-  transpilePackages: ["@web3auth/modal"],
-  webpack: (config, { isServer }) => {
-    // Stub out optional/native-only deps that appear in browser bundles
+  turbopack: {
+    resolveAlias: turbopackSolanaAliases,
+  },
+  webpack: (config, { webpack }) => {
+    // Single regex replaces the entire x402 + @solana/* + @solana-program/* chain
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /^(x402$|@solana\/|@solana-program\/)/,
+        solanaStubAbs
+      )
+    );
     config.resolve.alias = {
       ...config.resolve.alias,
       "pino-pretty": false,
       "@react-native-async-storage/async-storage": false,
     };
-
-    if (!isServer) {
-      // Polyfill stubs for Node built-ins referenced by Web3Auth / WalletConnect
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        crypto: false,
-        stream: false,
-        http: false,
-        https: false,
-        zlib: false,
-        url: false,
-        buffer: false,
-      };
-
-      // Increase chunk-load timeout — Web3Auth's vendor bundle is large
-      config.output.chunkLoadTimeout = 120_000;
-
-      // Consolidate all @web3auth/* into one vendor chunk so webpack doesn't
-      // produce dozens of tiny async chunks that race against the timeout
-      const existingCacheGroups =
-        config.optimization?.splitChunks?.cacheGroups ?? {};
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization?.splitChunks,
-          cacheGroups: {
-            ...existingCacheGroups,
-            web3auth: {
-              test: /[\\/]node_modules[\\/]@web3auth[\\/]/,
-              name: "vendor-web3auth",
-              chunks: "all",
-              priority: 20,
-              enforce: true,
-            },
-          },
-        },
-      };
-    }
-
     return config;
   },
 };

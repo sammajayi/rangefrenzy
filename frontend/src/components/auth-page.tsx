@@ -1,35 +1,69 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useWeb3AuthConnect } from "@web3auth/modal/react";
-import { useAccount } from "wagmi";
+import { useState, useRef, useEffect } from "react";
+import { usePrivy, useLoginWithEmail, useConnectWallet, useWallets } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { Mail01Icon, Wallet01Icon, Upload01Icon } from "hugeicons-react";
 
+function privyErrorMessage(error: any): string {
+  const code: string = error?.code ?? error?.privyErrorCode ?? "";
+  switch (code) {
+    case "invalid_credentials":
+    case "invalid_code":
+      return "Incorrect code. Please check your email and try again.";
+    case "expired_code":
+    case "code_expired":
+      return "Your code has expired. Go back and request a new one.";
+    case "too_many_requests":
+      return "Too many attempts. Please wait a moment before trying again.";
+    default: {
+      const msg: string = error?.message ?? "";
+      // Strip raw JSON if Privy passes it as the message
+      try {
+        const parsed = JSON.parse(msg);
+        return parsed?.error ?? parsed?.message ?? "Something went wrong.";
+      } catch {
+        return msg || "Something went wrong. Please try again.";
+      }
+    }
+  }
+}
+
 interface AuthPageProps {
   onAuthenticated: (address: string, profile: Profile | null) => void;
 }
 
-type Step = "choose" | "email_input" | "email_loading" | "profile_setup";
+type Step = "choose" | "email_input" | "otp_input" | "profile_setup";
 
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [step, setStep] = useState<Step>("choose");
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [username, setUsername] = useState("");
   const [authError, setAuthError] = useState("");
   const [usernameError, setUsernameError] = useState("");
+  const [connectLoading, setConnectLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [pendingAddress, setPendingAddress] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { ready, authenticated, user: privyUser } = usePrivy();
+  const { wallets } = useWallets();
 
-  const { connectTo, connect, loading: connectLoading, error: connectError } = useWeb3AuthConnect();
-  // address is populated by wagmi after a successful Web3Auth connection
-  const { address: wagmiAddress } = useAccount();
+  // If Privy already has a valid session (page refresh / returning user), skip the auth UI
+  useEffect(() => {
+    if (!ready || !authenticated || !privyUser) return;
+    const embeddedWallet = (privyUser.linkedAccounts as any[]).find(
+      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
+    );
+    const addr = embeddedWallet?.address ?? wallets[0]?.address;
+    if (addr) checkAndProceed(addr, (privyUser as any).email?.address ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated]);
 
   const checkAndProceed = async (addr: string, resolvedEmail: string | null = null) => {
     const { data } = await supabase
@@ -47,64 +81,72 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     }
   };
 
-  // Resolve wallet address from a connection object's ethereumProvider
-  const getAddrFromConnection = async (connection: any): Promise<string | null> => {
-    try {
-      const provider = connection?.ethereumProvider;
-      if (!provider) return wagmiAddress ?? null;
-      const accounts: string[] = await provider.request({ method: "eth_accounts" });
-      return accounts[0] ?? wagmiAddress ?? null;
-    } catch {
-      return wagmiAddress ?? null;
-    }
-  };
+  const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail({
+    onComplete: async ({ user }) => {
+      const embeddedWallet = user.linkedAccounts.find(
+        (a) => a.type === "wallet" && (a as any).walletClientType === "privy"
+      ) as any;
+      const addr = embeddedWallet?.address ?? wallets[0]?.address;
+      if (addr) await checkAndProceed(addr, email);
+    },
+    onError: (error: any) => {
+      setAuthError(privyErrorMessage(error));
+    },
+  });
 
-  // Open Web3Auth modal for external wallet connection
-  const handleConnectWallet = async () => {
-    setAuthError("");
-    try {
-      const connection = await connect();
-      const addr = await getAddrFromConnection(connection);
+  const { connectWallet } = useConnectWallet({
+    onSuccess: async (wallet: any) => {
+      const addr = wallet?.address ?? wallet?.accounts?.[0]?.address;
       if (addr) await checkAndProceed(addr);
+      setConnectLoading(false);
+    },
+    onError: (error: any) => {
+      setAuthError(privyErrorMessage(error));
+      setConnectLoading(false);
+    },
+  });
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ready || !email) return;
+    setAuthError("");
+    try {
+      await sendCode({ email });
     } catch (err: any) {
-      setAuthError(err?.message ?? "Wallet connection failed. Please try again.");
+      const msg: string = err?.message ?? "";
+      // Timeout/abort means the request reached Privy and the code was sent —
+      // advance to OTP input so the user can still enter the code they received.
+      const isTimeout = /timeout|abort|network/i.test(msg);
+      if (!isTimeout) {
+        setAuthError(privyErrorMessage(err));
+        return;
+      }
+    }
+    setStep("otp_input");
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ready || !otp) return;
+    setAuthError("");
+    try {
+      await loginWithCode({ code: otp });
+    } catch (err: any) {
+      const msg: string = err?.message ?? "";
+      const isTimeout = /timeout|abort|network/i.test(msg);
+      setAuthError(
+        isTimeout
+          ? "Connection is slow — you may still be signed in. Please wait a moment."
+          : privyErrorMessage(err)
+      );
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
+  const handleConnectWallet = () => {
+    if (!ready) return;
     setAuthError("");
-    setStep("email_loading");
-    try {
-      if (wagmiAddress) {
-        await checkAndProceed(wagmiAddress, email);
-        return;
-      }
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Login timed out. Please try again.")), 300_000)
-      );
-      const connection = await Promise.race([
-        connectTo("auth", {
-          authConnection: "email_passwordless",
-          extraLoginOptions: { login_hint: email },
-        } as any),
-        timeout,
-      ]);
-      if (!connection) throw new Error("No connection returned");
-      const addr = await getAddrFromConnection(connection);
-      if (!addr) throw new Error("Could not get wallet address");
-      await checkAndProceed(addr, email);
-    } catch (err: any) {
-      console.error("Web3Auth login error:", err);
-      if (wagmiAddress && err?.message?.toLowerCase().includes("already connected")) {
-        await checkAndProceed(wagmiAddress, email);
-        return;
-      }
-      const msg = typeof err === "string" ? err : err?.message ?? "Login failed. Please try again.";
-      setAuthError(msg);
-      setStep("email_input");
-    }
+    setConnectLoading(true);
+    connectWallet();
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +195,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     }
   };
 
+  const isSendingCode = emailState.status === "sending-code";
+  const isSubmittingCode = emailState.status === "submitting-code";
+
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm">
@@ -176,9 +221,10 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               className="h-12 w-full text-base font-semibold"
               size="lg"
               onClick={() => setStep("email_input")}
+              disabled={!ready}
             >
               <Mail01Icon className="mr-2 h-5 w-5" />
-              Continue with Email
+              {ready ? "Continue with Email" : "Loading…"}
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -193,15 +239,13 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               className="h-12 w-full text-base font-semibold"
               size="lg"
               onClick={handleConnectWallet}
-              disabled={connectLoading}
+              disabled={!ready || connectLoading}
             >
               <Wallet01Icon className="mr-2 h-5 w-5" />
               {connectLoading ? "Connecting…" : "Connect Wallet"}
             </Button>
-            {(authError || connectError) && (
-              <p className="text-center text-xs text-destructive">
-                {authError || connectError?.message}
-              </p>
+            {authError && (
+              <p className="text-center text-xs text-destructive">{authError}</p>
             )}
             <p className="mt-2 text-center text-xs text-muted-foreground">
               By continuing, you agree to our Terms of Service and Privacy Policy.
@@ -210,7 +254,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         )}
 
         {step === "email_input" && (
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Email address
@@ -225,36 +269,67 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 required
               />
             </div>
-            <Button type="submit" className="h-12 w-full text-base font-semibold" size="lg" disabled={!email}>
-              Send OTP
+            {authError && <p className="text-xs text-destructive">{authError}</p>}
+            <Button
+              type="submit"
+              className="h-12 w-full text-base font-semibold"
+              size="lg"
+              disabled={!ready || !email || isSendingCode}
+            >
+              {isSendingCode ? "Sending…" : "Send Code"}
             </Button>
-            <button type="button" onClick={() => setStep("choose")} className="block w-full text-center text-sm text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => setStep("choose")}
+              className="block w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            >
               Back
             </button>
           </form>
         )}
 
-        {step === "email_loading" && (
-          <div className="text-center py-8 space-y-4">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-            <div className="space-y-1">
+        {step === "otp_input" && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="text-center space-y-1 mb-2">
               <p className="text-sm font-medium">Check your email</p>
               <p className="text-xs text-muted-foreground">
-                We sent a magic link to <span className="font-medium text-foreground">{email}</span>.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Click the link in the email — the popup will close automatically once you're signed in.
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-foreground">{email}</span>.
               </p>
             </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                Verification code
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="h-12 w-full rounded-xl border border-input bg-background px-4 text-center text-xl tracking-widest outline-none ring-2 ring-transparent focus:ring-primary/30"
+                autoFocus
+                required
+                maxLength={6}
+              />
+            </div>
+            {authError && <p className="text-xs text-destructive">{authError}</p>}
+            <Button
+              type="submit"
+              className="h-12 w-full text-base font-semibold"
+              size="lg"
+              disabled={!ready || otp.length < 6 || isSubmittingCode}
+            >
+              {isSubmittingCode ? "Verifying…" : "Verify"}
+            </Button>
             <button
               type="button"
-              onClick={() => { setStep("email_input"); setAuthError(""); }}
-              className="text-xs text-muted-foreground underline hover:text-foreground"
+              onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
+              className="block w-full text-center text-sm text-muted-foreground hover:text-foreground"
             >
               Use a different email
             </button>
-            {authError && <p className="text-xs text-destructive">{authError}</p>}
-          </div>
+          </form>
         )}
 
         {step === "profile_setup" && (
