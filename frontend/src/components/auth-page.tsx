@@ -106,7 +106,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     },
   });
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!ready || !email) return;
     setAuthError("");
@@ -125,7 +125,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setStep("otp_input");
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!ready || !otp) return;
     setAuthError("");
@@ -158,7 +158,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!pendingAddress || !username.trim()) return;
     setUsernameError("");
@@ -238,7 +238,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               className="h-12 w-full text-base font-semibold"
               size="lg"
               onClick={handleConnectWallet}
-              disabled={!ready || connectLoading}
+              disabled={connectLoading}
             >
               <Wallet01Icon className="mr-2 h-5 w-5" />
               {connectLoading ? "Connecting…" : "Connect Wallet"}
@@ -273,7 +273,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               type="submit"
               className="h-12 w-full text-base font-semibold"
               size="lg"
-              disabled={!ready || !email || isSendingCode}
+              disabled={!email || isSendingCode}
             >
               {isSendingCode ? "Sending…" : "Send Code"}
             </Button>
