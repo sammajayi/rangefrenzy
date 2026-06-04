@@ -25,16 +25,53 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
-  webpack: (config) => {
-    // pino-pretty is an optional CLI formatter — not needed in the browser.
-    // WalletConnect's pino logger tries to require it; stub it out.
+  transpilePackages: ["@web3auth/modal"],
+  webpack: (config, { isServer }) => {
+    // Stub out optional/native-only deps that appear in browser bundles
     config.resolve.alias = {
       ...config.resolve.alias,
       "pino-pretty": false,
-      // MetaMask SDK pulls in React Native async-storage in its browser bundle.
-      // Stub it out so webpack doesn't error on the missing native module.
       "@react-native-async-storage/async-storage": false,
     };
+
+    if (!isServer) {
+      // Polyfill stubs for Node built-ins referenced by Web3Auth / WalletConnect
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        url: false,
+        buffer: false,
+      };
+
+      // Increase chunk-load timeout — Web3Auth's vendor bundle is large
+      config.output.chunkLoadTimeout = 120_000;
+
+      // Consolidate all @web3auth/* into one vendor chunk so webpack doesn't
+      // produce dozens of tiny async chunks that race against the timeout
+      const existingCacheGroups =
+        config.optimization?.splitChunks?.cacheGroups ?? {};
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          cacheGroups: {
+            ...existingCacheGroups,
+            web3auth: {
+              test: /[\\/]node_modules[\\/]@web3auth[\\/]/,
+              name: "vendor-web3auth",
+              chunks: "all",
+              priority: 20,
+              enforce: true,
+            },
+          },
+        },
+      };
+    }
+
     return config;
   },
 };

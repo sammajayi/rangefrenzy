@@ -5,12 +5,13 @@ import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
 import { useState } from "react";
 import type { Profile } from "@/lib/supabase";
-import { logoutWeb3Auth } from "@/lib/web3auth-connector";
+import { useWeb3AuthDisconnect } from "@web3auth/modal/react";
 
 export default function HomePage() {
   const [phase, setPhase] = useState<"splash" | "auth" | "home">("splash");
   const [address, setAddress] = useState<string>("");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const { disconnect } = useWeb3AuthDisconnect();
 
   const handleSplashFinish = () => {
     setPhase("auth");
@@ -24,9 +25,9 @@ export default function HomePage() {
 
   const handleSignOut = async () => {
     try {
-      await logoutWeb3Auth();
+      await disconnect();
     } catch {
-      // ignore if not logged in via web3auth
+      // ignore
     }
     setAddress("");
     setProfile(null);
