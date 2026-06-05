@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { Activity02Icon, User02Icon, Camera01Icon, ArrowRight01Icon } from "hugeicons-react";
 import { Chart01Icon } from "hugeicons-react";
 import { FilterHorizontalIcon, Search01Icon, Cancel01Icon } from "hugeicons-react";
@@ -11,8 +11,15 @@ import { FALLBACK_MARKETS, MOCK_LEADERBOARD, MOCK_WEEKLY_CAMPAIGN, formatDeadlin
 import type { PredictionMarket, PredictionRange, LeaderboardEntry } from "@/lib/markets";
 import { cn } from "@/lib/utils";
 import { ProfileView } from "@/components/profile-view";
+import { useAppStore } from "@/lib/store";
+import { SocialOnboardingModal } from "@/components/gooddollar/SocialOnboardingModal";
+import { StakeModal } from "@/components/StakeModal";
 
-type Tab = "play" | "board" | "profile";
+const ClaimPage = lazy(() =>
+  import("@/components/gooddollar/ClaimPage").then((m) => ({ default: m.ClaimPage }))
+);
+
+type Tab = "play" | "board" | "claim" | "profile";
 type BoardSub = "leaderboard" | "weekly";
 
 interface Props {
@@ -21,7 +28,7 @@ interface Props {
   onSignOut: () => void;
 }
 
-function marketToLocal(m: Market): PredictionMarket {
+function marketToLocal(m: Market): PredictionMarket & { contractAddress?: string; deadline: string } {
   return {
     id: m.id,
     title: m.title,
@@ -32,16 +39,22 @@ function marketToLocal(m: Market): PredictionMarket {
     ranges: m.ranges,
     image: m.image_url ?? undefined,
     status: m.status,
+    contractAddress: m.contract_address ?? undefined,
+    deadline: m.deadline,
   };
 }
 
 export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [boardSub, setBoardSub] = useState<BoardSub>("leaderboard");
+  const claimBadgeActive = useAppStore((s) => s.claimBadgeActive);
+  const hasSeenOnboarding = useAppStore((s) => s.hasSeenOnboarding);
+  const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding);
   const [selected, setSelected] = useState<{
-    market: PredictionMarket;
+    market: PredictionMarket & { contractAddress?: string; deadline: string };
     range: PredictionRange;
   } | null>(null);
+  const [showStakeModal, setShowStakeModal] = useState(false);
   const [marketImages, setMarketImages] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingMarketId, setUploadingMarketId] = useState<string | null>(null);
@@ -76,7 +89,12 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   }, []);
 
   useEffect(() => {
-    let result = markets;
+    const now = new Date();
+    // Issue 6 fix: client-side deadline filter so expired markets disappear immediately
+    let result = markets.filter((m) => {
+      const deadline = (m as any).deadline;
+      return !deadline || new Date(deadline) > now;
+    });
     if (filterSearch.trim()) {
       const q = filterSearch.toLowerCase();
       result = result.filter(
@@ -202,14 +220,16 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                             <Camera01Icon className="h-8 w-8 text-muted-foreground/40" />
                           </div>
                         )}
-                        <button
-                          type="button"
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={(e) => { e.stopPropagation(); triggerImageUpload(market.id); }}
-                          className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-background hover:text-foreground"
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); triggerImageUpload(market.id); } }}
+                          className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-background hover:text-foreground"
                           title="Add image"
                         >
                           <Camera01Icon className="h-4 w-4" />
-                        </button>
+                        </div>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -399,6 +419,17 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
           </div>
         )}
 
+        {/* ── CLAIM TAB ── */}
+        {tab === "claim" && (
+          <Suspense fallback={
+            <div className="flex justify-center pt-24">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+            </div>
+          }>
+            <ClaimPage />
+          </Suspense>
+        )}
+
         {/* ── PROFILE TAB ── */}
         {tab === "profile" && (
           <ProfileView address={address} profile={profile} onSignOut={onSignOut} />
@@ -408,31 +439,54 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
       {/* ── BOTTOM NAV ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:max-w-4xl">
-          {(
-            [
-              { id: "play" as const, label: "Play", Icon: Activity02Icon },
-              { id: "board" as const, label: "Board", Icon: Chart01Icon },
-              { id: "profile" as const, label: "You", Icon: User02Icon },
-            ] as const
-          ).map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={cn(
-                "flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition",
-                tab === id ? "text-primary" : "text-muted-foreground",
+          <button
+            type="button"
+            onClick={() => setTab("play")}
+            className={cn("flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition", tab === "play" ? "text-primary" : "text-muted-foreground")}
+          >
+            <Activity02Icon className="h-5 w-5" />
+            Play
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("board")}
+            className={cn("flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition", tab === "board" ? "text-primary" : "text-muted-foreground")}
+          >
+            <Chart01Icon className="h-5 w-5" />
+            Board
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("claim")}
+            className={cn("relative flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition", tab === "claim" ? "text-primary" : "text-muted-foreground")}
+          >
+            <span className="relative">
+              {/* G$ token icon */}
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-current text-[9px] font-black leading-none">G$</span>
+              {claimBadgeActive && tab !== "claim" && (
+                <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-green-500" />
               )}
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </button>
-          ))}
+            </span>
+            Claim
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("profile")}
+            className={cn("flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition", tab === "profile" ? "text-primary" : "text-muted-foreground")}
+          >
+            <User02Icon className="h-5 w-5" />
+            You
+          </button>
         </div>
       </nav>
 
+      {/* ── SOCIAL ONBOARDING MODAL ── */}
+      {showOnboarding && (
+        <SocialOnboardingModal onClose={() => setShowOnboarding(false)} />
+      )}
+
       {/* ── MARKET DETAIL MODAL ── */}
-      {selected && (
+      {selected && !showStakeModal && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl">
             {(marketImages[selected.market.id] || selected.market.image) && (
@@ -448,16 +502,16 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
               {selected.market.category} · {selected.market.asset}
             </p>
             <h3 className="font-display text-xl font-bold">{selected.market.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selected.market.windowLabel}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{selected.market.windowLabel}</p>
             <div className="mt-2 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary tabular-nums">
                 <Chart01Icon className="h-3.5 w-3.5" />
                 {selected.market.volumeLabel.split(" ")[0]}
               </span>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pick your range</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
               {selected.market.ranges.map((r) => (
                 <button
                   key={r.id}
@@ -474,13 +528,32 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                 </button>
               ))}
             </div>
+
             <div className="mt-6 flex gap-3">
-              <Button type="button" variant="outline" className="flex-1 border-primary/30" onClick={() => setSelected(null)}>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setSelected(null)}>
                 Close
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={() => setShowStakeModal(true)}
+              >
+                Stake G$
               </Button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── STAKE MODAL ── */}
+      {selected && showStakeModal && (
+        <StakeModal
+          market={selected.market}
+          range={selected.range}
+          address={address}
+          onClose={() => { setShowStakeModal(false); setSelected(null); }}
+          onSuccess={() => { setShowStakeModal(false); setSelected(null); }}
+        />
       )}
     </div>
   );

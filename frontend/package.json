@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@goodsdks/citizen-sdk": "^1.2.5",
     "@privy-io/react-auth": "^3.29.1",
     "@privy-io/wagmi": "^4.0.11",
     "@radix-ui/react-dialog": "^1.1.15",

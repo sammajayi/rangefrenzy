@@ -40,6 +40,10 @@ export type Profile = {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
+  // GoodDollar / onboarding fields (added via migration)
+  is_whitelisted_gd: boolean;
+  has_seen_onboarding: boolean;
+  role: "user" | "admin";
 };
 
 export type PredictionRange = {
@@ -62,4 +66,19 @@ export type Market = {
   image_url: string | null;
   deadline: string;
   created_at: string;
+  contract_address: string | null; // on-chain market contract (ERC1967 proxy)
+};
+
+export type Stake = {
+  id: string;
+  wallet_address: string;
+  market_id: string;
+  range_index: number;
+  range_label: string;
+  amount_gd: string;         // formatted G$ amount
+  tx_hash: string;
+  status: "open" | "won" | "lost" | "refunded";
+  payout_gd: string | null;
+  created_at: string;
+  market?: Pick<Market, "title" | "asset" | "category" | "deadline" | "status" | "winning_value">;
 };

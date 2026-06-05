@@ -5,22 +5,7 @@ import { cn } from "@/lib/utils";
 import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
-
-type TxRow = {
-  id: string;
-  kind: "debit" | "credit";
-  title: string;
-  detail: string;
-  amount: string;
-  token: string;
-  at: string;
-};
-
-const MOCK_TX: TxRow[] = [
-  { id: "1", kind: "debit", title: "Stake", detail: "BTC range · 2% – 5%", amount: "25.00", token: "USDC", at: "Today, 09:14" },
-  { id: "2", kind: "credit", title: "Winnings", detail: "ETH range resolved in your band", amount: "42.80", token: "cUSD", at: "Yesterday, 18:02" },
-  { id: "3", kind: "debit", title: "Stake", detail: "CELO range · 3% – 8%", amount: "10.00", token: "USDm", at: "Mon, 14 Apr" },
-];
+import { MyBets } from "@/components/MyBets";
 
 interface Props {
   address: string;
@@ -181,36 +166,10 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
           </div>
         </section>
 
-        {/* Activity feed */}
+        {/* My Bets */}
         <section className="mt-8">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Activity</h3>
-          <p className="mt-1 text-[11px] text-muted-foreground">Debits (stakes) and credits (winnings, refunds).</p>
-          <ul className="mt-3 space-y-2">
-            {MOCK_TX.map((tx) => (
-              <li key={tx.id} className="flex items-start gap-3 rounded-xl border border-border bg-card px-3 py-3">
-                <div className={cn(
-                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm",
-                  tx.kind === "debit" ? "bg-red-500/10 text-red-600" : "bg-emerald-500/10 text-emerald-600",
-                )}>
-                  {tx.kind === "debit" ? "↑" : "↓"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold">{tx.title}</p>
-                      <p className="text-xs text-muted-foreground">{tx.detail}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={cn("text-sm font-bold tabular-nums", tx.kind === "debit" ? "text-red-600" : "text-emerald-600")}>
-                        {tx.kind === "debit" ? "−" : "+"}{tx.amount} {tx.token}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">{tx.at}</p>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">My Bets</h3>
+          <MyBets address={address} />
         </section>
       </div>
     </div>

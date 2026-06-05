@@ -15,3 +15,6 @@ contracts/ignition/deployments/chain-31337
 frontend/.next
 frontend/out
 frontend/next-env.d.ts
+
+
+build.md
