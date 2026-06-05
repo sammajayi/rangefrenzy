@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom } from "viem";
-import { celo } from "viem/chains";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
-import { isAddressVerified, generateFVLink, celoPublicClient } from "@/lib/gooddollar";
+import { isAddressVerified, generateFVLink } from "@/lib/gooddollar";
+import { getEmbeddedWallet, buildEmbeddedViemClient } from "@/lib/privy-wallet";
 
 interface Props {
   onVerified: () => void;
@@ -20,6 +19,10 @@ export function VerificationGate({ onVerified, onSkip }: Props) {
   const setVerified = useAppStore((s) => s.setVerified);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // True only when the embedded wallet is ready
+  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+  const walletReady = !!embeddedWallet;
 
   const markVerified = async () => {
     await supabase
@@ -34,25 +37,18 @@ export function VerificationGate({ onVerified, onSkip }: Props) {
     setLoading(true);
     setError(null);
     try {
-      // 1. Check if already verified on-chain (no wallet needed)
+      // 1. Check on-chain first — no wallet needed for a read
       const already = await isAddressVerified(address);
       if (already) {
         await markVerified();
         return;
       }
 
-      // 2. Get wallet from Privy directly — more reliable than wagmi useWalletClient
-      const privyWallet = wallets[0];
-      if (!privyWallet) throw new Error("No wallet found. Please reconnect.");
+      // 2. Use the Privy embedded wallet for signing the GoodDollar
+      //    identity message — external wallets must not be used here
+      const viemWalletClient = await buildEmbeddedViemClient(wallets, address);
 
-      const ethereumProvider = await privyWallet.getEthereumProvider();
-      const viemWalletClient = createWalletClient({
-        account: address as `0x${string}`,
-        chain: celo,
-        transport: custom(ethereumProvider),
-      });
-
-      // 3. Generate FV link — SDK signs an identifier message with the wallet
+      // 3. generateFVLink signs FV_IDENTIFIER_MSG2 with the embedded key
       const callbackUrl = `${window.location.origin}?gd_verified=true`;
       const link = await generateFVLink(viemWalletClient, callbackUrl);
       window.location.href = link;
@@ -91,15 +87,18 @@ export function VerificationGate({ onVerified, onSkip }: Props) {
           className="mt-8 w-full"
           size="lg"
           onClick={handleVerify}
-          disabled={loading || wallets.length === 0}
+          disabled={loading || !walletReady}
         >
           {loading ? (
             <span className="flex items-center gap-2">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               Connecting…
             </span>
-          ) : wallets.length === 0 ? (
-            "Waiting for wallet…"
+          ) : !walletReady ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              Preparing wallet…
+            </span>
           ) : (
             "Verify Identity"
           )}
@@ -114,8 +113,7 @@ export function VerificationGate({ onVerified, onSkip }: Props) {
         </button>
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Powered by{" "}
-          <span className="font-semibold text-foreground">GoodDollar</span>.
+          Powered by <span className="font-semibold text-foreground">GoodDollar</span>.
           {" "}Verification unlocks daily G$ UBI claiming.
         </p>
       </div>

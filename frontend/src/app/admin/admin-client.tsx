@@ -65,6 +65,7 @@ export default function AdminPage() {
     window_label: "",
     volume_label: "$0 staked",
     deadline: "",
+    contract_address: "",
   });
   const [ranges, setRanges] = useState<RangeInput[]>(defaultRanges);
   const [createLoading, setCreateLoading] = useState(false);
@@ -144,6 +145,7 @@ export default function AdminPage() {
           deadline: new Date(form.deadline).toISOString(),
           ranges: parsedRanges,
           status: "active",
+          contract_address: form.contract_address.trim() || null,
         })
         .select()
         .single();
@@ -157,7 +159,7 @@ export default function AdminPage() {
       }
 
       setCreateMsg("✓ Market created successfully!");
-      setForm({ title: "", asset: "", category: "Crypto", window_label: "", volume_label: "$0 staked", deadline: "" });
+      setForm({ title: "", asset: "", category: "Crypto", window_label: "", volume_label: "$0 staked", deadline: "", contract_address: "" });
       setRanges(defaultRanges);
       setImageFile(null);
       setImagePreview(null);
@@ -403,6 +405,17 @@ export default function AdminPage() {
               <input type="datetime-local" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} required className={inputCls} />
             </Field>
 
+            <Field label="Contract address (optional)">
+              <input
+                type="text"
+                value={form.contract_address}
+                onChange={(e) => setForm({ ...form, contract_address: e.target.value })}
+                placeholder="0x… — leave blank if not yet deployed"
+                className={inputCls}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">The deployed RangeFrenzyMarket proxy for this market. Enables on-chain staking and resolution.</p>
+            </Field>
+
             {/* Image upload */}
             <Field label="Market image">
               <div
@@ -529,12 +542,8 @@ export default function AdminPage() {
                           <td className="px-3 py-3 text-center">
                             <span className={cn(
                               "inline-block h-2 w-2 rounded-full",
-                              // @ts-expect-error — is_whitelisted_gd may exist depending on your Supabase types
                               p.is_whitelisted_gd ? "bg-green-500" : "bg-muted-foreground/30"
-                            )} title={
-                              // @ts-expect-error
-                              p.is_whitelisted_gd ? "GD Verified" : "Not verified"
-                            } />
+                            )} title={p.is_whitelisted_gd ? "GD Verified" : "Not verified"} />
                           </td>
                           <td className="px-3 py-3 text-right text-xs text-muted-foreground">
                             {new Date(p.created_at).toLocaleDateString()}

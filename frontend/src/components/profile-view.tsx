@@ -1,11 +1,17 @@
-import { useState, useRef } from "react";
-import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon } from "hugeicons-react";
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase, uploadAvatar } from "@/lib/supabase";
-import type { Profile } from "@/lib/supabase";
+import type { Profile, Stake } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { MyBets } from "@/components/MyBets";
+import { VerificationGate } from "@/components/gooddollar/VerificationGate";
+import { useBalance, useReadContract } from "wagmi";
+import { formatUnits } from "viem";
+import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 
 interface Props {
   address: string;
@@ -16,9 +22,45 @@ interface Props {
 export function ProfileView({ address, profile, onSignOut }: Props) {
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [isVerified, setIsVerified] = useState(!!profile?.is_whitelisted_gd);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
+
+  // Live on-chain balances
+  const addr = address as `0x${string}`;
+  const { data: celoBalance } = useBalance({ address: addr });
+  const { data: gdBalance } = useReadContract({
+    address: G_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [addr],
+  });
+
+  // Real stats from stakes table
+  const [stakeStats, setStakeStats] = useState({ pnl: 0, open: 0, closed: 0, winRate: 0 });
+  useEffect(() => {
+    if (!address) return;
+    supabase
+      .from("stakes")
+      .select("status, amount_gd, payout_gd")
+      .eq("wallet_address", address.toLowerCase())
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const stakes = data as Pick<Stake, "status" | "amount_gd" | "payout_gd">[];
+        const closed = stakes.filter((s) => s.status !== "open");
+        const wins = stakes.filter((s) => s.status === "won");
+        const totalStaked = stakes.reduce((acc, s) => acc + parseFloat(s.amount_gd ?? "0"), 0);
+        const totalPayout = wins.reduce((acc, s) => acc + parseFloat(s.payout_gd ?? "0"), 0);
+        setStakeStats({
+          pnl: totalPayout - totalStaked,
+          open: stakes.filter((s) => s.status === "open").length,
+          closed: closed.length,
+          winRate: closed.length ? wins.length / closed.length : 0,
+        });
+      });
+  }, [address]);
 
   const short = `${address.slice(0, 6)}…${address.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
@@ -51,10 +93,10 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
   };
 
   const stats = [
-    { label: "Total P&L", value: "$0.00" },
-    { label: "Open positions", value: "0" },
-    { label: "Closed", value: "0" },
-    { label: "Win rate", value: "—" },
+    { label: "Total P&L", value: `${stakeStats.pnl >= 0 ? "+" : ""}${stakeStats.pnl.toFixed(2)} G$` },
+    { label: "Open", value: String(stakeStats.open) },
+    { label: "Closed", value: String(stakeStats.closed) },
+    { label: "Win rate", value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "—" },
   ];
 
   return (
@@ -124,7 +166,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
             {showSettings && (
               <>
                 <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
-                <div className="absolute right-0 top-11 z-[90] min-w-[160px] rounded-2xl border border-border bg-card p-1 shadow-lg">
+                <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
                   <button
                     type="button"
                     onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
@@ -133,6 +175,26 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                     <Upload01Icon className="h-4 w-4" />
                     Change avatar
                   </button>
+
+                  {/* GoodDollar verification — show if not yet verified */}
+                  {isVerified ? (
+                    <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
+                      <CheckmarkCircle01Icon className="h-4 w-4" />
+                      GD Verified
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setShowSettings(false); setShowVerification(true); }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                    >
+                      <UserCheck01Icon className="h-4 w-4" />
+                      Verify with GoodDollar
+                    </button>
+                  )}
+
+                  <div className="my-1 h-px bg-border" />
+
                   <button
                     type="button"
                     onClick={() => { setShowSettings(false); onSignOut(); }}
@@ -157,12 +219,20 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
           ))}
         </div>
 
-        {/* Wallet balances */}
+        {/* Wallet balances — live from chain */}
         <section className="mt-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet balances</h3>
           <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
-            <BalanceRow label="CELO" sub="Native" value="0.00" />
-            <BalanceRow label="G$" sub="Celo Dollar" value="0.00" />
+            <BalanceRow
+              label="CELO"
+              sub="Native"
+              value={celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}
+            />
+            <BalanceRow
+              label="G$"
+              sub="GoodDollar"
+              value={gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}
+            />
           </div>
         </section>
 
@@ -172,6 +242,16 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
           <MyBets address={address} />
         </section>
       </div>
+      {/* GoodDollar verification overlay */}
+      {showVerification && (
+        <VerificationGate
+          onVerified={() => {
+            setIsVerified(true);
+            setShowVerification(false);
+          }}
+          onSkip={() => setShowVerification(false)}
+        />
+      )}
     </div>
   );
 }

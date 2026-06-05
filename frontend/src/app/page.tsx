@@ -10,6 +10,7 @@ import { useAppStore } from "@/lib/store";
 import { useLogout } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
 import { isAddressVerified } from "@/lib/gooddollar";
+import { Navbar } from "@/components/navbar";
 
 function HomeInner() {
   const phase = useAppStore((s) => s.phase);
@@ -37,9 +38,9 @@ function HomeInner() {
         const verified = await isAddressVerified(address);
         if (verified) {
           await supabase
-            .from("users")
+            .from("profiles")
             .update({ is_whitelisted_gd: true })
-            .eq("wallet_address", address);
+            .eq("wallet_address", address.toLowerCase());
           setVerified(true);
           setPhase("home");
         }
@@ -95,6 +96,9 @@ function HomeInner() {
 
   return (
     <>
+      {/* Navbar only shown when the app shell is active */}
+      {phase === "home" && <Navbar />}
+
       {phase === "splash" && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "verify" && (

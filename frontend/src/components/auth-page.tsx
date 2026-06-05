@@ -5,7 +5,8 @@ import { usePrivy, useLoginWithEmail, useConnectWallet, useWallets } from "@priv
 import { Button } from "@/components/ui/button";
 import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
-import { Mail01Icon, Wallet01Icon, Upload01Icon } from "hugeicons-react";
+import { Mail01Icon, Wallet01Icon, Upload01Icon, ArrowLeft01Icon } from "hugeicons-react";
+import { Logo } from "@/components/logo";
 
 function privyErrorMessage(error: any): string {
   const code: string = error?.code ?? error?.privyErrorCode ?? "";
@@ -20,7 +21,6 @@ function privyErrorMessage(error: any): string {
       return "Too many attempts. Please wait a moment before trying again.";
     default: {
       const msg: string = error?.message ?? "";
-      // Strip raw JSON if Privy passes it as the message
       try {
         const parsed = JSON.parse(msg);
         return parsed?.error ?? parsed?.message ?? "Something went wrong.";
@@ -51,21 +51,14 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const hasProceeded = useRef(false);
+
   const { ready, authenticated, user: privyUser } = usePrivy();
   const { wallets } = useWallets();
 
-  // If Privy already has a valid session (page refresh / returning user), skip the auth UI
-  useEffect(() => {
-    if (!ready || !authenticated || !privyUser) return;
-    const embeddedWallet = (privyUser.linkedAccounts as any[]).find(
-      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
-    );
-    const addr = embeddedWallet?.address ?? wallets[0]?.address;
-    if (addr) checkAndProceed(addr, (privyUser as any).email?.address ?? null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated]);
-
   const checkAndProceed = async (addr: string, resolvedEmail: string | null = null) => {
+    if (hasProceeded.current) return;
+    hasProceeded.current = true;
     const { data } = await supabase
       .from("profiles")
       .select("*")
@@ -77,9 +70,22 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     } else {
       setPendingAddress(addr);
       setPendingEmail(resolvedEmail);
+      hasProceeded.current = false;
       setStep("profile_setup");
     }
   };
+
+  // wallets in deps so external wallet connect (async population) is caught
+  useEffect(() => {
+    if (!ready || !authenticated || !privyUser) return;
+    if (step === "profile_setup") return;
+    const embeddedWallet = (privyUser.linkedAccounts as any[]).find(
+      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
+    );
+    const addr = embeddedWallet?.address ?? wallets[0]?.address;
+    if (addr) checkAndProceed(addr, (privyUser as any).email?.address ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated, wallets]);
 
   const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail({
     onComplete: async ({ user }) => {
@@ -89,9 +95,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       const addr = embeddedWallet?.address ?? wallets[0]?.address;
       if (addr) await checkAndProceed(addr, email);
     },
-    onError: (error: any) => {
-      setAuthError(privyErrorMessage(error));
-    },
+    onError: (error: any) => setAuthError(privyErrorMessage(error)),
   });
 
   const { connectWallet } = useConnectWallet({
@@ -114,10 +118,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       await sendCode({ email });
     } catch (err: any) {
       const msg: string = err?.message ?? "";
-      // Timeout/abort means the request reached Privy and the code was sent —
-      // advance to OTP input so the user can still enter the code they received.
-      const isTimeout = /timeout|abort|network/i.test(msg);
-      if (!isTimeout) {
+      if (!/timeout|abort|network/i.test(msg)) {
         setAuthError(privyErrorMessage(err));
         return;
       }
@@ -133,9 +134,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       await loginWithCode({ code: otp });
     } catch (err: any) {
       const msg: string = err?.message ?? "";
-      const isTimeout = /timeout|abort|network/i.test(msg);
       setAuthError(
-        isTimeout
+        /timeout|abort|network/i.test(msg)
           ? "Connection is slow — you may still be signed in. Please wait a moment."
           : privyErrorMessage(err)
       );
@@ -165,9 +165,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setProfileLoading(true);
     try {
       let avatarUrl: string | null = null;
-      if (avatarFile) {
-        avatarUrl = await uploadAvatar(pendingAddress, avatarFile);
-      }
+      if (avatarFile) avatarUrl = await uploadAvatar(pendingAddress, avatarFile);
 
       const profile: Profile = {
         wallet_address: pendingAddress.toLowerCase(),
@@ -175,6 +173,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         email: pendingEmail,
         avatar_url: avatarUrl,
         created_at: new Date().toISOString(),
+        is_whitelisted_gd: false,
+        has_seen_onboarding: false,
+        role: "user",
       };
 
       const { error } = await supabase.from("profiles").insert(profile);
@@ -199,11 +200,13 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const isSubmittingCode = emailState.status === "submitting-code";
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-4">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#07955F] shadow-lg">
-            <span className="text-3xl font-bold text-white">RF</span>
+
+        {/* Logo + heading */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-5 w-fit">
+            <Logo size={68} />
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight">
             {step === "profile_setup" ? "Set up your profile" : "Welcome to RangeFrenzy"}
@@ -215,89 +218,116 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           </p>
         </div>
 
+        {/* ── CHOOSE ── */}
         {step === "choose" && (
           <div className="space-y-3">
             <Button
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
               size="lg"
               onClick={() => setStep("email_input")}
             >
               <Mail01Icon className="mr-2 h-5 w-5" />
               Continue with Email
             </Button>
-            <div className="relative">
+
+            <div className="relative my-1">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
+                <span className="bg-background px-3 text-muted-foreground tracking-wider">or</span>
               </div>
             </div>
+
             <Button
               variant="outline"
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-xl text-base font-semibold"
               size="lg"
               onClick={handleConnectWallet}
               disabled={connectLoading}
             >
-              <Wallet01Icon className="mr-2 h-5 w-5" />
-              {connectLoading ? "Connecting…" : "Connect Wallet"}
+              {connectLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-foreground" />
+                  Connecting…
+                </>
+              ) : (
+                <>
+                  <Wallet01Icon className="mr-2 h-5 w-5" />
+                  Connect Wallet
+                </>
+              )}
             </Button>
+
             {authError && (
-              <p className="text-center text-xs text-destructive">{authError}</p>
+              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-center text-xs text-destructive">
+                {authError}
+              </p>
             )}
-            <p className="mt-2 text-center text-xs text-muted-foreground">
+
+            <p className="pt-1 text-center text-xs text-muted-foreground">
               By continuing, you agree to our Terms of Service and Privacy Policy.
             </p>
           </div>
         )}
 
+        {/* ── EMAIL INPUT ── */}
         {step === "email_input" && (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Email address
               </label>
               <input
                 type="email"
-                placeholder="your@email.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
+                className="h-12 w-full rounded-xl border border-input bg-muted/40 px-4 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
                 autoFocus
                 required
               />
             </div>
-            {authError && <p className="text-xs text-destructive">{authError}</p>}
+            {authError && (
+              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+                {authError}
+              </p>
+            )}
             <Button
               type="submit"
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
               size="lg"
               disabled={!email || isSendingCode}
             >
-              {isSendingCode ? "Sending…" : "Send Code"}
+              {isSendingCode ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Sending…
+                </>
+              ) : "Send Code"}
             </Button>
             <button
               type="button"
               onClick={() => setStep("choose")}
-              className="block w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
             >
+              <ArrowLeft01Icon className="h-3.5 w-3.5" />
               Back
             </button>
           </form>
         )}
 
+        {/* ── OTP INPUT ── */}
         {step === "otp_input" && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="text-center space-y-1 mb-2">
-              <p className="text-sm font-medium">Check your email</p>
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-center">
               <p className="text-xs text-muted-foreground">
-                We sent a 6-digit code to{" "}
-                <span className="font-medium text-foreground">{email}</span>.
+                We sent a code to{" "}
+                <span className="font-semibold text-foreground">{email}</span>
               </p>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Verification code
               </label>
               <input
@@ -306,63 +336,76 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 placeholder="123456"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="h-12 w-full rounded-xl border border-input bg-background px-4 text-center text-xl tracking-widest outline-none ring-2 ring-transparent focus:ring-primary/30"
+                className="h-14 w-full rounded-xl border border-input bg-muted/40 px-4 text-center text-2xl font-bold tracking-[0.35em] outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
                 autoFocus
                 required
                 maxLength={6}
               />
             </div>
-            {authError && <p className="text-xs text-destructive">{authError}</p>}
+            {authError && (
+              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+                {authError}
+              </p>
+            )}
             <Button
               type="submit"
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
               size="lg"
               disabled={!ready || otp.length < 6 || isSubmittingCode}
             >
-              {isSubmittingCode ? "Verifying…" : "Verify"}
+              {isSubmittingCode ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Verifying…
+                </>
+              ) : "Verify"}
             </Button>
             <button
               type="button"
               onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
-              className="block w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
             >
+              <ArrowLeft01Icon className="h-3.5 w-3.5" />
               Use a different email
             </button>
           </form>
         )}
 
+        {/* ── PROFILE SETUP ── */}
         {step === "profile_setup" && (
-          <form onSubmit={handleProfileSubmit} className="space-y-4">
+          <form onSubmit={handleProfileSubmit} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">Username</label>
-              <input
-                type="text"
-                placeholder="e.g. range_queen"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/\s/g, "_").toLowerCase())}
-                className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
-                autoFocus
-                required
-                minLength={3}
-                maxLength={30}
-              />
-              {usernameError && <p className="mt-1 text-xs text-destructive">{usernameError}</p>}
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Username</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">@</span>
+                <input
+                  type="text"
+                  placeholder="range_queen"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/\s/g, "_").toLowerCase())}
+                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-8 pr-4 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
+                  autoFocus
+                  required
+                  minLength={3}
+                  maxLength={30}
+                />
+              </div>
+              {usernameError && (
+                <p className="mt-1.5 rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+                  {usernameError}
+                </p>
+              )}
             </div>
+
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                Avatar <span className="text-xs">(optional)</span>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Avatar <span className="text-muted-foreground">(optional)</span>
               </label>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted/30 hover:border-primary/50 transition"
+                className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted/30 transition hover:border-[#07955F]/50"
               >
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Preview" className="h-full w-full rounded-full object-cover" />
@@ -371,16 +414,23 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 )}
               </button>
             </div>
+
             <Button
               type="submit"
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
               size="lg"
               disabled={!username.trim() || profileLoading}
             >
-              {profileLoading ? "Creating profile…" : "Create profile"}
+              {profileLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Creating profile…
+                </>
+              ) : "Create profile"}
             </Button>
           </form>
         )}
+
       </div>
     </div>
   );

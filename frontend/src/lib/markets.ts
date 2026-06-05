@@ -63,23 +63,7 @@ export const FALLBACK_MARKETS: PredictionMarket[] = [
   },
 ];
 
-export type LeaderboardEntry = {
-  rank: number;
-  username: string;
-  earnings: number;
-  profit: number;
-  winRate: number;
-  avatar_url?: string | null;
-};
-
-export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, username: "range_queen", earnings: 1840, profit: 412, winRate: 0.61, avatar_url: null },
-  { rank: 2, username: "celo_sniper", earnings: 1202, profit: 305, winRate: 0.58, avatar_url: null },
-  { rank: 3, username: "pickoo_fan", earnings: 980, profit: 198, winRate: 0.52, avatar_url: null },
-  { rank: 4, username: "stable_staker", earnings: 742, profit: 121, winRate: 0.49, avatar_url: null },
-  { rank: 5, username: "you", earnings: 0, profit: 0, winRate: 0, avatar_url: null },
-];
-
+// Weekly campaign still uses placeholder data until a campaign table exists
 export const MOCK_WEEKLY_CAMPAIGN = [
   { rank: 1, username: "week_storm", poolShare: "$2,100", picks: 24, badge: "Hot streak" as string | null },
   { rank: 2, username: "range_queen", poolShare: "$1,480", picks: 19, badge: null },

@@ -6,7 +6,7 @@
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(216 33% 97.3%);
   --color-ring: hsl(215 20.2% 65.1%);
-  --color-background: #ffffff;
+  --color-background: #fafafa;
   --color-foreground: hsl(222.2 84% 4.9%);
   --color-primary: hsl(222.2 47.4% 11.2%);
   --color-primary-foreground: hsl(210 40% 98%);
@@ -22,6 +22,8 @@
   --color-card-foreground: hsl(222.2 84% 4.9%);
   --color-popover: #ffffff;
   --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-brand: #07955F;
+  --color-brand-light: #dcf5eb;
   --radius: 0.5rem;
 }
 
@@ -71,12 +73,78 @@ select {
   }
 }
 
+@keyframes splash-logo-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+    filter: blur(6px);
+  }
+  70% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes splash-text-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-progress-fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes splash-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.12);
+  }
+}
+
 .animate-splash-bounce {
   animation: splash-bounce 2s ease-in-out infinite;
 }
 
 .animate-splash-dot {
   animation: splash-dot 1.4s ease-in-out infinite;
+}
+
+.animate-splash-logo {
+  animation: splash-logo-in 0.75s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.animate-splash-text {
+  animation: splash-text-up 0.55s ease both;
+}
+
+.animate-splash-progress {
+  animation: splash-progress-fill 3.2s linear both;
+}
+
+.animate-splash-glow {
+  animation: splash-glow-breathe 2.8s ease-in-out infinite;
+  animation-delay: 0.75s;
 }
 
 .duration-600 {

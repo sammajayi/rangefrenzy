@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-import { Navbar } from "@/components/navbar";
 import { WalletProvider } from "@/components/wallet-provider";
 import RegisterSW from "@/components/register-sw";
 
@@ -38,7 +37,6 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <div className="relative flex min-h-screen flex-col">
           <WalletProvider>
-            <Navbar />
             <main className="flex-1">{children}</main>
           </WalletProvider>
         </div>

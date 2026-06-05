@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom } from "viem";
-import { celo } from "viem/chains";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { celoPublicClient } from "@/lib/gooddollar";
+import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 
 interface ClaimState {
@@ -45,15 +44,9 @@ export function ClaimPage() {
   const [countdown, setCountdown] = useState("");
 
   const buildSDKs = useCallback(async () => {
-    const privyWallet = wallets[0];
-    if (!privyWallet || !address) return null;
-
-    const ethereumProvider = await privyWallet.getEthereumProvider();
-    const walletClient = createWalletClient({
-      account: address as `0x${string}`,
-      chain: celo,
-      transport: custom(ethereumProvider),
-    });
+    // Always use the Privy embedded wallet — GoodDollar links identity to this key
+    if (!address || !wallets.length) return null;
+    const walletClient = await buildEmbeddedViemClient(wallets, address);
 
     const { IdentitySDK, ClaimSDK } = await import("@goodsdks/citizen-sdk");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +67,9 @@ export function ClaimPage() {
   }, [wallets, address]);
 
   const fetchStatus = useCallback(async () => {
-    if (!address || !wallets[0]) return;
+    // Wait until the embedded wallet is available before querying
+    const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+    if (!address || !embeddedWallet) return;
     try {
       const sdks = await buildSDKs();
       if (!sdks) return;
@@ -150,10 +145,15 @@ export function ClaimPage() {
     );
   }
 
+  const embeddedReady = wallets.some((w) => w.walletClientType === "privy");
+
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center pt-24">
+      <div className="flex flex-col items-center justify-center gap-3 pt-24 text-center px-6">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        <p className="text-sm text-muted-foreground">
+          {embeddedReady ? "Loading claim status…" : "Waiting for wallet…"}
+        </p>
       </div>
     );
   }

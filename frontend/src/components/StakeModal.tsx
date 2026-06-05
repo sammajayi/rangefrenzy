@@ -16,7 +16,7 @@ const RPC = CHAIN_ID === 42220 ? "https://forno.celo.org" : "https://alfajores-f
 type Step = "input" | "approving" | "staking" | "done" | "error";
 
 interface Props {
-  market: PredictionMarket & { contractAddress?: string; deadline: string };
+  market: PredictionMarket & { contractAddress?: string; deadline?: string };
   range: PredictionRange;
   address: string;
   onClose: () => void;
@@ -156,8 +156,9 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
             )}
 
             {!contractAddress && (
-              <div className="mb-4 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-                This market isn&apos;t deployed on-chain yet — staking coming soon.
+              <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                <p className="text-sm font-semibold text-amber-800">On-chain staking not available yet</p>
+                <p className="text-xs text-amber-700 mt-0.5">This market hasn&apos;t been deployed to the contract. Contact the admin to enable staking.</p>
               </div>
             )}
 
