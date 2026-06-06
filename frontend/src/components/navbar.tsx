@@ -1,60 +1,63 @@
 "use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { Logo } from "@/components/logo"
+import { Search01Icon, FilterHorizontalIcon, Cancel01Icon } from "hugeicons-react"
 
-const navLinks = [
-  { name: "Play", href: "/", external: false },
-];
+interface NavbarProps {
+  tab?: string
+  showSearch?: boolean
+  filterSearch?: string
+  onToggleSearch?: () => void
+  onSearchChange?: (value: string) => void
+  onToggleFilter?: () => void
+}
 
-export function Navbar() {
-  const pathname = usePathname();
-
+export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearchChange, onToggleFilter }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#07955F]">
-            <span className="text-xs font-bold text-white">RF</span>
+    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3 lg:max-w-4xl">
+        <div className="flex items-center gap-2.5">
+          <Logo size={32} />
+          <span className="font-display text-lg font-bold tracking-tight">RangeFrenzy</span>
+        </div>
+        {tab === "play" && !showSearch && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onToggleSearch}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+            >
+              <Search01Icon className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleFilter}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+            >
+              <FilterHorizontalIcon className="h-5 w-5" />
+            </button>
           </div>
-          <span className="font-display text-lg font-bold tracking-tight">
-            RangeFrenzy
-          </span>
-        </Link>
-
-        {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) =>
-            link.external ? (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-foreground/70"
-              >
-                {link.name}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            ) : (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  pathname === link.href ? "text-foreground" : "text-foreground/70"
-                }`}
-              >
-                {link.name}
-              </Link>
-            )
-          )}
-        </nav>
-
-       
-        <div className="flex items-center gap-3" />
+        )}
+        {tab === "play" && showSearch && (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Search markets…"
+              value={filterSearch ?? ""}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="h-9 w-44 rounded-xl border border-input bg-muted px-3 text-sm outline-none ring-2 ring-transparent focus:ring-[#07955F]/30"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => { onSearchChange?.(""); onToggleSearch?.(); }}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
+            >
+              <Cancel01Icon className="h-5 w-5" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
-  );
+  )
 }

@@ -10,7 +10,6 @@ import { useAppStore } from "@/lib/store";
 import { useLogout } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
 import { isAddressVerified } from "@/lib/gooddollar";
-import { Navbar } from "@/components/navbar";
 
 function HomeInner() {
   const phase = useAppStore((s) => s.phase);
@@ -96,9 +95,6 @@ function HomeInner() {
 
   return (
     <>
-      {/* Navbar only shown when the app shell is active */}
-      {phase === "home" && <Navbar />}
-
       {phase === "splash" && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "verify" && (
