@@ -1,3 +1,16 @@
+export type PredictionRange = {
+  id: string;
+  label: string;
+  minPct: number;
+  maxPct: number | null;
+};
+
+export type PredictionMarket = {
+  id: string;
+  title: string;
+  ranges: PredictionRange[];
+};
+
 export function formatDeadline(deadline: string): string {
   const d = new Date(deadline);
   const now = new Date();

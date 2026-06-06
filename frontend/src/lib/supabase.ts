@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import type { PredictionRange } from "@/lib/markets";
 
 const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -44,13 +45,6 @@ export type Profile = {
   is_whitelisted_gd: boolean;
   has_seen_onboarding: boolean;
   role: "user" | "admin";
-};
-
-export type PredictionRange = {
-  id: string;
-  label: string;
-  minPct: number;
-  maxPct: number | null;
 };
 
 export type Market = {

@@ -120,6 +120,13 @@ export const MARKET_ABI = [
     outputs: [],
   },
   {
+    name: "refund",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
     name: "resolve",
     type: "function",
     stateMutability: "nonpayable",
@@ -158,6 +165,20 @@ export const ERC20_ABI = [
       { name: "spender", type: "address" },
     ],
     outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "symbol",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "string" }],
+  },
+  {
+    name: "decimals",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
   },
   {
     name: "approve",
