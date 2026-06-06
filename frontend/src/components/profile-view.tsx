@@ -12,6 +12,7 @@ import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useBalance, useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
+import Image from "next/image";
 
 interface Props {
   address: string;
@@ -112,7 +113,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                 className="group relative"
               >
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={displayName} className="h-14 w-14 rounded-full object-cover" />
+                  <Image src={profile.avatar_url} alt={displayName} className="h-14 w-14 rounded-full object-cover" />
                 ) : (
                   <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
                     {initials}
@@ -123,6 +124,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                 </div>
               </button>
               <input
+              aria-label="avatar"
                 ref={avatarInputRef}
                 type="file"
                 accept="image/*"
