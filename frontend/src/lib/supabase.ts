@@ -66,7 +66,7 @@ export type Market = {
   image_url: string | null;
   deadline: string;
   created_at: string;
-  contract_address: string | null; // on-chain market contract (ERC1967 proxy)
+  contract_address: string | null;
 };
 
 export type Stake = {
@@ -75,7 +75,7 @@ export type Stake = {
   market_id: string;
   range_index: number;
   range_label: string;
-  amount_gd: string;         // formatted G$ amount
+  amount_gd: string;
   tx_hash: string;
   status: "open" | "won" | "lost" | "refunded";
   payout_gd: string | null;

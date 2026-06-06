@@ -150,14 +150,12 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setAuthError("");
     try {
       await sendCode({ email });
+      setStep("otp_input");
     } catch (err: any) {
-      const msg: string = err?.message ?? "";
-      if (!/timeout|abort|network/i.test(msg)) {
-        setAuthError(privyErrorMessage(err));
-        return;
-      }
+      // Never silently retry — a second sendCode call invalidates the first code,
+      // causing "invalid_credentials" when the user enters the code from the first email.
+      setAuthError(privyErrorMessage(err) || "Failed to send code. Please try again.");
     }
-    setStep("otp_input");
   };
 
   const handleVerifyOtp = async (e?: React.SyntheticEvent) => {

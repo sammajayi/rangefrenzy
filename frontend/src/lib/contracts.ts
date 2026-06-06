@@ -11,11 +11,16 @@
 
 export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "") as `0x${string}`;
 
-// G$ token on Celo mainnet: 0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c14
+// G$ token on Celo mainnet: 0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A
 // G$ token on Alfajores:    0x23b7a53ecE33D6E4B0ADB31B07C6B88d3f598f69
 export const G_TOKEN_ADDRESS = (
-  process.env.NEXT_PUBLIC_G_TOKEN_ADDRESS ?? "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c14"
+  process.env.NEXT_PUBLIC_G_TOKEN_ADDRESS ??
+  process.env.NEXT_PUBLIC_STAKE_TOKEN ??
+  "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A"
 ) as `0x${string}`;
+
+// Alias used by our staking hooks
+export const STAKE_TOKEN_ADDRESS = G_TOKEN_ADDRESS;
 
 // ── RangeFrenzyMarket ABI (per-market proxy) ──────────────────────────────────
 
@@ -177,3 +182,77 @@ export function formatGD(wei: bigint, decimals = 2): string {
 export function parseGD(amount: string): bigint {
   return BigInt(Math.round(parseFloat(amount) * 1e18));
 }
+
+// ── Aliases for backward compatibility with staking hooks ────────────────────
+
+export const rangeFrenzyMarketAbi = MARKET_ABI;
+export const erc20Abi = ERC20_ABI;
+
+// MarketFactory ABI (minimal — read + create)
+export const marketFactoryAbi = [
+  {
+    name: "getMarketsPage",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "offset", type: "uint256" }, { name: "limit", type: "uint256" }],
+    outputs: [{ name: "page", type: "address[]" }],
+  },
+  {
+    name: "getAllMarkets",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address[]" }],
+  },
+  {
+    name: "totalMarkets",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "stakeToken",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
+// MarketStatus mirrors the on-chain enum
+export const MarketStatus = {
+  OPEN: 0,
+  CLOSED: 1,
+  RESOLVED: 2,
+  CANCELLED: 3,
+} as const;
+export type MarketStatusValue = (typeof MarketStatus)[keyof typeof MarketStatus];
+
+// Types used by staking hooks
+export type OnChainRange = {
+  label: string;
+  lowerBound: bigint;
+  upperBound: bigint;
+  totalStaked: bigint;
+};
+
+export type OnChainMarketSummary = {
+  question: string;
+  category: number;
+  deadline: bigint;
+  status: MarketStatusValue;
+  pool: bigint;
+  numStakers: bigint;
+  outcome: bigint;
+  isPaused: boolean;
+  ranges: OnChainRange[];
+};
+
+export type OnChainUserStake = {
+  rangeIndex: bigint;
+  amount: bigint;
+  claimed: boolean;
+  rangeLabel: string;
+  estimatedPayout: bigint;
+};
