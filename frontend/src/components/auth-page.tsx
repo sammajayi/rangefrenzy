@@ -61,6 +61,22 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const { ready, authenticated, user: privyUser } = usePrivy();
   const { wallets } = useWallets();
   const { createWallet } = useCreateWallet();
+  const { connectWallet } = useConnectWallet({
+    onSuccess: async (result: any) => {
+      const wallet = result?.wallet ?? result;
+      const addr = wallet?.address ?? wallet?.accounts?.[0]?.address;
+      if (addr) {
+        await checkAndProceed(addr);
+      } else {
+        setAuthError("Could not get wallet address. Please try again.");
+        setConnectLoading(false);
+      }
+    },
+    onError: (error: any) => {
+      setAuthError(privyErrorMessage(error));
+      setConnectLoading(false);
+    },
+  });
   const walletCreated = useRef(false);
 
   const authenticatedRef = useRef(authenticated);

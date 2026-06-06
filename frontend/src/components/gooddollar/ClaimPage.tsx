@@ -140,7 +140,6 @@ export function ClaimPage() {
     return (
       <VerificationGate
         onVerified={() => { setVerified(true); setHasSkippedVerification(false); }}
-        onSkip={() => setHasSkippedVerification(true)}
       />
     );
   }

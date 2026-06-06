@@ -63,17 +63,17 @@ create policy "Service role only for social rewards" on public.social_rewards
 -- ─── 5. Notifications table ──────────────────────────────────────────────────
 create table if not exists public.notifications (
   id             bigint generated always as identity primary key,
-  wallet_address text not null,
+  username       text not null,
   title          text not null,
   body           text,
   read           boolean default false not null,
   created_at     timestamptz default timezone('utc', now()) not null
 );
 
-create index if not exists idx_notifications_wallet
-  on public.notifications (wallet_address, created_at desc);
+create index if not exists idx_notifications_username
+  on public.notifications (username, created_at desc);
 
--- Allow anon to read their own notifications (wallet_address column check)
+-- Allow anon to read their own notifications (username column check)
 alter table public.notifications enable row level security;
 
 create policy "Users can read own notifications" on public.notifications

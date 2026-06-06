@@ -77,3 +77,16 @@ export type Stake = {
   created_at: string;
   market?: Pick<Market, "title" | "asset" | "category" | "deadline" | "status" | "winning_value">;
 };
+
+export async function sendNotification(
+  username: string,
+  title: string,
+  body?: string,
+) {
+  const { error } = await supabase.from("notifications").insert({
+    username: username.toLowerCase(),
+    title,
+    body: body ?? null,
+  });
+  if (error) console.error("sendNotification error:", error);
+}
