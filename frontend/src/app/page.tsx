@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
-import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useAppStore } from "@/lib/store";
 import { useLogout } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
@@ -16,11 +15,9 @@ function HomeInner() {
   const address = useAppStore((s) => s.address);
   const profile = useAppStore((s) => s.profile);
   const isVerified = useAppStore((s) => s.isVerified);
-  const hasSkippedVerification = useAppStore((s) => s.hasSkippedVerification);
   const setPhase = useAppStore((s) => s.setPhase);
   const setAuthenticated = useAppStore((s) => s.setAuthenticated);
   const setVerified = useAppStore((s) => s.setVerified);
-  const setHasSkippedVerification = useAppStore((s) => s.setHasSkippedVerification);
   const setRole = useAppStore((s) => s.setRole);
   const setHasSeenOnboarding = useAppStore((s) => s.setHasSeenOnboarding);
   const signOut = useAppStore((s) => s.signOut);
@@ -51,17 +48,6 @@ function HomeInner() {
     window.history.replaceState({}, "", window.location.pathname);
   }, [searchParams, address, isVerified, setVerified, setPhase]);
 
-  // After auth: go straight to home; show verify gate as overlay only if
-  // user hasn't verified AND hasn't skipped yet this session
-  useEffect(() => {
-    if (phase !== "home" && phase !== "verify") return;
-    if (isVerified || hasSkippedVerification) {
-      setPhase("home");
-      return;
-    }
-    if (address) setPhase("verify");
-  }, [phase, isVerified, hasSkippedVerification, address, setPhase]);
-
   const handleSplashFinish = () => setPhase("auth");
 
   const handleSignOut = async () => {
@@ -83,23 +69,10 @@ function HomeInner() {
     }
   };
 
-  const handleVerified = () => {
-    setVerified(true);
-    setPhase("home");
-  };
-
-  const handleSkip = () => {
-    setHasSkippedVerification(true);
-    setPhase("home");
-  };
-
   return (
     <>
       {phase === "splash" && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
-      {phase === "verify" && (
-        <VerificationGate onVerified={handleVerified} onSkip={handleSkip} />
-      )}
       {phase === "home" && (
         <RangeFrenzyHome
           address={address}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { usePrivy, useLoginWithEmail, useConnectWallet, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useLoginWithEmail, useConnectWallet, useWallets, useCreateWallet } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
@@ -60,8 +60,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
 
   const { ready, authenticated, user: privyUser } = usePrivy();
   const { wallets } = useWallets();
+  const { createWallet } = useCreateWallet();
+  const walletCreated = useRef(false);
 
-  // Always-fresh refs so async callbacks read current values, not stale closures.
   const authenticatedRef = useRef(authenticated);
   const privyUserRef = useRef(privyUser);
   const walletsRef = useRef(wallets);
@@ -69,18 +70,80 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   useEffect(() => { privyUserRef.current = privyUser; }, [privyUser]);
   useEffect(() => { walletsRef.current = wallets; }, [wallets]);
 
+  const getEmbeddedAddr = (user: any): string | undefined =>
+    (user?.linkedAccounts as any[] ?? []).find(
+      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
+    )?.address;
+
+  const ensureEmbeddedWallet = async (isEmailAuth: boolean): Promise<string | null> => {
+    if (!isEmailAuth) {
+      return walletsRef.current[0]?.address ?? null;
+    }
+
+    let addr = getEmbeddedAddr(privyUserRef.current) ?? walletsRef.current.find((w) => w.walletClientType === "privy")?.address;
+    if (addr) return addr;
+
+    if (!walletCreated.current) {
+      walletCreated.current = true;
+      try {
+        const wallet = await createWallet() as any;
+        if (wallet?.address) return wallet.address;
+      } catch {
+        // wallet creation might fail if already exists
+      }
+    }
+
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      addr = getEmbeddedAddr(privyUserRef.current) ?? walletsRef.current.find((w) => w.walletClientType === "privy")?.address;
+      if (addr) return addr;
+    }
+
+    return walletsRef.current[0]?.address ?? null;
+  };
+
   const checkAndProceed = async (addr: string, resolvedEmail: string | null = null) => {
     if (hasProceeded.current) return;
     hasProceeded.current = true;
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("wallet_address", addr.toLowerCase())
-        .single();
+      let data: Profile | null = null;
+      let foundByEmail = false;
 
-      if (data && !error) {
-        onAuthenticated(addr, data as Profile);
+      if (resolvedEmail) {
+        const { data: emailData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("email", resolvedEmail)
+          .maybeSingle();
+        if (emailData) {
+          data = emailData as Profile;
+          foundByEmail = true;
+        }
+      }
+
+      if (!data) {
+        const { data: addrData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("wallet_address", addr.toLowerCase())
+          .maybeSingle();
+        if (addrData) data = addrData as Profile;
+      }
+
+      if (data) {
+        if (foundByEmail && data.wallet_address !== addr.toLowerCase()) {
+          const { error: updateErr } = await supabase
+            .from("profiles")
+            .update({ wallet_address: addr.toLowerCase() })
+            .eq("wallet_address", data.wallet_address);
+          if (updateErr) {
+            // RLS may block update — try upsert as fallback
+            await supabase
+              .from("profiles")
+              .upsert({ ...data, wallet_address: addr.toLowerCase() }, { onConflict: "wallet_address" });
+          }
+        }
+        onAuthenticated(addr, data);
       } else {
         setPendingAddress(addr);
         setPendingEmail(resolvedEmail);
@@ -92,57 +155,43 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     }
   };
 
-  // Helper: extract the embedded privy wallet address from a user's linkedAccounts.
-  const getEmbeddedAddr = (user: any): string | undefined =>
-    (user?.linkedAccounts as any[] ?? []).find(
-      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
-    )?.address;
-
-  // Re-runs when auth state or wallet list changes (e.g. embedded wallet created async).
-  const privyLinkedCount = privyUser?.linkedAccounts?.length ?? 0;
   useEffect(() => {
     if (!ready || !authenticated || !privyUser) return;
-    if (step === "profile_setup") return;
-    const addr = getEmbeddedAddr(privyUser) ?? wallets[0]?.address;
-    if (addr) checkAndProceed(addr, (privyUser as any).email?.address ?? null);
+    if (step === "profile_setup" || hasProceeded.current) return;
+    (async () => {
+      const isEmail = !!(privyUser as any)?.email?.address;
+      const addr = await ensureEmbeddedWallet(isEmail);
+      if (addr) {
+        checkAndProceed(addr, (privyUser as any)?.email?.address ?? null);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, privyLinkedCount, wallets]);
+  }, [ready, authenticated, wallets]);
 
   const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail({
     onComplete: async ({ user }) => {
       otpSubmitted.current = true;
-
-      // Try the wallet from the callback's user object first.
-      // If not present (Privy creates it async), poll wallets until it appears.
-      let addr = getEmbeddedAddr(user);
-      if (!addr) {
-        for (let i = 0; i < 8; i++) {
-          await new Promise((r) => setTimeout(r, 400));
-          addr = getEmbeddedAddr(privyUserRef.current) ?? walletsRef.current[0]?.address;
-          if (addr) break;
-        }
-      }
-
       const resolvedEmail = (user as any).email?.address ?? email;
+      const addr = await ensureEmbeddedWallet(true);
       if (addr) checkAndProceed(addr, resolvedEmail);
-      // If still no addr, the useEffect above will handle it when wallets update.
     },
     onError: (error: any) => {
       if (!otpSubmitted.current) setAuthError(privyErrorMessage(error));
     },
   });
 
-  const { connectWallet } = useConnectWallet({
-    onSuccess: async (wallet: any) => {
-      const addr = wallet?.address ?? wallet?.accounts?.[0]?.address;
-      if (addr) await checkAndProceed(addr);
-      setConnectLoading(false);
-    },
-    onError: (error: any) => {
-      setAuthError(privyErrorMessage(error));
-      setConnectLoading(false);
-    },
-  });
+  useEffect(() => {
+    if (!ready || !authenticated || !privyUser) return;
+    if (step === "profile_setup" || hasProceeded.current) return;
+    (async () => {
+      const isEmail = !!(privyUser as any)?.email?.address;
+      const addr = await ensureEmbeddedWallet(isEmail);
+      if (addr) {
+        checkAndProceed(addr, (privyUser as any)?.email?.address ?? null);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated, wallets]);
 
   const handleSendOtp = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -162,14 +211,11 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     e?.preventDefault();
     if (!ready || otp.length < 6 || isSubmittingCode) return;
 
-    // If Privy already authenticated us (stuck from a previous attempt), skip
-    // re-calling loginWithCode and go straight to the proceed logic.
     if (authenticatedRef.current) {
       hasProceeded.current = false;
-      const pu = privyUserRef.current;
-      const addr = getEmbeddedAddr(pu) ?? walletsRef.current[0]?.address;
+      const addr = await ensureEmbeddedWallet(true);
       if (addr) {
-        checkAndProceed(addr, (pu as any)?.email?.address ?? null);
+        checkAndProceed(addr, (privyUserRef.current as any)?.email?.address ?? null);
       }
       return;
     }

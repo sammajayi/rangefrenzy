@@ -17,15 +17,15 @@ import {
 import { Link } from "wouter";
 
 type AdminTab = "markets" | "expired" | "create" | "users";
-type RangeInput = { label: string; minPct: string; maxPct: string };
+type RangeInput = { label: string; min: string; max: string };
 
 const USERS_PER_PAGE = 10;
 
 const defaultRanges: RangeInput[] = [
-  { label: "0% – 2%", minPct: "0", maxPct: "2" },
-  { label: "2% – 5%", minPct: "2", maxPct: "5" },
-  { label: "5% – 10%", minPct: "5", maxPct: "10" },
-  { label: "Above 10%", minPct: "10", maxPct: "" },
+  { label: "Range 1", min: "0", max: "10" },
+  { label: "Range 2", min: "10", max: "20" },
+  { label: "Range 3", min: "20", max: "30" },
+  { label: "Range 4", min: "30", max: "" },
 ];
 
 // ── Wallet copy button ────────────────────────────────────────────────────────
@@ -60,9 +60,7 @@ export default function AdminPage() {
   // Create form
   const [form, setForm] = useState({
     title: "",
-    asset: "",
     category: "Crypto",
-    window_label: "",
     volume_label: "$0 staked",
     deadline: "",
     contract_address: "",
@@ -122,6 +120,20 @@ export default function AdminPage() {
     return data.publicUrl;
   }
 
+  function deadlineToWindowLabel(deadlineStr: string): string {
+    const d = new Date(deadlineStr);
+    const now = new Date();
+    const diffMs = d.getTime() - now.getTime();
+    if (diffMs <= 0) return "Expired";
+    const diffH = Math.floor(diffMs / 3_600_000);
+    const diffM = Math.floor((diffMs % 3_600_000) / 60_000);
+    if (diffH >= 24) {
+      const days = Math.floor(diffH / 24);
+      return `Resolves in ${days}d ${diffH % 24}h`;
+    }
+    return `Resolves in ${diffH}h ${diffM}m`;
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreateLoading(true);
@@ -130,17 +142,18 @@ export default function AdminPage() {
       const parsedRanges = ranges.map((r, i) => ({
         id: `r${i}`,
         label: r.label,
-        minPct: parseFloat(r.minPct),
-        maxPct: r.maxPct === "" ? null : parseFloat(r.maxPct),
+        min: parseFloat(r.min),
+        max: r.max === "" ? null : parseFloat(r.max),
       }));
+
+      const window_label = deadlineToWindowLabel(form.deadline);
 
       const { data, error } = await supabase
         .from("markets")
         .insert({
           title: form.title,
-          asset: form.asset,
           category: form.category,
-          window_label: form.window_label,
+          window_label,
           volume_label: form.volume_label,
           deadline: new Date(form.deadline).toISOString(),
           ranges: parsedRanges,
@@ -159,7 +172,7 @@ export default function AdminPage() {
       }
 
       setCreateMsg("✓ Market created successfully!");
-      setForm({ title: "", asset: "", category: "Crypto", window_label: "", volume_label: "$0 staked", deadline: "", contract_address: "" });
+      setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "" });
       setRanges(defaultRanges);
       setImageFile(null);
       setImagePreview(null);
@@ -228,7 +241,11 @@ export default function AdminPage() {
       if (resolving.ranges?.length) {
         const winningRanges = resolving.ranges
           .map((r, i) => ({ r, i }))
-          .filter(({ r }) => outcomeNum >= r.minPct && (r.maxPct === null || outcomeNum <= r.maxPct))
+          .filter(({ r }) => {
+            const min = (r as any).min ?? (r as any).minPct;
+            const max = (r as any).max ?? (r as any).maxPct;
+            return outcomeNum >= min && (max === null || outcomeNum <= max);
+          })
           .map(({ i }) => i);
 
         const { data: openStakes } = await supabase
@@ -384,18 +401,10 @@ export default function AdminPage() {
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="BTC move in 24h" required className={inputCls} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Asset">
-                <input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })} placeholder="BTC" required className={inputCls} />
-              </Field>
               <Field label="Category">
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
                   {["Crypto", "Sports", "Weather", "Stocks", "Local"].map((c) => <option key={c}>{c}</option>)}
                 </select>
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Window label">
-                <input value={form.window_label} onChange={(e) => setForm({ ...form, window_label: e.target.value })} placeholder="Resolves in 24h" required className={inputCls} />
               </Field>
               <Field label="Volume label">
                 <input value={form.volume_label} onChange={(e) => setForm({ ...form, volume_label: e.target.value })} placeholder="$0 staked" className={inputCls} />
@@ -460,17 +469,17 @@ export default function AdminPage() {
                       className={cn(inputCls, "flex-1")}
                     />
                     <input
-                      value={r.minPct}
-                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], minPct: e.target.value }; setRanges(next); }}
-                      placeholder="Min %"
+                      value={r.min}
+                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], min: e.target.value }; setRanges(next); }}
+                      placeholder="Min"
                       type="number"
                       step="0.01"
                       className={cn(inputCls, "w-20")}
                     />
                     <input
-                      value={r.maxPct}
-                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], maxPct: e.target.value }; setRanges(next); }}
-                      placeholder="Max %"
+                      value={r.max}
+                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], max: e.target.value }; setRanges(next); }}
+                      placeholder="Max"
                       type="number"
                       step="0.01"
                       className={cn(inputCls, "w-20")}
@@ -483,7 +492,7 @@ export default function AdminPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setRanges([...ranges, { label: "", minPct: "", maxPct: "" }])}
+                onClick={() => setRanges([...ranges, { label: "", min: "", max: "" }])}
                 className="mt-2 flex items-center gap-1.5 text-sm text-primary hover:text-primary/80"
               >
                 <PlusSignIcon className="h-4 w-4" /> Add range

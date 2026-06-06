@@ -50,13 +50,14 @@ export type Profile = {
 export type Market = {
   id: string;
   title: string;
-  asset: string;
+  asset?: string;
   category: string;
   window_label: string;
   volume_label: string;
   ranges: PredictionRange[];
   status: "active" | "resolved";
   winning_value: number | null;
+  winning_outcome?: string | null;
   image_url: string | null;
   deadline: string;
   created_at: string;

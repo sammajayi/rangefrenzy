@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { env } from "@/lib/env";
 
 const clientId = env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID ||
@@ -23,6 +24,7 @@ async function getWeb3Auth() {
           blockExplorerUrl: "https://celoscan.io",
           ticker: "CELO",
           tickerName: "Celo",
+          logo: "",
         },
       ],
       defaultChainId: "0xa4ec",

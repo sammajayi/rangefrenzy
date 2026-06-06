@@ -40,7 +40,7 @@ export async function buildEmbeddedViemClient(
   const provider = await wallet.getEthereumProvider();
   return createWalletClient({
     account: address as `0x${string}`,
-    chain: ACTIVE_CHAIN,
+    chain: celo,
     transport: custom(provider),
   });
 }

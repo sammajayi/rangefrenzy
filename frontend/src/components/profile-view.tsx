@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon } from "hugeicons-react";
+import { useWallets } from "@privy-io/react-auth";
+import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon, Notification03Icon } from "hugeicons-react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase, uploadAvatar } from "@/lib/supabase";
@@ -20,8 +22,13 @@ interface Props {
 }
 
 export function ProfileView({ address, profile, onSignOut }: Props) {
+  const { wallets } = useWallets();
+  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+  const displayAddress = embeddedWallet?.address ?? address;
+
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(!!profile?.is_whitelisted_gd);
@@ -62,7 +69,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
       });
   }, [address]);
 
-  const short = `${address.slice(0, 6)}…${address.slice(-4)}`;
+  const short = `${displayAddress.slice(0, 6)}…${displayAddress.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
   const displayName = profile?.username
     ? profile.username.charAt(0).toUpperCase() + profile.username.slice(1)
@@ -87,7 +94,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
   };
 
   const copy = () => {
-    void navigator.clipboard.writeText(address);
+    void navigator.clipboard.writeText(displayAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -150,63 +157,89 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
             </div>
           </div>
 
-          {/* Settings button */}
-          <div className="relative">
+          {/* Notifications & Settings */}
+          <div className="flex items-center gap-1">
             <Button
               type="button"
               variant="outline"
               size="icon"
               className="h-9 w-9 shrink-0 rounded-full border-border"
-              onClick={() => setShowSettings((v) => !v)}
-              aria-label="Profile settings"
+              onClick={() => setShowNotifications((v) => !v)}
+              aria-label="Notifications"
             >
-              <Setting07Icon className="h-4 w-4" />
+              <Notification03Icon className="h-4 w-4" />
             </Button>
 
-            {showSettings && (
-              <>
-                <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
-                <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                  >
-                    <Upload01Icon className="h-4 w-4" />
-                    Change avatar
-                  </button>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-full border-border"
+                onClick={() => setShowSettings((v) => !v)}
+                aria-label="Profile settings"
+              >
+                <Setting07Icon className="h-4 w-4" />
+              </Button>
 
-                  {/* GoodDollar verification — show if not yet verified */}
-                  {isVerified ? (
-                    <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
-                      <CheckmarkCircle01Icon className="h-4 w-4" />
-                      GD Verified
-                    </div>
-                  ) : (
+              {showSettings && (
+                <>
+                  <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
+                  <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
                     <button
                       type="button"
-                      onClick={() => { setShowSettings(false); setShowVerification(true); }}
+                      onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
                       className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
                     >
-                      <UserCheck01Icon className="h-4 w-4" />
-                      Verify with GoodDollar
+                      <Upload01Icon className="h-4 w-4" />
+                      Change avatar
                     </button>
-                  )}
 
-                  <div className="my-1 h-px bg-border" />
+                    {/* GoodDollar verification — show if not yet verified */}
+                    {isVerified ? (
+                      <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
+                        <CheckmarkCircle01Icon className="h-4 w-4" />
+                        GD Verified
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setShowSettings(false); setShowVerification(true); }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                      >
+                        <UserCheck01Icon className="h-4 w-4" />
+                        Verify with GoodDollar
+                      </button>
+                    )}
 
-                  <button
-                    type="button"
-                    onClick={() => { setShowSettings(false); onSignOut(); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
-                  >
-                    <Logout01Icon className="h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
-              </>
-            )}
+                    <div className="my-1 h-px bg-border" />
+
+                    <button
+                      type="button"
+                      onClick={() => { setShowSettings(false); onSignOut(); }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
+                    >
+                      <Logout01Icon className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Notifications panel */}
+          {showNotifications && (
+            <>
+              <div className="fixed inset-0 z-[80]" onClick={() => setShowNotifications(false)} />
+              <div className="absolute right-0 top-11 z-[90] min-w-[260px] rounded-2xl border border-border bg-card p-1 shadow-lg">
+                <div className="px-3 py-2.5 text-sm font-semibold text-foreground">Notifications</div>
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  No notifications yet
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Stats */}
@@ -220,19 +253,20 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
         </div>
 
         {/* Wallet balances — live from chain */}
-        <section className="mt-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet balances</h3>
-          <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
-            <BalanceRow
-              label="CELO"
-              sub="Native"
-              value={celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}
-            />
-            <BalanceRow
-              label="G$"
-              sub="GoodDollar"
-              value={gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}
-            />
+        <section className="mt-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Wallet balances</h3>
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="/icons/celo.png" alt="CELO" className="h-4 w-4 rounded-full shrink-0" />
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">CELO</span>
+              <span className="text-xs font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
+            </div>
+            <div className="h-4 w-px bg-border" />
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="/icons/goodollar.png" alt="G$" className="h-4 w-4 rounded-full shrink-0" />
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">G$</span>
+              <span className="text-xs font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>
+            </div>
           </div>
         </section>
 
@@ -249,21 +283,8 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
             setIsVerified(true);
             setShowVerification(false);
           }}
-          onSkip={() => setShowVerification(false)}
         />
       )}
-    </div>
-  );
-}
-
-function BalanceRow({ label, sub, value }: { label: string; sub: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <div>
-        <p className="text-sm font-semibold">{label}</p>
-        <p className="text-[11px] text-muted-foreground">{sub}</p>
-      </div>
-      <span className="text-sm font-semibold tabular-nums">{value}</span>
     </div>
   );
 }

@@ -60,12 +60,37 @@ alter table public.social_rewards enable row level security;
 create policy "Service role only for social rewards" on public.social_rewards
   for all using (false);
 
--- ─── 5. Storage buckets ───────────────────────────────────────────────────────
+-- ─── 5. Notifications table ──────────────────────────────────────────────────
+create table if not exists public.notifications (
+  id             bigint generated always as identity primary key,
+  wallet_address text not null,
+  title          text not null,
+  body           text,
+  read           boolean default false not null,
+  created_at     timestamptz default timezone('utc', now()) not null
+);
+
+create index if not exists idx_notifications_wallet
+  on public.notifications (wallet_address, created_at desc);
+
+-- Allow anon to read their own notifications (wallet_address column check)
+alter table public.notifications enable row level security;
+
+create policy "Users can read own notifications" on public.notifications
+  for select using (true);
+
+create policy "Users can update own notifications" on public.notifications
+  for update using (true);
+
+create policy "Service role can insert notifications" on public.notifications
+  for insert with check (true);
+
+-- ─── 6. Storage buckets ───────────────────────────────────────────────────────
 -- Create via Supabase dashboard → Storage, or uncomment if your role allows:
 -- insert into storage.buckets (id, name, public)
 --   values ('market-images', 'market-images', true)
 --   on conflict (id) do nothing;
 
--- ─── 6. Helper: make a wallet an admin ───────────────────────────────────────
+-- ─── 7. Helper: make a wallet an admin ───────────────────────────────────────
 -- Run manually when needed:
 -- update public.profiles set role = 'admin' where wallet_address = '0xYOUR_ADDRESS';

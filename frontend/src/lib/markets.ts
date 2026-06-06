@@ -1,8 +1,8 @@
 export type PredictionRange = {
   id: string;
   label: string;
-  minPct: number;
-  maxPct: number | null;
+  min: number;
+  max: number | null;
 };
 
 export type PredictionMarket = {
