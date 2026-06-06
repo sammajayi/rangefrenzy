@@ -51,7 +51,10 @@ export const useAppStore = create<AppState>()(
       setClaimBadge: (claimBadgeActive) => set({ claimBadgeActive }),
       setRole: (role) => set({ role }),
 
-      signOut: () =>
+      signOut: () => {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("rangefrenzy-auth");
+        }
         set({
           phase: "auth",
           address: "",
@@ -61,7 +64,8 @@ export const useAppStore = create<AppState>()(
           hasSeenOnboarding: false,
           claimBadgeActive: false,
           role: "user",
-        }),
+        });
+      },
     }),
     {
       name: "rangefrenzy-auth",

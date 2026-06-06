@@ -10,24 +10,27 @@ import { Logo } from "@/components/logo";
 
 function privyErrorMessage(error: any): string {
   const code: string = error?.code ?? error?.privyErrorCode ?? "";
-  switch (code) {
-    case "invalid_credentials":
-    case "invalid_code":
-      return "Incorrect code. Please check your email and try again.";
-    case "expired_code":
-    case "code_expired":
-      return "Your code has expired. Go back and request a new one.";
-    case "too_many_requests":
-      return "Too many attempts. Please wait a moment before trying again.";
-    default: {
-      const msg: string = error?.message ?? "";
-      try {
-        const parsed = JSON.parse(msg);
-        return parsed?.error ?? parsed?.message ?? "Something went wrong.";
-      } catch {
-        return msg || "Something went wrong. Please try again.";
-      }
-    }
+  const msg: string = error?.message ?? "";
+  if (
+    ["invalid_credentials", "invalid_code", "incorrect_code", "wrong_code"].includes(code) ||
+    /invalid.*(code|otp)|incorrect.*(code|otp)/i.test(msg)
+  ) {
+    return "Incorrect code. Please check your email and try again.";
+  }
+  if (
+    ["expired_code", "code_expired"].includes(code) ||
+    /expired/i.test(msg)
+  ) {
+    return "Your code has expired. Please request a new one.";
+  }
+  if (code === "too_many_requests" || /too.many/i.test(msg)) {
+    return "Too many attempts. Please wait a moment before trying again.";
+  }
+  try {
+    const parsed = JSON.parse(msg);
+    return parsed?.error ?? parsed?.message ?? "Something went wrong.";
+  } catch {
+    return msg || "Something went wrong. Please try again.";
   }
 }
 
@@ -45,6 +48,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [authError, setAuthError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const otpSubmitted = useRef(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [pendingAddress, setPendingAddress] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
@@ -56,46 +61,75 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const { ready, authenticated, user: privyUser } = usePrivy();
   const { wallets } = useWallets();
 
+  // Always-fresh refs so async callbacks read current values, not stale closures.
+  const authenticatedRef = useRef(authenticated);
+  const privyUserRef = useRef(privyUser);
+  const walletsRef = useRef(wallets);
+  useEffect(() => { authenticatedRef.current = authenticated; }, [authenticated]);
+  useEffect(() => { privyUserRef.current = privyUser; }, [privyUser]);
+  useEffect(() => { walletsRef.current = wallets; }, [wallets]);
+
   const checkAndProceed = async (addr: string, resolvedEmail: string | null = null) => {
     if (hasProceeded.current) return;
     hasProceeded.current = true;
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("wallet_address", addr.toLowerCase())
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("wallet_address", addr.toLowerCase())
+        .single();
 
-    if (data) {
-      onAuthenticated(addr, data as Profile);
-    } else {
-      setPendingAddress(addr);
-      setPendingEmail(resolvedEmail);
+      if (data && !error) {
+        onAuthenticated(addr, data as Profile);
+      } else {
+        setPendingAddress(addr);
+        setPendingEmail(resolvedEmail);
+        hasProceeded.current = false;
+        setStep("profile_setup");
+      }
+    } catch {
       hasProceeded.current = false;
-      setStep("profile_setup");
     }
   };
 
-  // wallets in deps so external wallet connect (async population) is caught
+  // Helper: extract the embedded privy wallet address from a user's linkedAccounts.
+  const getEmbeddedAddr = (user: any): string | undefined =>
+    (user?.linkedAccounts as any[] ?? []).find(
+      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
+    )?.address;
+
+  // Re-runs when auth state or wallet list changes (e.g. embedded wallet created async).
+  const privyLinkedCount = privyUser?.linkedAccounts?.length ?? 0;
   useEffect(() => {
     if (!ready || !authenticated || !privyUser) return;
     if (step === "profile_setup") return;
-    const embeddedWallet = (privyUser.linkedAccounts as any[]).find(
-      (a: any) => a.type === "wallet" && a.walletClientType === "privy"
-    );
-    const addr = embeddedWallet?.address ?? wallets[0]?.address;
+    const addr = getEmbeddedAddr(privyUser) ?? wallets[0]?.address;
     if (addr) checkAndProceed(addr, (privyUser as any).email?.address ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, wallets]);
+  }, [ready, authenticated, privyLinkedCount, wallets]);
 
   const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail({
     onComplete: async ({ user }) => {
-      const embeddedWallet = user.linkedAccounts.find(
-        (a) => a.type === "wallet" && (a as any).walletClientType === "privy"
-      ) as any;
-      const addr = embeddedWallet?.address ?? wallets[0]?.address;
-      if (addr) await checkAndProceed(addr, email);
+      otpSubmitted.current = true;
+
+      // Try the wallet from the callback's user object first.
+      // If not present (Privy creates it async), poll wallets until it appears.
+      let addr = getEmbeddedAddr(user);
+      if (!addr) {
+        for (let i = 0; i < 8; i++) {
+          await new Promise((r) => setTimeout(r, 400));
+          addr = getEmbeddedAddr(privyUserRef.current) ?? walletsRef.current[0]?.address;
+          if (addr) break;
+        }
+      }
+
+      const resolvedEmail = (user as any).email?.address ?? email;
+      if (addr) checkAndProceed(addr, resolvedEmail);
+      // If still no addr, the useEffect above will handle it when wallets update.
     },
-    onError: (error: any) => setAuthError(privyErrorMessage(error)),
+    onError: (error: any) => {
+      if (!otpSubmitted.current) setAuthError(privyErrorMessage(error));
+    },
   });
 
   const { connectWallet } = useConnectWallet({
@@ -124,19 +158,52 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     }
   };
 
-  const handleVerifyOtp = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    if (!ready || !otp) return;
+  const handleVerifyOtp = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    if (!ready || otp.length < 6 || isSubmittingCode) return;
+
+    // If Privy already authenticated us (stuck from a previous attempt), skip
+    // re-calling loginWithCode and go straight to the proceed logic.
+    if (authenticatedRef.current) {
+      hasProceeded.current = false;
+      const pu = privyUserRef.current;
+      const addr = getEmbeddedAddr(pu) ?? walletsRef.current[0]?.address;
+      if (addr) {
+        checkAndProceed(addr, (pu as any)?.email?.address ?? null);
+      }
+      return;
+    }
+
+    otpSubmitted.current = false;
     setAuthError("");
     try {
       await loginWithCode({ code: otp });
     } catch (err: any) {
-      const msg: string = err?.message ?? "";
-      setAuthError(
-        /timeout|abort|network/i.test(msg)
-          ? "Connection is slow — you may still be signed in. Please wait a moment."
-          : privyErrorMessage(err)
-      );
+      if (!otpSubmitted.current) {
+        setAuthError(privyErrorMessage(err));
+      }
+    }
+  };
+
+  // Auto-submit when all 6 digits are entered
+  useEffect(() => {
+    if (otp.length === 6 && step === "otp_input" && !isSubmittingCode) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
+
+  const handleResendCode = async () => {
+    if (!email || resendLoading) return;
+    setResendLoading(true);
+    setAuthError("");
+    setOtp("");
+    try {
+      await sendCode({ email });
+    } catch {
+      // ignore network errors
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -276,34 +343,32 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Email address
               </label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 w-full rounded-xl border border-input bg-muted/40 px-4 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
-                autoFocus
-                required
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-4 pr-20 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
+                  autoFocus
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={!email || isSendingCode}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#07955F] transition disabled:opacity-40 hover:opacity-70"
+                >
+                  {isSendingCode ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#07955F]/40 border-t-[#07955F] inline-block" />
+                  ) : "Submit"}
+                </button>
+              </div>
             </div>
             {authError && (
               <p className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
                 {authError}
               </p>
             )}
-            <Button
-              type="submit"
-              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
-              size="lg"
-              disabled={!email || isSendingCode}
-            >
-              {isSendingCode ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Sending…
-                </>
-              ) : "Send Code"}
-            </Button>
             <button
               type="button"
               onClick={() => setStep("choose")}
@@ -345,38 +410,31 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 {authError}
               </p>
             )}
-            <Button
-              type="submit"
-              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
-              size="lg"
-              disabled={!ready || otp.length < 6 || isSubmittingCode}
+            {isSubmittingCode && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                Verifying…
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resendLoading || isSendingCode}
+              className="flex w-full items-center justify-center gap-1.5 text-sm text-[#07955F] transition hover:opacity-70 disabled:opacity-40"
             >
-              {isSubmittingCode ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Verifying…
-                </>
-              ) : "Verify"}
-            </Button>
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <button
-                type="button"
-                onClick={async () => {
-                  setOtp(""); setAuthError("");
-                  try { await sendCode({ email }); } catch { /* ignore */ }
-                }}
-                className="hover:text-foreground"
-              >
-                Resend code
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
-                className="hover:text-foreground"
-              >
-                Use different email
-              </button>
-            </div>
+              {resendLoading ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#07955F]/40 border-t-[#07955F]" />
+              ) : null}
+              Resend code
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
+              className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+            >
+              <ArrowLeft01Icon className="h-3.5 w-3.5" />
+              Use a different email
+            </button>
           </form>
         )}
 

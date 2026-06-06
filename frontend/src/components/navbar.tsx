@@ -6,7 +6,6 @@ import { ExternalLink } from "lucide-react";
 
 const navLinks = [
   { name: "Play", href: "/", external: false },
-  { name: "Celo docs", href: "https://docs.celo.org", external: true },
 ];
 
 export function Navbar() {
