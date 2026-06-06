@@ -116,14 +116,12 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     setAuthError("");
     try {
       await sendCode({ email });
+      setStep("otp_input");
     } catch (err: any) {
-      const msg: string = err?.message ?? "";
-      if (!/timeout|abort|network/i.test(msg)) {
-        setAuthError(privyErrorMessage(err));
-        return;
-      }
+      // Never silently retry — a second sendCode call invalidates the first code,
+      // causing "invalid_credentials" when the user enters the code from the first email.
+      setAuthError(privyErrorMessage(err) || "Failed to send code. Please try again.");
     }
-    setStep("otp_input");
   };
 
   const handleVerifyOtp = async (e: React.SyntheticEvent) => {
@@ -360,14 +358,25 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 </>
               ) : "Verify"}
             </Button>
-            <button
-              type="button"
-              onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
-              className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-            >
-              <ArrowLeft01Icon className="h-3.5 w-3.5" />
-              Use a different email
-            </button>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <button
+                type="button"
+                onClick={async () => {
+                  setOtp(""); setAuthError("");
+                  try { await sendCode({ email }); } catch { /* ignore */ }
+                }}
+                className="hover:text-foreground"
+              >
+                Resend code
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStep("email_input"); setOtp(""); setAuthError(""); }}
+                className="hover:text-foreground"
+              >
+                Use different email
+              </button>
+            </div>
           </form>
         )}
 
