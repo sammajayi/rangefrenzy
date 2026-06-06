@@ -61,7 +61,7 @@ export function VerificationGate({ onVerified, onSkip }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-background px-6">
+    <div className="fixed inset-0 z-80 flex flex-col items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm text-center">
         <div className="mb-8 flex justify-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
