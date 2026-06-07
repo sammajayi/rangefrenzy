@@ -184,6 +184,19 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, authenticated, wallets]);
 
+  useEffect(() => {
+    if (!ready || !authenticated || !privyUser) return;
+    if (step !== "choose" || hasProceeded.current) return;
+    (async () => {
+      const isEmail = !!(privyUser as any)?.email?.address;
+      const addr = await ensureEmbeddedWallet(isEmail);
+      if (addr) {
+        checkAndProceed(addr, (privyUser as any)?.email?.address ?? null);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated, wallets]);
+
   const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail({
     onComplete: async ({ user }) => {
       otpSubmitted.current = true;

@@ -78,6 +78,60 @@ export type Stake = {
   market?: Pick<Market, "title" | "asset" | "category" | "deadline" | "status" | "winning_value">;
 };
 
+export function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+export type BonusEarning = {
+  id: string;
+  wallet_address: string;
+  source: BonusSource;
+  amount_gd: number;
+  status: "pending" | "claimed";
+  metadata: Record<string, any> | null;
+  created_at: string;
+};
+
+export type BonusSource =
+  | "first_bet"
+  | "streak_7"
+  | "streak_30"
+  | "referral_bonus"
+  | "referral_reward"
+  | "social_twitter"
+  | "social_telegram";
+
+export const BONUS_AMOUNTS: Record<BonusSource, number> = {
+  first_bet: 10,
+  streak_7: 25,
+  streak_30: 100,
+  referral_bonus: 15,
+  referral_reward: 15,
+  social_twitter: 5,
+  social_telegram: 5,
+};
+
+export const BONUS_LABELS: Record<BonusSource, string> = {
+  first_bet: "First Bet Bonus",
+  streak_7: "7-Day Streak",
+  streak_30: "30-Day Streak",
+  referral_bonus: "Referral Bonus (You)",
+  referral_reward: "Referral Reward (Friend)",
+  social_twitter: "Follow on X / Twitter",
+  social_telegram: "Join Telegram",
+};
+
+export type Referral = {
+  id: string;
+  referrer_wallet: string;
+  referee_wallet: string;
+  bonus_credited: boolean;
+  created_at: string;
+};
+
 export async function sendNotification(
   username: string,
   title: string,

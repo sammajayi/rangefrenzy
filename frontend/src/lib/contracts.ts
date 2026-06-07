@@ -4,12 +4,14 @@
  * Set these env vars in .env.local after deploying:
  *   NEXT_PUBLIC_FACTORY_ADDRESS   — MarketFactory proxy address
  *   NEXT_PUBLIC_G_TOKEN_ADDRESS   — G$ ERC20 address on Celo
- *   NEXT_PUBLIC_CHAIN_ID          — 42220 (mainnet) or 44787 (Alfajores)
  */
 
 // ── Addresses ─────────────────────────────────────────────────────────────────
 
 export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "") as `0x${string}`;
+
+// Deployer address — the only wallet allowed to create/resolve markets on-chain
+export const DEPLOYER_ADDRESS = "0x6136c315631f8bf6c0ddc2c948e4908a63b26f55".toLowerCase() as `0x${string}`;
 
 // G$ token on Celo mainnet: 0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A
 // G$ token on Alfajores:    0x23b7a53ecE33D6E4B0ADB31B07C6B88d3f598f69
@@ -209,8 +211,40 @@ export function parseGD(amount: string): bigint {
 export const rangeFrenzyMarketAbi = MARKET_ABI;
 export const erc20Abi = ERC20_ABI;
 
-// MarketFactory ABI (minimal — read + create)
+// MarketFactory ABI (CRYPTO=0, SPORTS=1, LOCAL=2)
+export const CATEGORY_MAP: Record<string, number> = {
+  Crypto: 0, Sports: 1, Weather: 1, Stocks: 0, Local: 2,
+};
+
 export const marketFactoryAbi = [
+  {
+    name: "createMarket",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_question", type: "string" },
+      { name: "_category", type: "uint8" },
+      { name: "_resolutionDeadline", type: "uint256" },
+      { name: "_minStakeAmount", type: "uint256" },
+      { name: "_rangeLabels", type: "string[]" },
+      { name: "_lowerBounds", type: "uint256[]" },
+      { name: "_upperBounds", type: "uint256[]" },
+    ],
+    outputs: [{ name: "proxyAddress", type: "address" }],
+  },
+  {
+    name: "MarketCreated",
+    type: "event",
+    inputs: [
+      { name: "marketProxy", type: "address", indexed: true },
+      { name: "implementation", type: "address", indexed: true },
+      { name: "question", type: "string", indexed: false },
+      { name: "category", type: "uint8", indexed: false },
+      { name: "resolutionDeadline", type: "uint256", indexed: false },
+      { name: "minStakeAmount", type: "uint256", indexed: false },
+      { name: "createdAt", type: "uint256", indexed: false },
+    ],
+  },
   {
     name: "getMarketsPage",
     type: "function",

@@ -6,25 +6,28 @@ import { useReadContract } from "wagmi";
 import {
   Activity02Icon, User02Icon, Chart01Icon, ArrowRight01Icon,
   MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon,
+  GiftIcon, Notification03Icon, Cancel01Icon,
 } from "hugeicons-react";
-import { Cancel01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/navbar";
 import { ProfileView } from "@/components/profile-view";
-import { useFactoryMarkets, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
+import { useFactoryMarkets, formatRangeLabel, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
 import { useMarketContract } from "@/lib/hooks/use-market-contract";
 import { useStake } from "@/lib/hooks/use-stake";
 import { erc20Abi, STAKE_TOKEN_ADDRESS, MarketStatus } from "@/lib/contracts";
 import { useAppStore } from "@/lib/store";
+import { EarnTab } from "@/components/EarnTab";
+import { VerificationGate } from "@/components/gooddollar/VerificationGate";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const ClaimPage = lazy(() =>
   import("@/components/gooddollar/ClaimPage").then((m) => ({ default: m.ClaimPage }))
 );
 
-type Tab = "play" | "board" | "claim" | "profile";
+type Tab = "play" | "board" | "earn" | "profile";
 type BoardSub = "leaderboard" | "weekly";
 
 interface Props {
@@ -47,7 +50,6 @@ const CATEGORY_GRADIENT: Record<string, string> = {
 export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [boardSub, setBoardSub] = useState<BoardSub>("leaderboard");
-  const claimBadgeActive = useAppStore((s) => s.claimBadgeActive);
   const [selected, setSelected] = useState<{
     market: OnChainMarket;
     range: OnChainRange;
@@ -97,6 +99,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
           onToggleSearch={() => setShowSearch((p) => !p)}
           onSearchChange={setFilterSearch}
           onToggleFilter={() => setShowFilter(true)}
+          username={profile?.username ?? address}
         />
       )}
 
@@ -155,8 +158,12 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                         onClick={() => handleSelectMarket(market)}
                         className="group w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-[#07955F]/30 hover:shadow-md"
                       >
-                        <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br lg:h-44", gradientClass)}>
-                          <Chart01Icon className="h-8 w-8 text-muted-foreground/30" />
+                        <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : `bg-gradient-to-br ${gradientClass}`)}>
+                          {market.imageUrl ? (
+                            <img src={market.imageUrl} alt={market.question} className="h-full w-full object-cover" />
+                          ) : (
+                            <Chart01Icon className="h-8 w-8 text-muted-foreground/30" />
+                          )}
                         </div>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -181,7 +188,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {market.ranges.map((r) => (
                             <span key={r.index} className="rounded-lg border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                              {r.label}
+                              {formatRangeLabel(r)}
                             </span>
                           ))}
                         </div>
@@ -223,15 +230,11 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
           </div>
         )}
 
-        {/* ── CLAIM TAB ── */}
-        {tab === "claim" && (
-          <Suspense fallback={
-            <div className="flex justify-center pt-24">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-            </div>
-          }>
-            <ClaimPage />
-          </Suspense>
+        {/* ── EARN TAB ── */}
+        {tab === "earn" && (
+          <div className="pt-4">
+            <EarnTab address={address} />
+          </div>
         )}
 
         {/* ── PROFILE TAB ── */}
@@ -247,11 +250,12 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
             [
               { id: "play" as Tab, icon: Activity02Icon, label: "Play" },
               { id: "board" as Tab, icon: Chart01Icon, label: "Board" },
-              { id: "claim" as Tab, label: "Claim", isClaim: true },
+              { id: "earn" as Tab, icon: GiftIcon, label: "Earn" },
               { id: "profile" as Tab, icon: User02Icon, label: "You" },
             ] as const
           ).map((item) => {
             const active = tab === item.id;
+            const Icon = item.icon;
             return (
               <button
                 key={item.id}
@@ -266,14 +270,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                   <span className="absolute inset-0 rounded-2xl bg-[#07955F]/8" />
                 )}
                 <span className="relative">
-                  {(item as any).isClaim ? (
-                    <span className="relative">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-current text-[9px] font-black leading-none">G$</span>
-                      {claimBadgeActive && !active && (
-                        <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#07955F]" />
-                      )}
-                    </span>
-                  ) : (() => { const Icon = (item as { icon: React.ElementType }).icon; return <Icon className="h-5 w-5" />; })()}
+                  <Icon className="h-5 w-5" />
                 </span>
                 <span className="relative">{item.label}</span>
               </button>
@@ -357,8 +354,12 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
       {selected && !showStakeModal && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
-            <div className={cn("flex h-28 items-center justify-center bg-gradient-to-br", CATEGORY_GRADIENT[selected.market.categoryLabel.toLowerCase()] ?? "from-muted to-muted/60")}>
-              <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
+            <div className={cn("flex h-36 items-center justify-center overflow-hidden", selected.market.imageUrl ? "" : `bg-gradient-to-br ${CATEGORY_GRADIENT[selected.market.categoryLabel.toLowerCase()] ?? "from-muted to-muted/60"}`)}>
+              {selected.market.imageUrl ? (
+                <img src={selected.market.imageUrl} alt={selected.market.question} className="h-full w-full object-cover" />
+              ) : (
+                <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
+              )}
             </div>
             <div className="p-6">
               <div className="mb-1 flex items-center gap-2">
@@ -390,7 +391,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                         : "border-border bg-muted/30 text-muted-foreground hover:border-[#07955F]/40",
                     )}
                   >
-                    {r.label}
+                    {formatRangeLabel(r)}
                   </button>
                 ))}
               </div>
@@ -460,6 +461,21 @@ function StakeModal({
 
   const isOpen = market.status === MarketStatus.OPEN;
   const isResolved = market.status === MarketStatus.RESOLVED;
+
+  useEffect(() => {
+    if (step === "success" && userAddress) {
+      fetch("/api/earn/first-bet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet_address: userAddress }),
+      }).catch(() => {});
+      fetch("/api/earn/streak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet_address: userAddress }),
+      }).catch(() => {});
+    }
+  }, [step, userAddress]);
 
   const handleStake = async () => {
     if (!amount || isNaN(parseFloat(amount))) return;
@@ -553,7 +569,7 @@ function StakeModal({
                   !hasStaked && isOpen && "hover:border-primary/40 cursor-pointer"
                 )}
               >
-                <p className="font-semibold">{r.label}</p>
+                <p className="font-semibold">{formatRangeLabel(r)}</p>
                 {rangePool > 0 && <p className="text-[10px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
               </button>
             );
@@ -608,7 +624,7 @@ function StakeModal({
             >
               {step === "approving" ? "Approving…" :
                step === "staking" ? "Staking…" :
-               `Stake on ${selectedRange.label}`}
+               `Stake on ${formatRangeLabel(selectedRange)}`}
             </Button>
           )}
         </div>

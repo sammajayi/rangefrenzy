@@ -15,17 +15,23 @@ import {
   ImageUploadIcon,
 } from "hugeicons-react";
 import { Link } from "wouter";
+import { useWallets } from "@privy-io/react-auth";
 
 type AdminTab = "markets" | "expired" | "create" | "users";
 type RangeInput = { label: string; min: string; max: string };
 
 const USERS_PER_PAGE = 10;
 
+function rangeLabel(min: string, max: string, i: number): string {
+  if (max === "") return `${min}+`;
+  return `${min} – ${max}`;
+}
+
 const defaultRanges: RangeInput[] = [
-  { label: "Range 1", min: "0", max: "10" },
-  { label: "Range 2", min: "10", max: "20" },
-  { label: "Range 3", min: "20", max: "30" },
-  { label: "Range 4", min: "30", max: "" },
+  { label: "0 – 9", min: "0", max: "9" },
+  { label: "10 – 19", min: "10", max: "19" },
+  { label: "20 – 29", min: "20", max: "29" },
+  { label: "30+", min: "30", max: "" },
 ];
 
 // ── Wallet copy button ────────────────────────────────────────────────────────
@@ -49,6 +55,16 @@ function WalletAddress({ address }: { address: string }) {
 }
 
 export default function AdminPage() {
+  const { wallets } = useWallets();
+  const providerRef = useRef<any>(null);
+
+  useEffect(() => {
+    (async () => {
+      const w = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
+      if (w) providerRef.current = await w.getEthereumProvider();
+    })();
+  }, [wallets]);
+
   const [tab, setTab] = useState<AdminTab>("markets");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -147,31 +163,91 @@ export default function AdminPage() {
       }));
 
       const window_label = deadlineToWindowLabel(form.deadline);
+      const deadlineUnix = Math.floor(new Date(form.deadline).getTime() / 1000);
 
+      // 1. Deploy on-chain via factory
+      let contractAddress: string | null = null;
+      const provider = providerRef.current ?? (window as any).ethereum;
+      if (provider) {
+        const { createWalletClient, custom, parseUnits } = await import("viem");
+        const { celo } = await import("viem/chains");
+        const { marketFactoryAbi, FACTORY_ADDRESS, CATEGORY_MAP } = await import("@/lib/contracts");
+
+        const accounts: string[] = await provider.request({ method: "eth_requestAccounts" });
+        const adminAddr = accounts[0] as `0x${string}`;
+
+        const walletClient = createWalletClient({ account: adminAddr, chain: celo, transport: custom(provider) });
+
+        const rangeLabels = parsedRanges.map((r) => r.label);
+        const lowerBounds = parsedRanges.map((r) => BigInt(Math.round(r.min * 1e18)));
+        const upperBounds = parsedRanges.map((r) => r.max === null ? BigInt(1n << 255n) : BigInt(Math.round(r.max * 1e18)));
+
+        const category = CATEGORY_MAP[form.category] ?? 0;
+
+        const hash = await walletClient.writeContract({
+          address: FACTORY_ADDRESS,
+          abi: marketFactoryAbi,
+          functionName: "createMarket",
+          args: [
+            form.title,
+            category,
+            BigInt(deadlineUnix),
+            parseUnits("1", 18), // minStakeAmount = 1 G$
+            rangeLabels,
+            lowerBounds,
+            upperBounds,
+          ],
+        });
+
+        const { createPublicClient, http } = await import("viem");
+        const publicClient = createPublicClient({ chain: celo, transport: http("https://forno.celo.org") });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        // Decode MarketCreated event for proxy address
+        const { decodeEventLog, getAbiItem } = await import("viem");
+        const abiItem = getAbiItem({ abi: marketFactoryAbi, name: "createMarket" });
+        for (const log of receipt.logs) {
+          try {
+            const decoded = decodeEventLog({
+              abi: marketFactoryAbi,
+              data: log.data,
+              topics: log.topics as [signature: `0x${string}`, ...args: `0x${string}`[]],
+              strict: false,
+            });
+            if ((decoded as any).eventName === "MarketCreated") {
+              contractAddress = ((decoded as any).args as any)?.marketProxy?.toLowerCase() ?? null;
+              break;
+            }
+          } catch { /* skip non-matching logs */ }
+        }
+      }
+
+      // 2. Insert into Supabase
       const { data, error } = await supabase
         .from("markets")
         .insert({
           title: form.title,
           category: form.category,
+          asset: "",
           window_label,
           volume_label: form.volume_label,
           deadline: new Date(form.deadline).toISOString(),
           ranges: parsedRanges,
           status: "active",
-          contract_address: form.contract_address.trim() || null,
+          contract_address: contractAddress ?? (form.contract_address.trim() || null),
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Upload image if provided
+      // 3. Upload image if provided
       if (imageFile && data) {
         const url = await uploadMarketImage(data.id, imageFile);
         await supabase.from("markets").update({ image_url: url }).eq("id", data.id);
       }
 
-      setCreateMsg("✓ Market created successfully!");
+      setCreateMsg(contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)");
       setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "" });
       setRanges(defaultRanges);
       setImageFile(null);
@@ -194,20 +270,15 @@ export default function AdminPage() {
       // 1. Call on-chain resolve() if the market has a contract address
       const contractAddress = (resolving as any).contract_address as string | null;
       if (contractAddress) {
-        const { useWallets } = await import("@privy-io/react-auth");
-        // We can't use hooks here — import viem directly and use window.ethereum
         const { createWalletClient, createPublicClient, custom, http, parseUnits } = await import("viem");
-        const { celo, celoAlfajores } = await import("viem/chains");
+        const { celo } = await import("viem/chains");
         const { MARKET_ABI } = await import("@/lib/contracts");
 
-        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID ?? "44787");
-        const chain = chainId === 42220 ? celo : celoAlfajores;
-        const rpc = chainId === 42220 ? "https://forno.celo.org" : "https://alfajores-forno.celo-testnet.org";
+        const chain = celo;
+        const rpc = "https://forno.celo.org";
 
-        // Get the connected wallet via window.ethereum (admin is always authenticated)
-        const provider = (window as any).ethereum;
-        if (!provider) throw new Error("No wallet provider found in browser.");
-
+        const provider = providerRef.current ?? (window as any).ethereum;
+        if (!provider) throw new Error("No wallet provider found.");
         const accounts: string[] = await provider.request({ method: "eth_requestAccounts" });
         const adminAddr = accounts[0] as `0x${string}`;
 
@@ -466,11 +537,20 @@ export default function AdminPage() {
                       value={r.label}
                       onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], label: e.target.value }; setRanges(next); }}
                       placeholder="Label"
-                      className={cn(inputCls, "flex-1")}
+                      className={cn(inputCls, "w-24")}
                     />
                     <input
                       value={r.min}
-                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], min: e.target.value }; setRanges(next); }}
+                      onChange={(e) => {
+                        const next = [...ranges];
+                        const min = e.target.value;
+                        const max = next[i].max;
+                        const prev = ranges[i];
+                        const prevLabel = rangeLabel(prev.min, prev.max, i);
+                        const label = prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
+                        next[i] = { ...next[i], min, label };
+                        setRanges(next);
+                      }}
                       placeholder="Min"
                       type="number"
                       step="0.01"
@@ -478,7 +558,16 @@ export default function AdminPage() {
                     />
                     <input
                       value={r.max}
-                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], max: e.target.value }; setRanges(next); }}
+                      onChange={(e) => {
+                        const next = [...ranges];
+                        const max = e.target.value;
+                        const min = next[i].min;
+                        const prev = ranges[i];
+                        const prevLabel = rangeLabel(prev.min, prev.max, i);
+                        const label = prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
+                        next[i] = { ...next[i], max, label };
+                        setRanges(next);
+                      }}
                       placeholder="Max"
                       type="number"
                       step="0.01"
@@ -505,7 +594,7 @@ export default function AdminPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={createLoading}>
+            <Button type="submit" className="w-full h-12 text-base cursor-pointer font-semibold" disabled={createLoading}>
               {createLoading ? "Creating…" : "Create market"}
             </Button>
           </form>

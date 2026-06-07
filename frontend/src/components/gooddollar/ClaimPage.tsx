@@ -26,7 +26,7 @@ function formatCountdown(target: Date): string {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-export function ClaimPage() {
+export function ClaimPage({ compact = false }: { compact?: boolean }) {
   const address = useAppStore((s) => s.address);
   const isVerified = useAppStore((s) => s.isVerified);
   const setVerified = useAppStore((s) => s.setVerified);
@@ -135,7 +135,68 @@ export function ClaimPage() {
   const isLoading = state.status === "loading";
   const canClaim = state.status === "can_claim";
 
-  // If user skipped verification, show an inline prompt to verify
+  const embeddedReady = wallets.some((w) => w.walletClientType === "privy");
+
+  if (compact) {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center py-8">
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mb-2 text-5xl font-black font-display text-primary tabular-nums">
+          {state.amount}
+        </div>
+        <p className="text-sm text-muted-foreground font-semibold">G$ available to claim</p>
+
+        {!canClaim && countdown && (
+          <div className="mt-6">
+            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-bold">
+              Next claim in
+            </p>
+            <div className="font-display text-3xl font-bold tabular-nums text-foreground">
+              {countdown}
+            </div>
+          </div>
+        )}
+
+        {state.status === "not_whitelisted" && (
+          <p className="mt-4 text-sm text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
+            Your wallet isn&apos;t verified yet. Complete identity verification to start claiming G$.
+          </p>
+        )}
+
+        {state.error && (
+          <div className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {state.error}
+          </div>
+        )}
+
+        <Button
+          className="mt-8 w-full"
+          size="lg"
+          disabled={!canClaim || state.claiming}
+          onClick={handleClaim}
+        >
+          {state.claiming ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              Claiming…
+            </span>
+          ) : canClaim ? (
+            `Claim ${state.amount} G$`
+          ) : (
+            "Come back tomorrow"
+          )}
+        </Button>
+      </div>
+    );
+  }
+
+  // Standalone page: show verification gate if not verified
   if (!isVerified) {
     return (
       <VerificationGate
@@ -143,8 +204,6 @@ export function ClaimPage() {
       />
     );
   }
-
-  const embeddedReady = wallets.some((w) => w.walletClientType === "privy");
 
   if (isLoading) {
     return (

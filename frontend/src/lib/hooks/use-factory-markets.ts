@@ -1,9 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { marketFactoryAbi, rangeFrenzyMarketAbi, FACTORY_ADDRESS, MarketStatus } from "@/lib/contracts";
 import { formatDeadline } from "@/lib/markets";
+import { supabase } from "@/lib/supabase";
+
+const MAX_UINT_255 = BigInt(1n << 255n);
 
 export type OnChainRange = {
   index: number;
@@ -27,9 +31,19 @@ export type OnChainMarket = {
   isActive: boolean;
   isResolved: boolean;
   ranges: OnChainRange[];
+  imageUrl: string | null;
 };
 
 const CATEGORY_LABELS = ["Crypto", "Sports", "Local"];
+
+export function formatRangeLabel(r: { lowerBound: bigint; upperBound: bigint; label?: string }): string {
+  const isMax = r.upperBound >= MAX_UINT_255;
+  const lower = parseFloat(formatUnits(r.lowerBound, 18));
+  const upper = isMax ? null : parseFloat(formatUnits(r.upperBound, 18));
+  if (upper === null) return `${lower}+`;
+  const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(2));
+  return `${fmt(lower)} – ${fmt(upper)}`;
+}
 
 export function useFactoryMarkets() {
   const { data: addressesRaw, isLoading: loadingAddresses } = useReadContract({
@@ -49,6 +63,25 @@ export function useFactoryMarkets() {
     ]),
     query: { enabled: addresses.length > 0 },
   });
+
+  const [imageMap, setImageMap] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    supabase
+      .from("markets")
+      .select("contract_address, image_url")
+      .not("contract_address", "is", null)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string | null> = {};
+        for (const m of data) {
+          if (m.contract_address) {
+            map[m.contract_address.toLowerCase()] = m.image_url ?? null;
+          }
+        }
+        setImageMap(map);
+      });
+  }, []);
 
   const markets: OnChainMarket[] = addresses.flatMap((addr, i) => {
     const summaryResult = batchData?.[i * 2];
@@ -79,6 +112,7 @@ export function useFactoryMarkets() {
       numStakers: Number(numStakers),
       isActive: status === MarketStatus.OPEN || status === MarketStatus.CLOSED,
       isResolved: status === MarketStatus.RESOLVED || status === MarketStatus.CANCELLED,
+      imageUrl: imageMap[addr.toLowerCase()] ?? null,
       ranges: rawRanges.map((r, idx) => ({
         index: idx,
         label: r.label,

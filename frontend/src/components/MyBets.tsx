@@ -5,8 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Stake } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID ?? "44787");
-const EXPLORER = CHAIN_ID === 42220 ? "https://celoscan.io" : "https://alfajores.celoscan.io";
+const EXPLORER = "https://celoscan.io";
 
 const STATUS_STYLES: Record<string, string> = {
   open:     "bg-blue-50 text-blue-700",

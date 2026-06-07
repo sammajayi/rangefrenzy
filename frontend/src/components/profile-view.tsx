@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon, Notification03Icon } from "hugeicons-react";
+import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
 import { supabase, uploadAvatar } from "@/lib/supabase";
@@ -13,7 +13,6 @@ import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useBalance, useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
-import { useNotifications } from "@/hooks/useNotifications";
 
 interface Props {
   address: string;
@@ -28,14 +27,11 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
 
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(!!profile?.is_whitelisted_gd);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
-
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(profile?.username ?? address);
 
   // Live on-chain balances
   const addr = address as `0x${string}`;
@@ -159,124 +155,63 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
             </div>
           </div>
 
-          {/* Notifications & Settings */}
-          <div className="flex items-center gap-1">
+          {/* Settings */}
+          <div className="relative">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="relative h-9 w-9 shrink-0 rounded-full border-border"
-              onClick={() => setShowNotifications((v) => !v)}
-              aria-label="Notifications"
+              className="h-9 w-9 shrink-0 rounded-full border-border"
+              onClick={() => setShowSettings((v) => !v)}
+              aria-label="Profile settings"
             >
-              <Notification03Icon className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
+              <Setting07Icon className="h-4 w-4" />
             </Button>
 
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0 rounded-full border-border"
-                onClick={() => setShowSettings((v) => !v)}
-                aria-label="Profile settings"
-              >
-                <Setting07Icon className="h-4 w-4" />
-              </Button>
+            {showSettings && (
+              <>
+                <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
+                <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                  >
+                    <Upload01Icon className="h-4 w-4" />
+                    Change avatar
+                  </button>
 
-              {showSettings && (
-                <>
-                  <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
-                  <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                    >
-                      <Upload01Icon className="h-4 w-4" />
-                      Change avatar
-                    </button>
-
-                    {/* GoodDollar verification — show if not yet verified */}
-                    {isVerified ? (
-                      <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
-                        <CheckmarkCircle01Icon className="h-4 w-4" />
-                        GD Verified
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setShowSettings(false); setShowVerification(true); }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                      >
-                        <UserCheck01Icon className="h-4 w-4" />
-                        Verify with GoodDollar
-                      </button>
-                    )}
-
-                    <div className="my-1 h-px bg-border" />
-
-                    <button
-                      type="button"
-                      onClick={() => { setShowSettings(false); onSignOut(); }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
-                    >
-                      <Logout01Icon className="h-4 w-4" />
-                      Sign out
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Notifications panel */}
-          {showNotifications && (
-            <>
-              <div className="fixed inset-0 z-[80]" onClick={() => setShowNotifications(false)} />
-              <div className="absolute right-0 top-11 z-[90] min-w-[280px] max-w-[320px] rounded-2xl border border-border bg-card shadow-lg">
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <span className="text-sm font-semibold text-foreground">Notifications</span>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={markAllAsRead}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-[300px] overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      No notifications yet
+                  {/* GoodDollar verification — show if not yet verified */}
+                  {isVerified ? (
+                    <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
+                      <CheckmarkCircle01Icon className="h-4 w-4" />
+                      GD Verified
                     </div>
                   ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={() => { if (!n.read) markAsRead(n.id); }}
-                        className={`flex w-full items-start gap-2.5 border-t border-border px-3 py-2.5 text-left transition hover:bg-accent ${n.read ? "" : "bg-accent/30"}`}
-                      >
-                        <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-primary"}`} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{n.title}</p>
-                          {n.body && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.body}</p>}
-                        </div>
-                      </button>
-                    ))
+                    <button
+                      type="button"
+                      onClick={() => { setShowSettings(false); setShowVerification(true); }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                    >
+                      <UserCheck01Icon className="h-4 w-4" />
+                      Verify with GoodDollar
+                    </button>
                   )}
+
+                  <div className="my-1 h-px bg-border" />
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowSettings(false); onSignOut(); }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
+                  >
+                    <Logout01Icon className="h-4 w-4" />
+                    Sign out
+                  </button>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Stats */}

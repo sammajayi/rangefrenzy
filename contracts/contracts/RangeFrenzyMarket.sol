@@ -155,7 +155,7 @@ contract RangeFrenzyMarket is
         for (uint256 i = 0; i < _rangeLabels.length; i++) {
             if (_upperBounds[i] < _lowerBounds[i])
                 revert UpperBoundBelowLower(i);
-            if (i > 0 && _lowerBounds[i] <= _upperBounds[i - 1])
+            if (i > 0 && _lowerBounds[i] < _upperBounds[i - 1])
                 revert RangesNotSortedOrOverlap(i);
 
             ranges.push(
@@ -211,9 +211,12 @@ contract RangeFrenzyMarket is
         actualOutcome = _actualOutcome;
 
         for (uint256 i = 0; i < ranges.length; i++) {
+            bool matchesUpper = (i == ranges.length - 1)
+                ? _actualOutcome <= ranges[i].upperBound
+                : _actualOutcome < ranges[i].upperBound;
             if (
                 _actualOutcome >= ranges[i].lowerBound &&
-                _actualOutcome <= ranges[i].upperBound
+                matchesUpper
             ) {
                 winningRangeIndexes.push(i);
             }

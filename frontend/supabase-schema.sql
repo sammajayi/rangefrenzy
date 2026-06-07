@@ -91,6 +91,47 @@ create policy "Service role can insert notifications" on public.notifications
 --   values ('market-images', 'market-images', true)
 --   on conflict (id) do nothing;
 
--- ─── 7. Helper: make a wallet an admin ───────────────────────────────────────
+-- ─── 7. Engagement features: profiles extensions ──────────────────────────────
+alter table public.profiles
+  add column if not exists current_streak   integer default 0 not null,
+  add column if not exists last_active_date date,
+  add column if not exists referred_by     text;
+
+-- ─── 8. Bonus earnings (unified across all engagement features) ───────────────
+create table if not exists public.bonus_earnings (
+  id             uuid default gen_random_uuid() primary key,
+  wallet_address text not null,
+  source         text not null
+    check (source in ('first_bet','streak_7','streak_30','referral_bonus','referral_reward','social_twitter','social_telegram')),
+  amount_gd      integer not null,
+  status         text default 'pending' not null check (status in ('pending','claimed')),
+  metadata       jsonb,
+  created_at     timestamptz default timezone('utc', now()) not null,
+  unique (wallet_address, source)
+);
+
+alter table public.bonus_earnings enable row level security;
+
+create policy "Users can read own bonus earnings" on public.bonus_earnings
+  for select using (wallet_address = current_setting('request.jwt.claims', true)::json->>'sub');
+
+create policy "Service role can write bonus earnings" on public.bonus_earnings
+  for all using (true);
+
+-- ─── 9. Referral relationships ──────────────────────────────────────────────
+create table if not exists public.referrals (
+  id               uuid default gen_random_uuid() primary key,
+  referrer_wallet  text not null,
+  referee_wallet   text not null unique,
+  bonus_credited   boolean default false not null,
+  created_at       timestamptz default timezone('utc', now()) not null
+);
+
+alter table public.referrals enable row level security;
+
+create policy "Service role only for referrals" on public.referrals
+  for all using (false);
+
+-- ─── 10. Helper: make a wallet an admin ──────────────────────────────────────
 -- Run manually when needed:
 -- update public.profiles set role = 'admin' where wallet_address = '0xYOUR_ADDRESS';

@@ -11,10 +11,9 @@
 
 import type { ConnectedWallet } from "@privy-io/react-auth";
 import { createWalletClient, custom } from "viem";
-import { celo, celoAlfajores } from "viem/chains";
+import { celo } from "viem/chains";
 
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID ?? "44787");
-export const ACTIVE_CHAIN = CHAIN_ID === 42220 ? celo : celoAlfajores;
+export const ACTIVE_CHAIN = celo;
 
 /**
  * Returns the Privy embedded wallet from the wallets array.
