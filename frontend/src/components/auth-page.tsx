@@ -354,7 +354,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "profile_setup"
               ? "Choose a username to get started"
-              : "Sign in to start predicting markets"}
+              : "Stake G$ on outcome ranges for crypto, sports, weather & more"}
           </p>
         </div>
 

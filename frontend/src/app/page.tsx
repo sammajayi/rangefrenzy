@@ -159,7 +159,7 @@ function HomeInner() {
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-6">
           <div className="w-full max-w-sm">
             <div className="mb-10 text-center">
-              <p className="text-sm text-muted-foreground">Welcome to RangeFrenzy</p>
+              <p className="text-sm text-muted-foreground">Range-based prediction market on Celo</p>
             </div>
 
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
@@ -216,7 +216,7 @@ function HomeInner() {
             </div>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              Verify your identity to start predicting markets
+              Verify your identity to start staking on outcome ranges
             </p>
           </div>
         </div>

@@ -122,7 +122,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             className="animate-splash-text text-sm font-medium tracking-wide text-white/40"
             style={{ animationDelay: "0.55s" }}
           >
-            Predict the range. Win the game.
+            Range-based prediction market on Celo
           </p>
         </div>
       </div>

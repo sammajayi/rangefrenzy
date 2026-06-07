@@ -57,7 +57,10 @@ export function SocialOnboardingModal({ onClose }: Props) {
           </div>
           <h2 className="font-display text-xl font-bold">Welcome to RangeFrenzy!</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Join our community and earn <span className="font-bold text-foreground">500 G$</span> for each action below.
+            Stake G$ on outcome ranges for crypto, sports, weather and more.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Earn <span className="font-bold text-foreground">500 G$</span> for each action below.
           </p>
         </div>
 

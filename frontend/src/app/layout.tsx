@@ -7,7 +7,7 @@ import RegisterSW from "@/components/register-sw";
 export const metadata: Metadata = {
   title: "RangeFrenzy",
   description:
-    "Range-based predictions on Celo. Predict the range. Win the game.",
+    "A range-based prediction market on Celo. Stake G$ on outcome ranges for crypto, sports, weather and local cultural/political events.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

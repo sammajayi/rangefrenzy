@@ -116,8 +116,8 @@ export function VerificationGate({ onVerified }: Props) {
           Verify your identity
         </h1>
         <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-          RangeFrenzy uses GoodDollar to verify you&apos;re a unique human. This is a
-          one-time step — you won&apos;t need to do it again.
+          RangeFrenzy is a range-based prediction market on Celo.
+          Stake G$ on outcome ranges for crypto, sports, weather and more.
         </p>
 
         {error && (
