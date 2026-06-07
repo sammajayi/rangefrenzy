@@ -50,6 +50,7 @@ const CATEGORY_GRADIENT: Record<string, string> = {
 export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const pendingTab = useAppStore((s) => s.pendingTab);
   const setPendingTab = useAppStore((s) => s.setPendingTab);
+  const claimBadgeActive = useAppStore((s) => s.claimBadgeActive);
   const [tab, setTab] = useState<Tab>(pendingTab ?? "play");
 
   useEffect(() => {
@@ -277,6 +278,9 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                 )}
                 <span className="relative">
                   <Icon className="h-5 w-5" />
+                  {item.id === "earn" && claimBadgeActive && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive" />
+                  )}
                 </span>
                 <span className="relative">{item.label}</span>
               </button>
@@ -450,7 +454,7 @@ function StakeModal({
   const [amount, setAmount] = useState("");
 
   const { summary, userStake, hasStaked } = useMarketContract(market.address, userAddress);
-  const { stake, reset, step, errorMsg, symbol, decimals } = useStake(market.address);
+  const { stake, reset, step, errorMsg, symbol, decimals, stakeTxHash } = useStake(market.address);
 
   const { data: balanceRaw } = useReadContract({
     address: STAKE_TOKEN_ADDRESS,
@@ -482,6 +486,27 @@ function StakeModal({
       }).catch(() => {});
     }
   }, [step, userAddress]);
+
+  useEffect(() => {
+    if (step !== "success" || !stakeTxHash || !amount || !userAddress) return;
+    (async () => {
+      const { data: marketRow } = await supabase
+        .from("markets")
+        .select("id")
+        .eq("contract_address", market.address.toLowerCase())
+        .maybeSingle();
+      if (!marketRow) return;
+      await supabase.from("stakes").insert({
+        wallet_address: userAddress.toLowerCase(),
+        market_id: marketRow.id,
+        range_index: selectedRange.index,
+        range_label: selectedRange.label || formatRangeLabel(selectedRange),
+        amount_gd: amount,
+        tx_hash: stakeTxHash,
+        status: "open",
+      });
+    })();
+  }, [step, stakeTxHash, amount, userAddress, market.address, selectedRange]);
 
   const handleStake = async () => {
     if (!amount || isNaN(parseFloat(amount))) return;

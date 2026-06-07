@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     if (!wallet) {
       return NextResponse.json({ error: "wallet param required" }, { status: 400 });
     }
-    return NextResponse.json({ referral_code: wallet, referral_link: `https://rangefrenzy.xyz/ref/${wallet}` });
+    return NextResponse.json({ referral_code: wallet, referral_link: `https://rangefrenzy.vercel.app/ref/${wallet}` });
   } catch (err) {
     console.error("referral GET error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

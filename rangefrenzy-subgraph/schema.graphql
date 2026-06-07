@@ -1,7 +1,94 @@
-type Upgraded @entity(immutable: true) {
-  id: Bytes!
-  implementation: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
+type User @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  username: String
+  totalStaked: BigDecimal!
+  totalPayout: BigDecimal!
+  totalBets: Int!
+  wins: Int!
+  losses: Int!
+  stakes: [Stake!]! @derivedFrom(field: "user")
+  transactions: [Transaction!]! @derivedFrom(field: "user")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Market @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  question: String!
+  category: Int!
+  categoryLabel: String
+  deadline: BigInt!
+  minStakeAmount: BigInt!
+  status: MarketStatus!
+  pool: BigDecimal!
+  totalStakers: Int!
+  stakeIds: [String!]!
+  winningRangeIndexes: [BigInt!]!
+  actualOutcome: BigInt
+  feePaid: BigDecimal
+  createdAt: BigInt!
+  closedAt: BigInt
+  resolvedAt: BigInt
+  cancelledAt: BigInt
+  cancelledReason: String
+  ranges: [MarketRange!]! @derivedFrom(field: "market")
+  stakes: [Stake!]! @derivedFrom(field: "market")
+}
+
+type MarketRange @entity(immutable: false) {
+  id: ID!
+  market: Market!
+  index: Int!
+  label: String!
+  lowerBound: BigInt!
+  upperBound: BigInt!
+  totalStaked: BigDecimal!
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+  CANCELLED
+}
+
+type Stake @entity(immutable: false) {
+  id: ID!
   transactionHash: Bytes!
+  user: User!
+  market: Market!
+  rangeIndex: Int!
+  rangeLabel: String!
+  amount: BigDecimal!
+  claimed: Boolean!
+  payout: BigDecimal
+  status: StakeStatus!
+  createdAt: BigInt!
+  claimedAt: BigInt
+}
+
+enum StakeStatus {
+  OPEN
+  WON
+  LOST
+  REFUNDED
+}
+
+enum TransactionType {
+  STAKE
+  CLAIM
+  REFUND
+}
+
+type Transaction @entity(immutable: false) {
+  id: ID!
+  transactionHash: Bytes!
+  user: User!
+  market: Market
+  type: TransactionType!
+  amount: BigDecimal!
+  timestamp: BigInt!
+  blockNumber: BigInt!
 }

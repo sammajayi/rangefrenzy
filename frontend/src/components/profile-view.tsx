@@ -227,14 +227,13 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
         {/* Wallet balances — live from chain */}
         <section className="mt-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Wallet balances</h3>
-          <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+            <div className="flex items-center gap-2 shrink-0">
               <img src="/icons/celo.png" alt="CELO" className="h-4 w-4 rounded-full shrink-0" />
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">CELO</span>
               <span className="text-xs font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
             </div>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
               <img src="/icons/goodollar.png" alt="G$" className="h-4 w-4 rounded-full shrink-0" />
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">G$</span>
               <span className="text-xs font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>

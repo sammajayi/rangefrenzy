@@ -17,7 +17,7 @@ interface NavbarProps {
 
 export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearchChange, onToggleFilter, username }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false)
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(username)
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(username)
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
@@ -104,18 +104,27 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
                 </div>
               ) : (
                 notifications.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => { if (!n.read) markAsRead(n.id); }}
-                    className={`flex w-full items-start gap-2.5 border-t border-border px-3 py-2.5 text-left transition hover:bg-accent ${n.read ? "" : "bg-accent/30"}`}
-                  >
-                    <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-primary"}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{n.title}</p>
-                      {n.body && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.body}</p>}
-                    </div>
-                  </button>
+                  <div key={n.id} className="group relative border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => { if (!n.read) markAsRead(n.id); }}
+                      className={`flex w-full items-start gap-2.5 px-3 py-2.5 pr-10 text-left transition hover:bg-accent ${n.read ? "" : "bg-accent/30"}`}
+                    >
+                      <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-primary"}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
+                        {n.body && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.body}</p>}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
+                      aria-label="Delete notification"
+                    >
+                      <Cancel01Icon className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))
               )}
             </div>

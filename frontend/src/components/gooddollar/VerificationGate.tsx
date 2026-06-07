@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useWallets } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { supabase, sendNotification } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { isAddressVerified, generateFVLink } from "@/lib/gooddollar";
 import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
@@ -27,6 +27,18 @@ export function VerificationGate({ onVerified }: Props) {
       .eq("wallet_address", address.toLowerCase());
     setVerified(true);
     onVerified();
+    const p = useAppStore.getState().profile;
+    if (p?.username) {
+      const { data: existing } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("username", p.username.toLowerCase())
+        .eq("title", "Welcome")
+        .maybeSingle();
+      if (!existing) {
+        await sendNotification(p.username, "Welcome", "Earn Daily G$, 10x it with RangeFrenzy");
+      }
+    }
   };
 
   // Auto-check on mount: if wallet is already whitelisted on-chain, skip gate.

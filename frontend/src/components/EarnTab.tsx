@@ -32,6 +32,7 @@ interface TaskState {
   actionHref?: string;
   onAction?: () => Promise<void>;
   actionLoading?: boolean;
+  comingSoon?: boolean;
 }
 
 type Platform = "twitter" | "telegram";
@@ -41,9 +42,12 @@ export function EarnTab({ address }: Props) {
   const setVerified = useAppStore((s) => s.setVerified);
   const setHasSkippedVerification = useAppStore((s) => s.setHasSkippedVerification);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const [bonuses, setBonuses] = useState<BonusEarning[]>([]);
   const [betCount, setBetCount] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [lastActiveDate, setLastActiveDate] = useState<string | null>(null);
   const [referredBy, setReferredBy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [streakLoading, setStreakLoading] = useState(false);
@@ -51,24 +55,27 @@ export function EarnTab({ address }: Props) {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
+  const checkedInToday = lastActiveDate === todayStr;
+
   const fetchData = useCallback(async () => {
     const [bonusRes, betRes, profileRes] = await Promise.all([
       supabase.from("bonus_earnings").select("*").eq("wallet_address", address.toLowerCase()),
       supabase.from("stakes").select("id", { count: "exact", head: true }).eq("wallet_address", address.toLowerCase()),
-      supabase.from("profiles").select("current_streak, referred_by").eq("wallet_address", address.toLowerCase()).maybeSingle(),
+      supabase.from("profiles").select("current_streak, last_active_date, referred_by").eq("wallet_address", address.toLowerCase()).maybeSingle(),
     ]);
     if (bonusRes.data) setBonuses(bonusRes.data as BonusEarning[]);
     setBetCount(betRes.count ?? 0);
     if (profileRes.data) {
       setStreak((profileRes.data as any).current_streak ?? 0);
+      setLastActiveDate((profileRes.data as any).last_active_date ?? null);
       setReferredBy((profileRes.data as any).referred_by ?? null);
     }
     setLoading(false);
   }, [address]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isVerified) fetchData();
+  }, [fetchData, isVerified]);
 
   const hasBonus = (source: BonusSource) => bonuses.some((b) => b.source === source);
 
@@ -101,13 +108,22 @@ export function EarnTab({ address }: Props) {
         body: JSON.stringify({ wallet_address: address.toLowerCase() }),
       });
       const data = await res.json();
-      setStreak(data.streak);
-      if (data.bonuses_credited?.length) {
-        setStreakMsg(`🎉 +${data.bonuses_credited.length} bonus${data.bonuses_credited.length > 1 ? "es" : ""} earned!`);
+      if (data.error) {
+        setStreakMsg("Something went wrong");
       } else {
-        setStreakMsg(data.streak > 1 ? `🔥 ${data.streak}-day streak!` : "Day 1 — let's go!");
+        setStreak(data.streak);
+        setLastActiveDate(todayStr);
+        if (data.bonuses_credited?.length) {
+          setStreakMsg(`+${data.bonuses_credited.length} bonus${data.bonuses_credited.length > 1 ? "es" : ""} earned!`);
+        } else {
+          setStreakMsg(data.streak > 1 ? `${data.streak}-day streak!` : "Day 1 — let's go!");
+        }
+        // Refresh bonus data but keep streak from API response
+        const [bonusRes] = await Promise.all([
+          supabase.from("bonus_earnings").select("*").eq("wallet_address", address.toLowerCase()),
+        ]);
+        if (bonusRes.data) setBonuses(bonusRes.data as BonusEarning[]);
       }
-      await fetchData();
     } catch {
       setStreakMsg("Something went wrong");
     } finally {
@@ -142,20 +158,13 @@ export function EarnTab({ address }: Props) {
     {
       id: "referral",
       source: "referral_bonus",
-      label: "Referral Mining",
+      label: "Referral",
       description: referredBy
         ? `You were referred by ${referredBy.slice(0, 6)}…`
         : "Share your link and earn when friends place their first bet",
       reward: BONUS_AMOUNTS.referral_bonus,
       status: hasBonus("referral_bonus") || hasBonus("referral_reward") ? "completed" : "available",
-      actionLabel: referredBy ? undefined : "Copy Link",
-      onAction: async () => {
-        const link = `https://rangefrenzy.xyz/ref/${address}`;
-        await navigator.clipboard.writeText(link);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      actionLoading: false,
+      comingSoon: true,
     },
     {
       id: "social-twitter",
@@ -166,24 +175,7 @@ export function EarnTab({ address }: Props) {
         : "Follow @RangeFrenzy on X and confirm",
       reward: BONUS_AMOUNTS.social_twitter,
       status: hasBonus("social_twitter") ? "completed" : "available",
-      actionLabel: hasBonus("social_twitter") ? undefined : "Follow & Confirm",
-      actionHref: "https://x.com/rangefrenzy",
-      onAction: () => handleSocialConfirm("twitter"),
-      actionLoading: actionLoading["social_twitter"] ?? false,
-    },
-    {
-      id: "social-telegram",
-      source: "social_telegram",
-      label: "Join Telegram",
-      description: hasBonus("social_telegram")
-        ? "Joined confirmed"
-        : "Join the RangeFrenzy Telegram and confirm",
-      reward: BONUS_AMOUNTS.social_telegram,
-      status: hasBonus("social_telegram") ? "completed" : "available",
-      actionLabel: hasBonus("social_telegram") ? undefined : "Join & Confirm",
-      actionHref: "https://t.me/rangefrenzy",
-      onAction: () => handleSocialConfirm("telegram"),
-      actionLoading: actionLoading["social_telegram"] ?? false,
+      comingSoon: true,
     },
   ];
 
@@ -265,7 +257,7 @@ export function EarnTab({ address }: Props) {
         <button
           type="button"
           onClick={handleDailyCheckIn}
-          disabled={streakLoading}
+          disabled={checkedInToday || streakLoading}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600 disabled:opacity-60"
         >
           {streakLoading ? (
@@ -273,6 +265,8 @@ export function EarnTab({ address }: Props) {
               <Loading03Icon className="h-4 w-4 animate-spin" />
               Checking in…
             </span>
+          ) : checkedInToday ? (
+            "✓ Checked In"
           ) : (
             "☕ Check In"
           )}
@@ -354,8 +348,17 @@ function TaskCard({ task }: { task: TaskState }) {
         </div>
       )}
 
+      {/* Coming Soon badge */}
+      {!isDone && task.comingSoon && (
+        <div className="mt-3">
+          <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            Coming Soon
+          </span>
+        </div>
+      )}
+
       {/* Action button */}
-      {!isDone && task.actionLabel && (
+      {!isDone && !task.comingSoon && task.actionLabel && (
         <div className="mt-3 flex gap-2">
           {task.actionHref && (
             <Button

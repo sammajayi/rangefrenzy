@@ -6,6 +6,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function asProfile(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    current_streak: typeof r.current_streak === "number" ? r.current_streak : 0,
+    last_active_date: typeof r.last_active_date === "string" ? r.last_active_date : null,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { wallet_address } = await req.json();
@@ -17,34 +26,55 @@ export async function POST(req: NextRequest) {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("current_streak, last_active_date")
-      .eq("wallet_address", addr)
-      .maybeSingle();
-
-    let newStreak = 1;
-    const lastDate = profile?.last_active_date;
-    const lastStr = lastDate ? lastDate.slice(0, 10) : null;
-
-    if (lastStr === todayStr) {
-      newStreak = profile?.current_streak ?? 1;
-    } else if (lastStr) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      newStreak = lastStr === yesterdayStr ? (profile?.current_streak ?? 0) + 1 : 1;
+    let currentStreak = 0;
+    let lastDate: string | null = null;
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("current_streak, last_active_date")
+        .eq("wallet_address", addr)
+        .maybeSingle();
+      const p = asProfile(data);
+      if (p) {
+        currentStreak = p.current_streak;
+        lastDate = p.last_active_date?.slice(0, 10) ?? null;
+      }
+    } catch {
+      // columns may not exist yet — start from scratch
     }
 
-    await supabase
-      .from("profiles")
-      .update({ current_streak: newStreak, last_active_date: todayStr })
-      .eq("wallet_address", addr);
+    let newStreak = 1;
+    if (lastDate === todayStr) {
+      newStreak = currentStreak || 1;
+    } else if (lastDate) {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      newStreak = lastDate === yesterday.toISOString().slice(0, 10) ? currentStreak + 1 : 1;
+    }
+
+    // Best-effort update — column may not exist
+    try {
+      await supabase
+        .from("profiles")
+        .update({ current_streak: newStreak })
+        .eq("wallet_address", addr);
+    } catch (e) {
+      console.warn("streak update skipped (columns missing?):", e);
+    }
+
+    try {
+      await supabase
+        .from("profiles")
+        .update({ last_active_date: todayStr })
+        .eq("wallet_address", addr);
+    } catch {
+      // last_active_date column may not exist
+    }
 
     const bonusesCredited: string[] = [];
-    const milestones: { source: "streak_7" | "streak_30"; amount: number; streak: number }[] = [
-      { source: "streak_7", amount: 25, streak: 7 },
-      { source: "streak_30", amount: 100, streak: 30 },
+    const milestones = [
+      { source: "streak_7" as const, amount: 25, streak: 7 },
+      { source: "streak_30" as const, amount: 100, streak: 30 },
     ];
 
     for (const ms of milestones) {

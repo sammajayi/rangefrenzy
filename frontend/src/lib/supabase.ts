@@ -8,6 +8,7 @@ const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const AVATAR_BUCKET = "avatars";
+const MARKET_IMAGES_BUCKET = "market-images";
 
 export async function ensureAvatarBucket() {
   const { data: buckets } = await supabase.storage.listBuckets();
@@ -77,6 +78,20 @@ export type Stake = {
   created_at: string;
   market?: Pick<Market, "title" | "asset" | "category" | "deadline" | "status" | "winning_value">;
 };
+
+export async function ensureMarketImagesBucket() {
+  const { data: buckets } = await supabase.storage.listBuckets();
+  const exists = buckets?.find((b) => b.name === MARKET_IMAGES_BUCKET);
+  if (!exists) {
+    await supabase.storage.createBucket(MARKET_IMAGES_BUCKET, {
+      public: true,
+    });
+  } else if (!exists.public) {
+    await supabase.storage.updateBucket(MARKET_IMAGES_BUCKET, {
+      public: true,
+    });
+  }
+}
 
 export function getServiceClient() {
   return createClient(

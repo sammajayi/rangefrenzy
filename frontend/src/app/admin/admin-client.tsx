@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, sendNotification } from "@/lib/supabase";
 import type { Market, Profile } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ import {
 import { Link } from "wouter";
 import { useWallets } from "@privy-io/react-auth";
 
-type AdminTab = "markets" | "expired" | "create" | "users";
+type AdminTab = "markets" | "expired" | "create" | "users" | "notify";
 type RangeInput = { label: string; min: string; max: string };
 
 const USERS_PER_PAGE = 10;
@@ -129,6 +129,8 @@ export default function AdminPage() {
   );
 
   async function uploadMarketImage(marketId: string, file: File): Promise<string> {
+    const { ensureMarketImagesBucket } = await import("@/lib/supabase");
+    await ensureMarketImagesBucket();
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `markets/${marketId}.${ext}`;
     await supabase.storage.from("market-images").upload(path, file, { upsert: true });
@@ -369,6 +371,7 @@ export default function AdminPage() {
     { id: "expired", label: `Expired${expiredMarkets.length ? ` (${expiredMarkets.length})` : ""}` },
     { id: "create", label: "Create" },
     { id: "users", label: "Users" },
+    { id: "notify", label: "Notify" },
   ];
 
   return (
@@ -680,6 +683,9 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {/* ── NOTIFY ── */}
+        {tab === "notify" && <NotifySection />}
       </div>
 
       {/* ── RESOLVE MODAL ── */}
@@ -776,6 +782,54 @@ function MarketList({
         </div>
       ))}
     </div>
+  );
+}
+
+// ── Notify ────────────────────────────────────────────────────────────────────
+function NotifySection() {
+  const [username, setUsername] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !title.trim()) return;
+    setSending(true);
+    setMsg(null);
+    try {
+
+      const usernames = username.split(",").map((u) => u.trim()).filter(Boolean);
+      for (const u of usernames) {
+        await sendNotification(u, title, body || undefined);
+      }
+      setMsg(`Sent to ${usernames.length} user${usernames.length > 1 ? "s" : ""}`);
+      setTitle("");
+      setBody("");
+    } catch (err) {
+      setMsg(`Error: ${(err as Error).message}`);
+    }
+    setSending(false);
+  };
+
+  return (
+    <form onSubmit={handleSend} className="space-y-4">
+      <Field label="Username(s)">
+        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="sammajayi, ekenepaul" className={inputCls} />
+        <p className="mt-1 text-[11px] text-muted-foreground">Separate multiple usernames with commas</p>
+      </Field>
+      <Field label="Title">
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Notification title" className={inputCls} required />
+      </Field>
+      <Field label="Body (optional)">
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Notification body text" rows={3} className={inputCls + " resize-none pt-2"} />
+      </Field>
+      {msg && <p className={cn("text-sm font-medium", msg.startsWith("Sent") ? "text-emerald-600" : "text-destructive")}>{msg}</p>}
+      <Button type="submit" className="w-full h-12 cursor-pointer font-semibold" disabled={sending}>
+        {sending ? "Sending…" : "Send notification"}
+      </Button>
+    </form>
   );
 }
 

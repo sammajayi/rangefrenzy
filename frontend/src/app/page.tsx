@@ -1,14 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useCallback } from "react";
+import { Suspense, useEffect, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
 import { useAppStore } from "@/lib/store";
-import { usePrivy, useLogout } from "@privy-io/react-auth";
-import { supabase } from "@/lib/supabase";
-import { isAddressVerified } from "@/lib/gooddollar";
+import { usePrivy, useLogout, useWallets } from "@privy-io/react-auth";
+import { supabase, sendNotification } from "@/lib/supabase";
+import { isAddressVerified, generateFVLink } from "@/lib/gooddollar";
+import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
+import { Copy01Icon } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function HomeInner() {
   const phase = useAppStore((s) => s.phase);
@@ -16,19 +20,23 @@ function HomeInner() {
   const profile = useAppStore((s) => s.profile);
   const isVerified = useAppStore((s) => s.isVerified);
   const setPhase = useAppStore((s) => s.setPhase);
-  const setAuthenticated = useAppStore((s) => s.setAuthenticated);
+  const setAddress = useAppStore((s) => s.setAddress);
+  const setProfile = useAppStore((s) => s.setProfile);
   const setVerified = useAppStore((s) => s.setVerified);
   const setRole = useAppStore((s) => s.setRole);
   const setHasSeenOnboarding = useAppStore((s) => s.setHasSeenOnboarding);
   const setPendingTab = useAppStore((s) => s.setPendingTab);
   const signOut = useAppStore((s) => s.signOut);
   const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
   const { logout } = useLogout();
   const searchParams = useSearchParams();
   const isGdCallback = searchParams.get("gd_verified") === "true";
+  const [copied, setCopied] = useState(false);
 
   // Check on-chain first, then update Supabase + store.
-  const syncVerification = useCallback(async (addr: string) => {
+  // Returns true if whitelisted.
+  const syncVerification = useCallback(async (addr: string): Promise<boolean> => {
     try {
       const verified = await isAddressVerified(addr);
       if (verified) {
@@ -38,13 +46,14 @@ function HomeInner() {
           .eq("wallet_address", addr.toLowerCase());
         setVerified(true);
       }
+      return verified;
     } catch {
-      // on-chain read failure — stay unverified until next check
+      return false;
     }
   }, [setVerified]);
 
   // Handle GoodDollar verification callback (?gd_verified=true)
-  // Skips splash, redirects to Earn tab, checks on-chain in background.
+  // Skips splash, checks on-chain in background.
   useEffect(() => {
     if (!isGdCallback) return;
     if (!address || isVerified) return;
@@ -55,10 +64,12 @@ function HomeInner() {
     window.history.replaceState({}, "", window.location.pathname);
   }, [isGdCallback, address, isVerified, setPhase, setPendingTab, syncVerification]);
 
-  // Skip auth page when returning user has a valid session
-  const handleSplashFinish = () => {
+  // Skip auth page when returning user has a valid session.
+  // Also verify on-chain status before routing — unwhitelisted → verify phase.
+  const handleSplashFinish = async () => {
     if (address && profile && ready && authenticated) {
-      setPhase("home");
+      const verified = await syncVerification(address);
+      setPhase(verified ? "home" : "verify");
     } else {
       setPhase("auth");
     }
@@ -73,14 +84,38 @@ function HomeInner() {
     signOut();
   };
 
-  // Sync profile into store on login.
-  // On-chain verification is checked separately (never trust DB flag).
-  const handleAuthenticated = (addr: string, profile: import("@/lib/supabase").Profile | null) => {
-    setAuthenticated(addr, profile);
-    if (profile) {
-      syncVerification(addr);
-      if (profile.has_seen_onboarding) setHasSeenOnboarding(true);
-      if (profile.role) setRole(profile.role as "user" | "admin");
+  // On login/signup: check whitelist before routing.
+  // Not whitelisted → verify phase (wallet card). Whitelisted → home.
+  const handleAuthenticated = async (addr: string, p: import("@/lib/supabase").Profile | null) => {
+    setAddress(addr);
+    setProfile(p);
+
+    if (p) {
+      if (p.has_seen_onboarding) setHasSeenOnboarding(true);
+      if (p.role) setRole(p.role as "user" | "admin");
+
+      const verified = await syncVerification(addr);
+      if (verified) {
+        setPhase("home");
+      } else {
+        setPhase("verify");
+        // Auto-notification for unverified users (one-time)
+        const { data: existing } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("username", p.username.toLowerCase())
+          .eq("title", "Verify on GoodDollar")
+          .maybeSingle();
+        if (!existing) {
+          await sendNotification(
+            p.username,
+            "Verify on GoodDollar",
+            "earn daily g$, get rewarded",
+          );
+        }
+      }
+    } else {
+      setPhase("home");
     }
   };
 
@@ -90,10 +125,102 @@ function HomeInner() {
     syncVerification(address);
   }, [address, isVerified, syncVerification]);
 
+  const [verifyLoading, setVerifyLoading] = useState(false);
+
+  const handleVerify = async () => {
+    setVerifyLoading(true);
+    try {
+      const already = await isAddressVerified(address);
+      if (already) {
+        setVerified(true);
+        setPhase("home");
+        return;
+      }
+      const viemWalletClient = await buildEmbeddedViemClient(wallets, address);
+      const callbackUrl = `${window.location.origin}?gd_verified=true`;
+      const link = await generateFVLink(viemWalletClient, callbackUrl);
+      window.location.href = link;
+    } catch {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleCopyAddress = () => {
+    void navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <>
       {phase === "splash" && !isGdCallback && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
+      {phase === "verify" && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-6">
+          <div className="w-full max-w-sm">
+            <div className="mb-10 text-center">
+              <p className="text-sm text-muted-foreground">Welcome to RangeFrenzy</p>
+            </div>
+
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="font-display mb-1 text-xl font-bold">Your Wallet</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Copy your wallet address to receive $CELO from the admin
+              </p>
+
+              <div className="flex items-center gap-2 rounded-xl bg-muted px-4 py-3">
+                <code className="flex-1 truncate text-sm font-mono">{address}</code>
+                <button
+                  type="button"
+                  onClick={handleCopyAddress}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg transition shrink-0",
+                    copied
+                      ? "text-[#07955F]"
+                      : "text-muted-foreground hover:bg-background hover:text-foreground",
+                  )}
+                  aria-label="Copy wallet address"
+                >
+                  <Copy01Icon className="h-4 w-4" />
+                </button>
+              </div>
+              {copied && (
+                <p className="mt-1.5 text-xs text-[#07955F]">Copied!</p>
+              )}
+
+              <Button
+                className="mt-5 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
+                size="lg"
+                onClick={() => window.open("https://t.me/rangefrenzy", "_blank")}
+              >
+                Get Gas
+              </Button>
+
+              <Button
+                type="button"
+                className="mt-4 w-full rounded-xl"
+                size="lg"
+                variant="outline"
+                onClick={handleVerify}
+                disabled={verifyLoading}
+              >
+                {verifyLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-foreground" />
+                    Connecting…
+                  </span>
+                ) : (
+                  "Verify Identity"
+                )}
+              </Button>
+            </div>
+
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              Verify your identity to start predicting markets
+            </p>
+          </div>
+        </div>
+      )}
       {phase === "home" && (
         <RangeFrenzyHome
           address={address}

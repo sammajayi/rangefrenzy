@@ -78,6 +78,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         address: state.address,
         profile: state.profile,
+        isVerified: state.isVerified,
         hasSkippedVerification: state.hasSkippedVerification,
         hasSeenOnboarding: state.hasSeenOnboarding,
         role: state.role,
