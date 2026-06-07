@@ -80,16 +80,10 @@ export type Stake = {
 };
 
 export async function ensureMarketImagesBucket() {
-  const { data: buckets } = await supabase.storage.listBuckets();
-  const exists = buckets?.find((b) => b.name === MARKET_IMAGES_BUCKET);
-  if (!exists) {
-    await supabase.storage.createBucket(MARKET_IMAGES_BUCKET, {
-      public: true,
-    });
-  } else if (!exists.public) {
-    await supabase.storage.updateBucket(MARKET_IMAGES_BUCKET, {
-      public: true,
-    });
+  const res = await fetch("/api/ensure-bucket", { method: "POST" });
+  if (!res.ok) {
+    const { error } = await res.json();
+    throw new Error(error ?? "Failed to ensure storage bucket");
   }
 }
 
