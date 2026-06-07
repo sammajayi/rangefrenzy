@@ -1,0 +1,8 @@
+{
+  "celo": {
+    "ERC1967Proxy": {
+      "address": "0x1bD2131B78E40928d7A0aB47425492F80262ddD0",
+      "startBlock": 68677990
+    }
+  }
+}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWallets } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { isAddressVerified, generateFVLink } from "@/lib/gooddollar";
-import { getEmbeddedWallet, buildEmbeddedViemClient } from "@/lib/privy-wallet";
+import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
 
 interface Props {
   onVerified: () => void;
@@ -17,6 +17,7 @@ export function VerificationGate({ onVerified }: Props) {
   const address = useAppStore((s) => s.address);
   const setVerified = useAppStore((s) => s.setVerified);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const markVerified = async () => {
@@ -27,6 +28,35 @@ export function VerificationGate({ onVerified }: Props) {
     setVerified(true);
     onVerified();
   };
+
+  // Auto-check on mount: if wallet is already whitelisted on-chain, skip gate.
+  // Retries up to 5 times to account for on-chain propagation delay after FV.
+  useEffect(() => {
+    if (!address) return;
+    let cancelled = false;
+    const check = async (attempt: number) => {
+      try {
+        const already = await isAddressVerified(address);
+        if (already && !cancelled) {
+          await markVerified();
+          return;
+        }
+        if (attempt < 5 && !cancelled) {
+          setTimeout(() => check(attempt + 1), 2000);
+        } else if (!cancelled) {
+          setChecking(false);
+        }
+      } catch {
+        if (attempt < 5 && !cancelled) {
+          setTimeout(() => check(attempt + 1), 2000);
+        } else if (!cancelled) {
+          setChecking(false);
+        }
+      }
+    };
+    check(0);
+    return () => { cancelled = true; };
+  }, [address]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleVerify = async () => {
     setLoading(true);
@@ -49,6 +79,17 @@ export function VerificationGate({ onVerified }: Props) {
       setLoading(false);
     }
   };
+
+  // While auto-checking on-chain, show a minimal loading state
+  if (checking) {
+    return (
+      <div className="flex flex-col items-center px-6 pt-16">
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-[#07955F]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center px-6 pt-16">

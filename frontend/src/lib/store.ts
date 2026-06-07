@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import type { Profile } from "@/lib/supabase";
 
 export type Phase = "splash" | "auth" | "verify" | "home";
+export type Tab = "play" | "board" | "earn" | "profile";
 
 interface AppState {
   phase: Phase;
@@ -15,6 +16,7 @@ interface AppState {
   hasSeenOnboarding: boolean;
   claimBadgeActive: boolean;
   role: "user" | "admin";
+  pendingTab: Tab | null;
 
   setPhase: (phase: Phase) => void;
   setAddress: (address: string) => void;
@@ -25,6 +27,7 @@ interface AppState {
   setHasSeenOnboarding: (seen: boolean) => void;
   setClaimBadge: (active: boolean) => void;
   setRole: (role: "user" | "admin") => void;
+  setPendingTab: (tab: Tab | null) => void;
   signOut: () => void;
 }
 
@@ -39,6 +42,7 @@ export const useAppStore = create<AppState>()(
       hasSeenOnboarding: false,
       claimBadgeActive: false,
       role: "user",
+      pendingTab: null,
 
       setPhase: (phase) => set({ phase }),
       setAddress: (address) => set({ address }),
@@ -50,6 +54,7 @@ export const useAppStore = create<AppState>()(
       setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
       setClaimBadge: (claimBadgeActive) => set({ claimBadgeActive }),
       setRole: (role) => set({ role }),
+      setPendingTab: (pendingTab) => set({ pendingTab }),
 
       signOut: () => {
         if (typeof window !== "undefined") {
@@ -64,6 +69,7 @@ export const useAppStore = create<AppState>()(
           hasSeenOnboarding: false,
           claimBadgeActive: false,
           role: "user",
+          pendingTab: null,
         });
       },
     }),
@@ -72,7 +78,6 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         address: state.address,
         profile: state.profile,
-        isVerified: state.isVerified,
         hasSkippedVerification: state.hasSkippedVerification,
         hasSeenOnboarding: state.hasSeenOnboarding,
         role: state.role,

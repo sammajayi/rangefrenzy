@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
 import { RangeFrenzyHome } from "@/components/pickoo-minipay-home";
 import { useAppStore } from "@/lib/store";
-import { useLogout } from "@privy-io/react-auth";
+import { usePrivy, useLogout } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
 import { isAddressVerified } from "@/lib/gooddollar";
 
@@ -20,35 +20,49 @@ function HomeInner() {
   const setVerified = useAppStore((s) => s.setVerified);
   const setRole = useAppStore((s) => s.setRole);
   const setHasSeenOnboarding = useAppStore((s) => s.setHasSeenOnboarding);
+  const setPendingTab = useAppStore((s) => s.setPendingTab);
   const signOut = useAppStore((s) => s.signOut);
+  const { ready, authenticated } = usePrivy();
   const { logout } = useLogout();
   const searchParams = useSearchParams();
+  const isGdCallback = searchParams.get("gd_verified") === "true";
+
+  // Check on-chain first, then update Supabase + store.
+  const syncVerification = useCallback(async (addr: string) => {
+    try {
+      const verified = await isAddressVerified(addr);
+      if (verified) {
+        await supabase
+          .from("profiles")
+          .update({ is_whitelisted_gd: true })
+          .eq("wallet_address", addr.toLowerCase());
+        setVerified(true);
+      }
+    } catch {
+      // on-chain read failure — stay unverified until next check
+    }
+  }, [setVerified]);
 
   // Handle GoodDollar verification callback (?gd_verified=true)
+  // Skips splash, redirects to Earn tab, checks on-chain in background.
   useEffect(() => {
-    if (searchParams.get("gd_verified") !== "true") return;
+    if (!isGdCallback) return;
     if (!address || isVerified) return;
 
-    const confirm = async () => {
-      try {
-        const verified = await isAddressVerified(address);
-        if (verified) {
-          await supabase
-            .from("profiles")
-            .update({ is_whitelisted_gd: true })
-            .eq("wallet_address", address.toLowerCase());
-          setVerified(true);
-          setPhase("home");
-        }
-      } catch {
-        // ignore
-      }
-    };
-    confirm();
+    setPendingTab("earn");
+    setPhase("home");
+    syncVerification(address);
     window.history.replaceState({}, "", window.location.pathname);
-  }, [searchParams, address, isVerified, setVerified, setPhase]);
+  }, [isGdCallback, address, isVerified, setPhase, setPendingTab, syncVerification]);
 
-  const handleSplashFinish = () => setPhase("auth");
+  // Skip auth page when returning user has a valid session
+  const handleSplashFinish = () => {
+    if (address && profile && ready && authenticated) {
+      setPhase("home");
+    } else {
+      setPhase("auth");
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -59,19 +73,26 @@ function HomeInner() {
     signOut();
   };
 
-  // Sync profile fields into store on login
+  // Sync profile into store on login.
+  // On-chain verification is checked separately (never trust DB flag).
   const handleAuthenticated = (addr: string, profile: import("@/lib/supabase").Profile | null) => {
     setAuthenticated(addr, profile);
     if (profile) {
-      if (profile.is_whitelisted_gd) setVerified(true);
+      syncVerification(addr);
       if (profile.has_seen_onboarding) setHasSeenOnboarding(true);
       if (profile.role) setRole(profile.role as "user" | "admin");
     }
   };
 
+  // Catch-all: sync on-chain verification state on every app load.
+  useEffect(() => {
+    if (!address || isVerified) return;
+    syncVerification(address);
+  }, [address, isVerified, syncVerification]);
+
   return (
     <>
-      {phase === "splash" && <SplashScreen onFinish={handleSplashFinish} />}
+      {phase === "splash" && !isGdCallback && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "home" && (
         <RangeFrenzyHome

@@ -48,7 +48,13 @@ const CATEGORY_GRADIENT: Record<string, string> = {
 };
 
 export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
-  const [tab, setTab] = useState<Tab>("play");
+  const pendingTab = useAppStore((s) => s.pendingTab);
+  const setPendingTab = useAppStore((s) => s.setPendingTab);
+  const [tab, setTab] = useState<Tab>(pendingTab ?? "play");
+
+  useEffect(() => {
+    if (pendingTab) setPendingTab(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [boardSub, setBoardSub] = useState<BoardSub>("leaderboard");
   const [selected, setSelected] = useState<{
     market: OnChainMarket;
