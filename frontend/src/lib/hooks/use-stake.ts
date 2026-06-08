@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import {
+  useAccount, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt
+} from "wagmi";
+import { celo } from "viem/chains";
 import { rangeFrenzyMarketAbi, erc20Abi, STAKE_TOKEN_ADDRESS } from "@/lib/contracts";
 
 export type StakeStep = "idle" | "approving" | "staking" | "success" | "error";
 
 export function useStake(marketAddress: `0x${string}` | undefined) {
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const [step, setStep] = useState<StakeStep>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -55,6 +59,10 @@ export function useStake(marketAddress: `0x${string}` | undefined) {
     setErrorMsg(null);
 
     try {
+      // Ensure wallet is on Celo before proceeding
+      if (chainId && chainId !== celo.id) {
+        await switchChainAsync({ chainId: celo.id });
+      }
       // Step 1: approve if needed
       const currentAllowance = (allowance ?? 0n) as bigint;
       if (currentAllowance < amount) {
