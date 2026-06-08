@@ -1,7 +1,8 @@
 "use client";
 
-import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider, createConfig } from "@privy-io/wagmi";
+import { useEffect } from "react";
+import { PrivyProvider, useWallets } from "@privy-io/react-auth";
+import { WagmiProvider, createConfig, useSetActiveWallet } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { celo } from "viem/chains";
 import { http } from "viem";
@@ -14,6 +15,19 @@ const wagmiConfig = createConfig({
 });
 
 const queryClient = new QueryClient();
+
+function PrivyWagmiConnector({ children }: { children: React.ReactNode }) {
+  const { wallets } = useWallets();
+  const { setActiveWallet } = useSetActiveWallet();
+
+  useEffect(() => {
+    if (wallets.length === 0) return;
+    const embedded = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
+    setActiveWallet(embedded);
+  }, [wallets, setActiveWallet]);
+
+  return <>{children}</>;
+}
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -31,7 +45,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          {children}
+          <PrivyWagmiConnector>{children}</PrivyWagmiConnector>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
