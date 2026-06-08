@@ -274,7 +274,7 @@ export default function AdminPage() {
       if (contractAddress) {
         const { createWalletClient, createPublicClient, custom, http, parseUnits } = await import("viem");
         const { celo } = await import("viem/chains");
-        const { MARKET_ABI } = await import("@/lib/contracts");
+        const { marketFactoryAbi, FACTORY_ADDRESS } = await import("@/lib/contracts");
 
         const chain = celo;
         const rpc = "https://forno.celo.org";
@@ -290,10 +290,10 @@ export default function AdminPage() {
         // outcome scaled to 18 decimals (e.g. 3.5% → 3.5e18)
         const outcomeWei = parseUnits(resolveValue, 18);
         const hash = await walletClient.writeContract({
-          address: contractAddress as `0x${string}`,
-          abi: MARKET_ABI,
-          functionName: "resolve",
-          args: [outcomeWei],
+          address: FACTORY_ADDRESS as `0x${string}`,
+          abi: marketFactoryAbi,
+          functionName: "resolveMarket",
+          args: [contractAddress as `0x${string}`, outcomeWei],
         });
         await publicClient.waitForTransactionReceipt({ hash });
       }

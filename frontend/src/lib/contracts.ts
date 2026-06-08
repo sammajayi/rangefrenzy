@@ -273,6 +273,16 @@ export const marketFactoryAbi = [
     inputs: [],
     outputs: [{ type: "address" }],
   },
+  {
+    name: "resolveMarket",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_market", type: "address" },
+      { name: "_outcome", type: "uint256" },
+    ],
+    outputs: [],
+  },
 ] as const;
 
 // MarketStatus mirrors the on-chain enum

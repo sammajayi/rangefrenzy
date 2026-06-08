@@ -156,10 +156,10 @@ function HomeInner() {
       {phase === "splash" && !isGdCallback && <SplashScreen onFinish={handleSplashFinish} />}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "verify" && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background p-6">
+        <div className="fixed inset-0 z-90 flex items-center justify-center bg-background p-6">
           <div className="w-full max-w-sm">
             <div className="mb-10 text-center">
-              <p className="text-sm text-muted-foreground">Range-based prediction market on Celo</p>
+              <p className="text-sm text-muted-foreground">Verify your Identity to proceed</p>
             </div>
 
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">

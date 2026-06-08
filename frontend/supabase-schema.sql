@@ -38,8 +38,8 @@ create table if not exists public.stakes (
 
 alter table public.stakes enable row level security;
 
-create policy "Users can read their own stakes" on public.stakes
-  for select using (wallet_address = current_setting('request.jwt.claims', true)::json->>'sub');
+create policy "Anyone can read stakes" on public.stakes
+  for select using (true);
 
 create policy "Service role can write stakes" on public.stakes
   for all using (true);   -- API route uses service role key
