@@ -10,9 +10,10 @@ import { usePrivy, useLogout, useWallets } from "@privy-io/react-auth";
 import { supabase, sendNotification } from "@/lib/supabase";
 import { isAddressVerified, generateFVLink } from "@/lib/gooddollar";
 import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
-import { Copy01Icon } from "hugeicons-react";
+import { Copy01Icon, Setting07Icon, Logout01Icon, Upload01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 
 function HomeInner() {
   const phase = useAppStore((s) => s.phase);
@@ -33,6 +34,7 @@ function HomeInner() {
   const searchParams = useSearchParams();
   const isGdCallback = searchParams.get("gd_verified") === "true";
   const [copied, setCopied] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Check on-chain first, then update Supabase + store.
   // Returns true if whitelisted.
@@ -157,15 +159,51 @@ function HomeInner() {
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "verify" && (
         <div className="fixed inset-0 z-90 flex items-center justify-center bg-background p-6">
-          <div className="w-full max-w-sm">
-            <div className="mb-10 text-center">
-              <p className="text-sm text-muted-foreground">Verify your Identity to proceed</p>
+          {/* Top bar: logo left, settings right */}
+          <div className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-4 py-3">
+            <Logo size={36} />
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-full border-border"
+                onClick={() => setShowSettings((v) => !v)}
+                aria-label="Settings"
+              >
+                <Setting07Icon className="h-4 w-4" />
+              </Button>
+              {showSettings && (
+                <>
+                  <div className="fixed inset-0 z-100" onClick={() => setShowSettings(false)} />
+                  <div className="absolute right-0 top-11 z-110 min-w-45 rounded-2xl border border-border bg-card p-1 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => { setShowSettings(false); handleCopyAddress(); }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                    >
+                      <Copy01Icon className="h-4 w-4" />
+                      {copied ? "Copied!" : "Copy wallet address"}
+                    </button>
+                    <div className="my-1 h-px bg-border" />
+                    <button
+                      type="button"
+                      onClick={() => { setShowSettings(false); handleSignOut(); }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
+                    >
+                      <Logout01Icon className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+          </div>
 
+          <div className="w-full max-w-sm">
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-              <h2 className="font-display mb-1 text-xl font-bold">Your Wallet</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Copy your wallet address to receive $CELO from the admin
+              <p className="mb-4 text-xs text-muted-foreground">
+                Copy your wallet address to receive $CELO from the admin, then proceed to verify your identity.
               </p>
 
               <div className="flex items-center gap-2 rounded-xl bg-muted px-4 py-3">
@@ -174,7 +212,7 @@ function HomeInner() {
                   type="button"
                   onClick={handleCopyAddress}
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg transition shrink-0",
+                    "flex h-8 cursor-pointer w-8 items-center justify-center rounded-lg transition shrink-0",
                     copied
                       ? "text-[#07955F]"
                       : "text-muted-foreground hover:bg-background hover:text-foreground",
