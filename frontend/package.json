@@ -30,7 +30,8 @@
     "tailwind-merge": "^2.6.1",
     "viem": "^2.0.0",
     "wagmi": "^3.6.16",
-    "wouter": "^3.10.0"
+    "wouter": "^3.10.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
