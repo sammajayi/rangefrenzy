@@ -32,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="talentapp:project_verification" content="97b86451041e1f4ce8c5f94b1c2820be64ac2e14715561dbdd2a8cde1ac7150fdb31461c2599f0f13d27a78ac6bf4750a0573d2ccc6b39a0babab81933c66254" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">

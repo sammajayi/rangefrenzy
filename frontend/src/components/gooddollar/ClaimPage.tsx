@@ -44,7 +44,6 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   const [countdown, setCountdown] = useState("");
 
   const buildSDKs = useCallback(async () => {
-    // Always use the Privy embedded wallet — GoodDollar links identity to this key
     if (!address || !wallets.length) return null;
     const walletClient = await buildEmbeddedViemClient(wallets, address);
 
@@ -67,9 +66,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   }, [wallets, address]);
 
   const fetchStatus = useCallback(async () => {
-    // Wait until the embedded wallet is available before querying
-    const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
-    if (!address || !embeddedWallet) return;
+    if (!address || !wallets.length) return;
     try {
       const sdks = await buildSDKs();
       if (!sdks) return;
@@ -134,8 +131,6 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
 
   const isLoading = state.status === "loading";
   const canClaim = state.status === "can_claim";
-
-  const embeddedReady = wallets.some((w) => w.walletClientType === "privy");
 
   if (compact) {
     if (isLoading) {
@@ -210,7 +205,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
       <div className="flex flex-col items-center justify-center gap-3 pt-24 text-center px-6">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         <p className="text-sm text-muted-foreground">
-          {embeddedReady ? "Loading claim status…" : "Waiting for wallet…"}
+          Loading claim status…
         </p>
       </div>
     );
