@@ -1,5 +1,8 @@
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
 import { configVariable, defineConfig } from "hardhat/config";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 export default defineConfig({
   plugins: [hardhatToolboxMochaEthersPlugin],
@@ -7,6 +10,12 @@ export default defineConfig({
     profiles: {
       default: {
         version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
       production: {
         version: "0.8.28",
@@ -37,9 +46,14 @@ export default defineConfig({
     celo: {
       type: "http",
       chainType: "l1",
-      url: "https://forno.celo.org",
+      url: configVariable("CELO_RPC_URL"),
       accounts: [configVariable("CELO_PRIVATE_KEY")],
       chainId: 42220,
     },
   },
+  // sourcify: {
+  //   enabled: true,
+  //   apiUrl: "https://sourcify.dev/server",
+  //   browserUrl: "https://repo.sourcify.dev",
+  // },
 });

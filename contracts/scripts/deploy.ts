@@ -9,7 +9,7 @@ async function deployUUPSProxy(
 ): Promise<{ impl: Contract; proxy: Contract }> {
     const { ethers } = await network.create();
     const Impl = await ethers.getContractFactory(contractName);
-    const impl = await Impl.deploy();
+    const impl = await Impl.deploy({ gasLimit: 6_000_000 });
     await impl.waitForDeployment();
 
     const initData = Impl.interface.encodeFunctionData(initializer, initArgs);
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
 
     console.log("\n[1/3] Deploying RangeFrenzyMarket implementation...");
     const MarketImpl = await ethers.getContractFactory("RangeFrenzyMarket");
-    const marketImpl = await MarketImpl.deploy();
+    const marketImpl = await MarketImpl.deploy({ gasLimit: 6_000_000 });
     await marketImpl.waitForDeployment();
     const marketImplAddress = await marketImpl.getAddress();
     console.log(`  Implementation: ${marketImplAddress}`);
