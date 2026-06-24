@@ -42,6 +42,11 @@ const STATUS = { OPEN: 0, CLOSED: 1, RESOLVED: 2, CANCELLED: 3 };
 const ONE_DAY = 60 * 60 * 24;
 const toWei = (n: number) => ethers.parseUnits(String(n), 18);
 
+// Bonding curve defaults: 1 G$ start, +0.05 G$ price per 1 G$ staked
+const INITIAL_PRICE = toWei(1);
+const MULTIPLIER = ethers.parseUnits("0.05", 18);
+const NO_PRICE_CAP = 0n;
+
 async function increaseTime(seconds: number): Promise<void> {
     await networkHelpers.time.increase(seconds);
 }
@@ -100,6 +105,9 @@ async function createBtcMarket(
         overrides.category ?? CATEGORY.CRYPTO,
         overrides.deadline ?? deadline,
         minStake,
+        overrides.initialPrice ?? INITIAL_PRICE,
+        overrides.multiplier ?? MULTIPLIER,
+        overrides.priceCap ?? NO_PRICE_CAP,
         overrides.labels ?? ["< $80k", "$80k–$90k", "$90k–$100k", "> $100k"],
         overrides.lowers ?? [0, 80_000, 90_001, 100_001],
         overrides.uppers ?? [79_999, 90_000, 100_000, 999_999_999]
@@ -111,6 +119,10 @@ async function createBtcMarket(
     );
     const proxyAddr = event?.args?.[0];
     return ethers.getContractAt("RangeFrenzyMarket", proxyAddr);
+}
+
+async function doSell(market: Contract, user: Signer): Promise<any> {
+    return market.connect(user).sell();
 }
 
 async function doStake(
@@ -144,6 +156,9 @@ describe("MarketFactory", function () {
                 CATEGORY.SPORTS,
                 deadline,
                 0,
+                INITIAL_PRICE,
+                MULTIPLIER,
+                NO_PRICE_CAP,
                 ["Low", "High"],
                 [0, 51],
                 [50, 100]
@@ -159,16 +174,16 @@ describe("MarketFactory", function () {
         await expect(
             factory
                 .connect(alice)
-                .createMarket("Hack?", CATEGORY.LOCAL, deadline, 0, ["A", "B"], [0, 51], [50, 100])
+                .createMarket("Hack?", CATEGORY.LOCAL, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100])
         ).to.revert(ethers);
     });
 
     it("filters markets by category correctly", async function () {
         const { factory } = await deployFixture();
         const deadline = (await latestTimestamp()) + ONE_DAY;
-        await factory.createMarket("C", CATEGORY.CRYPTO, deadline, 0, ["A", "B"], [0, 51], [50, 100]);
-        await factory.createMarket("S", CATEGORY.SPORTS, deadline, 0, ["A", "B"], [0, 51], [50, 100]);
-        await factory.createMarket("L", CATEGORY.LOCAL, deadline, 0, ["A", "B"], [0, 51], [50, 100]);
+        await factory.createMarket("C", CATEGORY.CRYPTO, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100]);
+        await factory.createMarket("S", CATEGORY.SPORTS, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100]);
+        await factory.createMarket("L", CATEGORY.LOCAL, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100]);
 
         expect((await factory.getMarketsByCategory(CATEGORY.CRYPTO)).length).to.equal(1);
         expect((await factory.getMarketsByCategory(CATEGORY.SPORTS)).length).to.equal(1);
@@ -179,7 +194,7 @@ describe("MarketFactory", function () {
         const { factory } = await deployFixture();
         const deadline = (await latestTimestamp()) + ONE_DAY;
         for (let i = 0; i < 3; i++) {
-            await factory.createMarket(`Q${i}`, CATEGORY.LOCAL, deadline, 0, ["A", "B"], [0, 51], [50, 100]);
+            await factory.createMarket(`Q${i}`, CATEGORY.LOCAL, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100]);
         }
         const all = await factory.getAllMarkets();
         const page = await factory.getMarketsPage(0, 2);
@@ -197,7 +212,7 @@ describe("MarketFactory", function () {
         const { factory } = await deployFixture();
         const deadline = (await latestTimestamp()) + ONE_DAY;
         await expect(
-            factory.createMarket("Q", 5, deadline, 0, ["A", "B"], [0, 51], [50, 100])
+            factory.createMarket("Q", 5, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100])
         ).to.revert(ethers);
     });
 
@@ -212,7 +227,7 @@ describe("MarketFactory", function () {
         await factory.pause();
         const deadline = (await latestTimestamp()) + ONE_DAY;
         await expect(
-            factory.createMarket("Q", CATEGORY.LOCAL, deadline, 0, ["A", "B"], [0, 51], [50, 100])
+            factory.createMarket("Q", CATEGORY.LOCAL, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100])
         ).to.revert(ethers);
         await factory.unpause();
     });
@@ -275,6 +290,9 @@ describe("RangeFrenzyMarket — deployment & initialisation", function () {
                 CATEGORY.CRYPTO,
                 deadline,
                 0,
+                INITIAL_PRICE,
+                MULTIPLIER,
+                NO_PRICE_CAP,
                 ["A", "B"],
                 [0, 40],
                 [50, 100]
@@ -285,7 +303,7 @@ describe("RangeFrenzyMarket — deployment & initialisation", function () {
     it("rejects deadline in the past", async function () {
         const { factory } = await deployFixture();
         await expect(
-            factory.createMarket("Past", CATEGORY.CRYPTO, 1, 0, ["A", "B"], [0, 51], [50, 100])
+            factory.createMarket("Past", CATEGORY.CRYPTO, 1, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A", "B"], [0, 51], [50, 100])
         ).to.revert(ethers);
     });
 
@@ -293,7 +311,7 @@ describe("RangeFrenzyMarket — deployment & initialisation", function () {
         const { factory } = await deployFixture();
         const deadline = (await latestTimestamp()) + ONE_DAY;
         await expect(
-            factory.createMarket("One range", CATEGORY.CRYPTO, deadline, 0, ["A"], [0], [100])
+            factory.createMarket("One range", CATEGORY.CRYPTO, deadline, 0, INITIAL_PRICE, MULTIPLIER, NO_PRICE_CAP, ["A"], [0], [100])
         ).to.revert(ethers);
     });
 });
@@ -305,19 +323,21 @@ describe("RangeFrenzyMarket — staking", function () {
 
         await expect(doStake(market, token, alice, 2, toWei(100)))
             .to.emit(market, "Staked")
-            .withArgs(alice.address, 2n, toWei(100), toWei(100));
+            .withArgs(alice.address, 2n, toWei(100), toWei(100), INITIAL_PRICE, toWei(100));
 
         expect(await market.totalPool()).to.equal(toWei(100));
         expect(await market.stakersCount()).to.equal(1n);
-        expect(await market.hasStaked(alice.address)).to.be.true;
+        expect(await market.hasActivePosition(alice.address)).to.be.true;
 
         const s = await market.userStakes(alice.address);
         expect(s.rangeIndex).to.equal(2n);
-        expect(s.amount).to.equal(toWei(100));
+        expect(s.amountStaked).to.equal(toWei(100));
+        expect(s.shares).to.equal(toWei(100));
+        expect(s.pricePaid).to.equal(INITIAL_PRICE);
         expect(s.claimed).to.be.false;
     });
 
-    it("rejects double staking", async function () {
+    it("rejects second stake without selling first", async function () {
         const { factory, token, alice } = await deployFixture();
         const market = await createBtcMarket(factory, token);
         await doStake(market, token, alice, 1, toWei(50));
@@ -486,8 +506,8 @@ describe("RangeFrenzyMarket — resolution & claiming", function () {
 
         expect(aliceGot + bobGot).to.be.closeTo(toWei(343), 1n);
 
-        const ratio = (bobGot * 100n) / aliceGot;
-        expect(ratio).to.be.gte(199n).and.lte(201n);
+        // Early bettor (Alice) earns more than late bettor (Bob) despite staking less G$
+        expect(aliceGot).to.be.gt(bobGot);
     });
 
     it("previewPayout returns correct value before claim", async function () {
@@ -513,7 +533,9 @@ describe("RangeFrenzyMarket — resolution & claiming", function () {
         const { market, alice } = await setupResolved();
         const info = await market.getUserStake(alice.address);
         expect(info.rangeIndex).to.equal(2n);
-        expect(info.amount).to.equal(toWei(100));
+        expect(info.amountStaked).to.equal(toWei(100));
+        expect(info.shares).to.equal(toWei(100));
+        expect(info.pricePaid).to.equal(INITIAL_PRICE);
         expect(info.rangeLabel).to.equal("$90k–$100k");
         expect(info.estimatedPayout).to.be.gt(0n);
     });
@@ -599,6 +621,118 @@ describe("RangeFrenzyMarket — edge cases", function () {
         await factory.closeMarketBetting(await market.getAddress());
         await token.connect(alice).approve(await market.getAddress(), toWei(100));
         await expect(market.connect(alice).stake(0, toWei(100))).to.revert(ethers);
+    });
+});
+
+describe("RangeFrenzyMarket — bonding curve", function () {
+    it("getCurrentPrice starts at initialPrice", async function () {
+        const { factory, token } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+        expect(await market.getCurrentPrice(0n)).to.equal(INITIAL_PRICE);
+        expect(await market.initialPrice()).to.equal(INITIAL_PRICE);
+        expect(await market.multiplier()).to.equal(MULTIPLIER);
+    });
+
+    it("getCurrentPrice increases as G$ flows into a range", async function () {
+        const { factory, token, alice } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+
+        await doStake(market, token, alice, 2, toWei(10));
+        const priceAfter = await market.getCurrentPrice(2n);
+        // 1 + 0.05 * 10 = 1.5 G$
+        expect(priceAfter).to.equal(ethers.parseUnits("1.5", 18));
+    });
+
+    it("respects priceCap when set", async function () {
+        const { factory, token, alice } = await deployFixture();
+        const cap = ethers.parseUnits("1.5", 18);
+        const market = await createBtcMarket(factory, token, { priceCap: cap });
+
+        await doStake(market, token, alice, 2, toWei(100));
+        expect(await market.getCurrentPrice(2n)).to.equal(cap);
+    });
+
+    it("early bettor receives more shares per G$ than late bettor", async function () {
+        const { factory, token, alice, bob } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+
+        await doStake(market, token, alice, 2, toWei(10));
+        await doStake(market, token, bob, 2, toWei(10));
+
+        const aliceStake = await market.userStakes(alice.address);
+        const bobStake = await market.userStakes(bob.address);
+        expect(aliceStake.shares).to.be.gt(bobStake.shares);
+    });
+
+    it("sell returns G$ (capped by pool when mark-to-market exceeds liquidity)", async function () {
+        const { factory, token, alice } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+
+        await doStake(market, token, alice, 2, toWei(10));
+        const before = await token.balanceOf(alice.address);
+        await doSell(market, alice);
+        const after = await token.balanceOf(alice.address);
+
+        // Solo staker: proceeds capped at amount in pool / range
+        expect(after - before).to.equal(toWei(10));
+        expect(await market.hasActivePosition(alice.address)).to.be.false;
+    });
+
+    it("sell reduces price for the next buyer", async function () {
+        const { factory, token, alice, bob, carol } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+
+        await doStake(market, token, alice, 2, toWei(10));
+        await doStake(market, token, bob, 2, toWei(10));
+        const priceBeforeSell = await market.getCurrentPrice(2n);
+
+        await doSell(market, alice);
+        const priceAfterSell = await market.getCurrentPrice(2n);
+        expect(priceAfterSell).to.be.lt(priceBeforeSell);
+
+        await doStake(market, token, carol, 2, toWei(10));
+        expect(await market.hasActivePosition(carol.address)).to.be.true;
+    });
+
+    it("must sell before switching to a different range", async function () {
+        const { factory, token, alice } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+
+        await doStake(market, token, alice, 0, toWei(10));
+        await token.connect(alice).approve(await market.getAddress(), toWei(10));
+        await expect(market.connect(alice).stake(2, toWei(10))).to.revert(ethers);
+
+        await doSell(market, alice);
+        await doStake(market, token, alice, 2, toWei(10));
+        const s = await market.userStakes(alice.address);
+        expect(s.rangeIndex).to.equal(2n);
+    });
+
+    it("cannot sell after market is resolved", async function () {
+        const { factory, token, alice } = await deployFixture();
+        const market = await createBtcMarket(factory, token);
+        await doStake(market, token, alice, 2, toWei(10));
+        await factory.resolveMarket(await market.getAddress(), 95_000);
+        await expect(doSell(market, alice)).to.revert(ethers);
+    });
+
+    it("rejects zero initialPrice at creation", async function () {
+        const { factory } = await deployFixture();
+        const deadline = (await latestTimestamp()) + ONE_DAY;
+        await expect(
+            factory.createMarket(
+                "Bad curve",
+                CATEGORY.CRYPTO,
+                deadline,
+                0,
+                0n,
+                MULTIPLIER,
+                NO_PRICE_CAP,
+                ["A", "B"],
+                [0, 51],
+                [50, 100]
+            )
+        ).to.revert(ethers);
     });
 });
 

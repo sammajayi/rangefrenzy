@@ -68,6 +68,9 @@ async function main() {
         0,
         deadline,
         ethers.parseUnits("1", 18),
+        ethers.parseUnits("1", 18),
+        ethers.parseUnits("0.05", 18),
+        0n,
         ["< $80,000", "$80k – $90k", "$90k – $100k", "> $100,000"],
         [0, 80_000, 90_001, 100_001],
         [79_999, 90_000, 100_000, 999_999_999]

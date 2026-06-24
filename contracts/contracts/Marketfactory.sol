@@ -67,6 +67,9 @@ contract MarketFactory is Initializable, Ownable2StepUpgradeable, UUPSUpgradeabl
         uint8 _category,
         uint256 _resolutionDeadline,
         uint256 _minStakeAmount,
+        uint256 _initialPrice,
+        uint256 _multiplier,
+        uint256 _priceCap,
         string[] memory _rangeLabels,
         uint256[] memory _lowerBounds,
         uint256[] memory _upperBounds
@@ -84,6 +87,9 @@ contract MarketFactory is Initializable, Ownable2StepUpgradeable, UUPSUpgradeabl
             RangeFrenzyMarket.Category(_category),
             _resolutionDeadline,
             _minStakeAmount,
+            _initialPrice,
+            _multiplier,
+            _priceCap,
             _rangeLabels,
             _lowerBounds,
             _upperBounds
