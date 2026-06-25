@@ -35,18 +35,21 @@ contract RangeFrenzyMarket is
         uint256 lowerBound;
         uint256 upperBound;
         uint256 totalStaked;
+        uint256 totalShares;
     }
 
     struct UserStake {
         uint256 rangeIndex;
-        uint256 amount;
+        uint256 shares;
+        uint256 pricePaid;
+        uint256 amountStaked;
         bool claimed;
     }
 
     uint16 public constant FEE_BPS = 200;
     uint16 public constant BPS_DENOM = 10_000;
 
-    uint256[50] private __gap;
+    uint256[47] private __gap;
 
     IERC20 public stakeToken;
     address public feeRecipient;
@@ -58,6 +61,13 @@ contract RangeFrenzyMarket is
 
     uint256 public minStakeAmount;
 
+    /// @notice Starting price per share (18 decimals). Same for all ranges.
+    uint256 public initialPrice;
+    /// @notice Curve steepness: price += multiplier * totalStaked / 1e18
+    uint256 public multiplier;
+    /// @notice Optional price ceiling per share (0 = no cap)
+    uint256 public priceCap;
+
     Range[] public ranges;
     uint256 public totalPool;
 
@@ -66,12 +76,21 @@ contract RangeFrenzyMarket is
 
     mapping(address => UserStake) public userStakes;
     address[] public stakers;
-    mapping(address => bool) private _hasStaked;
+    mapping(address => bool) public hasActivePosition;
 
     event Staked(
         address indexed user,
         uint256 indexed rangeIndex,
         uint256 amount,
+        uint256 shares,
+        uint256 pricePaid,
+        uint256 newTotalPool
+    );
+    event PositionSold(
+        address indexed user,
+        uint256 indexed rangeIndex,
+        uint256 shares,
+        uint256 proceeds,
         uint256 newTotalPool
     );
     event BettingClosed(uint256 timestamp);
@@ -96,16 +115,19 @@ contract RangeFrenzyMarket is
     error RangesNotSortedOrOverlap(uint256 index);
     error MarketNotOpen();
     error DeadlinePassed();
-    error AlreadyStaked();
+    error MustSellPositionFirst();
     error BelowMinStake(uint256 sent, uint256 minimum);
     error InvalidRangeIndex(uint256 index);
     error NoStakeFound();
+    error NoActivePosition();
     error AlreadyResolvedOrCancelled();
     error CannotCancel();
     error MarketNotResolved();
     error MarketNotCancelled();
     error NotAWinner();
     error AlreadyClaimed();
+    error InvalidInitialPrice();
+    error ZeroShares();
 
     modifier onlyOpen() {
         if (status != MarketStatus.OPEN) revert MarketNotOpen();
@@ -118,6 +140,12 @@ contract RangeFrenzyMarket is
         _;
     }
 
+    modifier positionChangeAllowed() {
+        if (status == MarketStatus.RESOLVED || status == MarketStatus.CANCELLED)
+            revert AlreadyResolvedOrCancelled();
+        _;
+    }
+
     function initialize(
         address _owner,
         address _stakeToken,
@@ -126,6 +154,9 @@ contract RangeFrenzyMarket is
         Category _category,
         uint256 _resolutionDeadline,
         uint256 _minStakeAmount,
+        uint256 _initialPrice,
+        uint256 _multiplier,
+        uint256 _priceCap,
         string[] memory _rangeLabels,
         uint256[] memory _lowerBounds,
         uint256[] memory _upperBounds
@@ -136,6 +167,7 @@ contract RangeFrenzyMarket is
         if (_stakeToken == address(0)) revert ZeroAddress();
         if (_feeRecipient == address(0)) revert ZeroAddress();
         if (bytes(_question).length == 0) revert EmptyQuestion();
+        if (_initialPrice == 0) revert InvalidInitialPrice();
         if (_resolutionDeadline <= block.timestamp)
             revert DeadlineMustBeInFuture();
         if (_rangeLabels.length < 2) revert NeedAtLeastTwoRanges();
@@ -150,6 +182,9 @@ contract RangeFrenzyMarket is
         category = _category;
         resolutionDeadline = _resolutionDeadline;
         minStakeAmount = _minStakeAmount;
+        initialPrice = _initialPrice;
+        multiplier = _multiplier;
+        priceCap = _priceCap;
         status = MarketStatus.OPEN;
 
         for (uint256 i = 0; i < _rangeLabels.length; i++) {
@@ -163,13 +198,23 @@ contract RangeFrenzyMarket is
                     label: _rangeLabels[i],
                     lowerBound: _lowerBounds[i],
                     upperBound: _upperBounds[i],
-                    totalStaked: 0
+                    totalStaked: 0,
+                    totalShares: 0
                 })
             );
         }
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @notice Current entry price for a range: initialPrice + multiplier * totalStaked / 1e18
+    function getCurrentPrice(uint256 rangeIndex) public view returns (uint256) {
+        if (rangeIndex >= ranges.length) revert InvalidRangeIndex(rangeIndex);
+        Range storage r = ranges[rangeIndex];
+        uint256 price = initialPrice + (multiplier * r.totalStaked / 1e18);
+        if (priceCap > 0 && price > priceCap) return priceCap;
+        return price;
+    }
 
     function stake(
         uint256 rangeIndex,
@@ -178,23 +223,70 @@ contract RangeFrenzyMarket is
         if (rangeIndex >= ranges.length) revert InvalidRangeIndex(rangeIndex);
         if (amount < minStakeAmount)
             revert BelowMinStake(amount, minStakeAmount);
-        if (_hasStaked[msg.sender]) revert AlreadyStaked();
+        if (hasActivePosition[msg.sender]) revert MustSellPositionFirst();
+
+        uint256 currentPrice = getCurrentPrice(rangeIndex);
+        uint256 shares = (amount * 1e18) / currentPrice;
+        if (shares == 0) revert ZeroShares();
 
         stakeToken.safeTransferFrom(msg.sender, address(this), amount);
 
         userStakes[msg.sender] = UserStake({
             rangeIndex: rangeIndex,
-            amount: amount,
+            shares: shares,
+            pricePaid: currentPrice,
+            amountStaked: amount,
             claimed: false
         });
 
-        ranges[rangeIndex].totalStaked += amount;
+        Range storage r = ranges[rangeIndex];
+        r.totalStaked += amount;
+        r.totalShares += shares;
         totalPool += amount;
 
         stakers.push(msg.sender);
-        _hasStaked[msg.sender] = true;
+        hasActivePosition[msg.sender] = true;
 
-        emit Staked(msg.sender, rangeIndex, amount, totalPool);
+        emit Staked(
+            msg.sender,
+            rangeIndex,
+            amount,
+            shares,
+            currentPrice,
+            totalPool
+        );
+    }
+
+    /// @notice Exit position at the current curve price. Must sell before entering a new range.
+    function sell() external positionChangeAllowed whenNotPaused nonReentrant {
+        if (!hasActivePosition[msg.sender]) revert NoActivePosition();
+
+        UserStake storage s = userStakes[msg.sender];
+        uint256 rangeIndex = s.rangeIndex;
+        uint256 userShares = s.shares;
+        uint256 currentPrice = getCurrentPrice(rangeIndex);
+        uint256 proceeds = (userShares * currentPrice) / 1e18;
+
+        Range storage r = ranges[rangeIndex];
+        if (proceeds > totalPool) proceeds = totalPool;
+        if (proceeds > r.totalStaked) proceeds = r.totalStaked;
+
+        r.totalStaked -= proceeds;
+        r.totalShares -= userShares;
+        totalPool -= proceeds;
+
+        hasActivePosition[msg.sender] = false;
+        delete userStakes[msg.sender];
+
+        stakeToken.safeTransfer(msg.sender, proceeds);
+
+        emit PositionSold(
+            msg.sender,
+            rangeIndex,
+            userShares,
+            proceeds,
+            totalPool
+        );
     }
 
     function closeBetting() external onlyOwner {
@@ -269,11 +361,12 @@ contract RangeFrenzyMarket is
     function claim() external onlyResolved nonReentrant {
         UserStake storage s = userStakes[msg.sender];
 
-        if (s.amount == 0) revert NoStakeFound();
+        if (s.amountStaked == 0) revert NoStakeFound();
         if (s.claimed) revert AlreadyClaimed();
         if (!_isWinner(s.rangeIndex)) revert NotAWinner();
 
         s.claimed = true;
+        hasActivePosition[msg.sender] = false;
 
         uint256 payout = _calculatePayout(msg.sender);
         stakeToken.safeTransfer(msg.sender, payout);
@@ -285,11 +378,12 @@ contract RangeFrenzyMarket is
         if (status != MarketStatus.CANCELLED) revert MarketNotCancelled();
 
         UserStake storage s = userStakes[msg.sender];
-        if (s.amount == 0) revert NoStakeFound();
+        if (s.amountStaked == 0) revert NoStakeFound();
         if (s.claimed) revert AlreadyClaimed();
 
         s.claimed = true;
-        uint256 refundAmount = s.amount;
+        hasActivePosition[msg.sender] = false;
+        uint256 refundAmount = s.amountStaked;
 
         stakeToken.safeTransfer(msg.sender, refundAmount);
         emit StakeRefunded(msg.sender, refundAmount);
@@ -305,14 +399,14 @@ contract RangeFrenzyMarket is
     function _calculatePayout(address user) internal view returns (uint256) {
         UserStake storage s = userStakes[user];
 
-        uint256 winnersTotal = 0;
+        uint256 winnersTotalShares = 0;
         for (uint256 i = 0; i < winningRangeIndexes.length; i++) {
-            winnersTotal += ranges[winningRangeIndexes[i]].totalStaked;
+            winnersTotalShares += ranges[winningRangeIndexes[i]].totalShares;
         }
 
-        if (winnersTotal == 0) return 0;
+        if (winnersTotalShares == 0) return 0;
 
-        return (s.amount * totalPool) / winnersTotal;
+        return (s.shares * totalPool) / winnersTotalShares;
     }
 
     function rangesCount() external view returns (uint256) {
@@ -334,13 +428,14 @@ contract RangeFrenzyMarket is
     function previewPayout(address user) external view returns (uint256) {
         if (status != MarketStatus.RESOLVED) return 0;
         UserStake storage s = userStakes[user];
-        if (s.amount == 0 || s.claimed) return 0;
+        if (s.amountStaked == 0 || s.claimed) return 0;
         if (!_isWinner(s.rangeIndex)) return 0;
         return _calculatePayout(user);
     }
 
+    /// @notice Backward-compatible alias for hasActivePosition
     function hasStaked(address user) external view returns (bool) {
-        return _hasStaked[user];
+        return hasActivePosition[user];
     }
 
     function getMarketSummary()
@@ -389,7 +484,9 @@ contract RangeFrenzyMarket is
         view
         returns (
             uint256 rangeIndex,
-            uint256 amount,
+            uint256 shares,
+            uint256 pricePaid,
+            uint256 amountStaked,
             bool claimed,
             string memory rangeLabel,
             uint256 estimatedPayout
@@ -397,9 +494,11 @@ contract RangeFrenzyMarket is
     {
         UserStake storage s = userStakes[user];
         rangeIndex = s.rangeIndex;
-        amount = s.amount;
+        shares = s.shares;
+        pricePaid = s.pricePaid;
+        amountStaked = s.amountStaked;
         claimed = s.claimed;
-        rangeLabel = s.amount > 0 ? ranges[s.rangeIndex].label : "";
+        rangeLabel = s.amountStaked > 0 ? ranges[s.rangeIndex].label : "";
         estimatedPayout = this.previewPayout(user);
     }
 }
