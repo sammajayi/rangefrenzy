@@ -1,4 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="32" fill="#07955F"/>
-  <text x="96" y="126" font-family="system-ui, sans-serif" font-size="96" font-weight="800" fill="white" text-anchor="middle">RF</text>
+  <rect width="192" height="192" rx="40" fill="#0D1420"/>
+  <rect x="52" y="68" width="88" height="56" rx="10" fill="#07955F" opacity="0.15"/>
+  <line x1="56" y1="64" x2="56" y2="128" stroke="#07955F" stroke-width="9.6" stroke-linecap="round"/>
+  <line x1="56" y1="64" x2="72" y2="64" stroke="#07955F" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+  <line x1="56" y1="128" x2="72" y2="128" stroke="#07955F" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+  <line x1="136" y1="64" x2="136" y2="128" stroke="#07955F" stroke-width="9.6" stroke-linecap="round"/>
+  <line x1="136" y1="64" x2="120" y2="64" stroke="#07955F" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+  <line x1="136" y1="128" x2="120" y2="128" stroke="#07955F" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+  <polyline points="60,124 76,110 96,96 116,86 132,80" stroke="#07955F" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55"/>
+  <circle cx="96" cy="96" r="16" fill="#07955F"/>
+  <circle cx="96" cy="96" r="7.2" fill="white" opacity="0.92"/>
 </svg>

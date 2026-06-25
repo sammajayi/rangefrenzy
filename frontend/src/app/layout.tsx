@@ -7,12 +7,24 @@ import RegisterSW from "@/components/register-sw";
 export const metadata: Metadata = {
   title: "RangeFrenzy",
   description:
-    "A range-based prediction market on Celo. Stake G$ on outcome ranges for crypto, sports, weather and local cultural/political events.",
+    "A range-based prediction market on Celo. Stake G$ on outcome ranges for crypto, sports, and local events.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "RangeFrenzy",
+  },
+  openGraph: {
+    title: "RangeFrenzy",
+    description: "Predict outcome ranges. Stake G$. Win big.",
+    images: [{ url: "/og-image.svg", width: 1200, height: 630, alt: "RangeFrenzy" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RangeFrenzy",
+    description: "Predict outcome ranges. Stake G$. Win big.",
+    images: ["/og-image.svg"],
   },
 };
 
@@ -33,6 +45,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="talentapp:project_verification" content="97b86451041e1f4ce8c5f94b1c2820be64ac2e14715561dbdd2a8cde1ac7150fdb31461c2599f0f13d27a78ac6bf4750a0573d2ccc6b39a0babab81933c66254" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">

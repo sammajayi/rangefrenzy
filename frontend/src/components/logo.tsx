@@ -14,35 +14,34 @@ export function Logo({ size = 48, className }: LogoProps) {
       className={className}
     >
       {/* Dark container */}
-      <rect width="48" height="48" rx="11" fill="#0D1420" />
-
-      {/* Faint price line running through the middle */}
-      <line
-        x1="4"
-        y1="24"
-        x2="44"
-        y2="24"
-        stroke="rgba(255,255,255,0.12)"
-        strokeWidth="1"
-        strokeLinecap="round"
-      />
+      <rect width="48" height="48" rx="10" fill="#0D1420" />
 
       {/* Range zone fill */}
-      <rect x="14" y="18" width="20" height="12" rx="2" fill="#07955F" opacity="0.18" />
+      <rect x="13" y="17" width="22" height="14" rx="2.5" fill="#07955F" opacity="0.15" />
 
-      {/* Left bracket — vertical + serifs */}
-      <line x1="14" y1="18" x2="14" y2="30" stroke="#07955F" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="14" y1="18" x2="17.5" y2="18" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-      <line x1="14" y1="30" x2="17.5" y2="30" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+      {/* Left bracket */}
+      <line x1="14" y1="16" x2="14" y2="32" stroke="#07955F" strokeWidth="2.4" strokeLinecap="round" />
+      <line x1="14" y1="16" x2="18" y2="16" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
+      <line x1="14" y1="32" x2="18" y2="32" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
 
-      {/* Right bracket — vertical + serifs */}
-      <line x1="34" y1="18" x2="34" y2="30" stroke="#07955F" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="34" y1="18" x2="30.5" y2="18" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-      <line x1="34" y1="30" x2="30.5" y2="30" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+      {/* Right bracket */}
+      <line x1="34" y1="16" x2="34" y2="32" stroke="#07955F" strokeWidth="2.4" strokeLinecap="round" />
+      <line x1="34" y1="16" x2="30" y2="16" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
+      <line x1="34" y1="32" x2="30" y2="32" stroke="#07955F" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
 
-      {/* Center hit dot — the prediction */}
-      <circle cx="24" cy="24" r="4.5" fill="#07955F" />
-      <circle cx="24" cy="24" r="2" fill="rgba(255,255,255,0.85)" />
+      {/* Bonding curve — upward trending through the range zone */}
+      <polyline
+        points="15,31 19,27.5 24,24 29,21.5 33,20"
+        stroke="#07955F"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.55"
+      />
+
+      {/* Prediction hit dot */}
+      <circle cx="24" cy="24" r="4" fill="#07955F" />
+      <circle cx="24" cy="24" r="1.8" fill="white" opacity="0.92" />
     </svg>
   );
 }
