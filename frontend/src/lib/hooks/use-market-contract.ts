@@ -19,8 +19,8 @@ export function useMarketContract(
 
   const { data: userData, isLoading: userLoading } = useReadContracts({
     contracts: [
-      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "getUserStake", args: [userAddress!] },
-      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "hasStaked", args: [userAddress!] },
+      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "userStakes", args: [userAddress!] },
+      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "hasActivePosition", args: [userAddress!] },
     ] as any[],
     query: { enabled: enabled && !!userAddress },
   });
@@ -43,13 +43,13 @@ export function useMarketContract(
   let userStake: OnChainUserStake | undefined;
   const u0 = userData?.[0] as { status: string; result: unknown } | undefined;
   if (u0?.status === "success" && u0.result) {
-    const [rangeIndex, amount, claimed, rangeLabel, estimatedPayout] =
-      u0.result as [bigint, bigint, boolean, string, bigint];
-    userStake = { rangeIndex, amount, claimed, rangeLabel, estimatedPayout };
+    const [rangeIndex, shares, pricePaid, amountStaked, claimed] =
+      u0.result as [bigint, bigint, bigint, bigint, boolean];
+    userStake = { rangeIndex, shares, pricePaid, amountStaked, claimed };
   }
 
   const u1 = userData?.[1] as { status: string; result: unknown } | undefined;
-  const hasStaked = u1?.status === "success" ? (u1.result as boolean) : false;
+  const hasActivePosition = u1?.status === "success" ? (u1.result as boolean) : false;
 
-  return { summary, ranges, userStake, hasStaked, isLoading: marketLoading || userLoading, isError, refetch };
+  return { summary, ranges, userStake, hasActivePosition, isLoading: marketLoading || userLoading, isError, refetch };
 }

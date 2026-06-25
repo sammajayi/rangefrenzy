@@ -64,7 +64,7 @@ async function main() {
     const deadline = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
 
     const tx = await factory.createMarket(
-        "What will BTC price be on June 10, 2025?",
+        "What will BTC price be on July 10, 2025?",
         0,
         deadline,
         ethers.parseUnits("1", 18),

@@ -28,7 +28,8 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
   const [amount, setAmount] = useState("");
   const [gdBalance, setGdBalance] = useState("0.00");
   const [minStake, setMinStake] = useState("1.00");
-  const [alreadyStaked, setAlreadyStaked] = useState(false);
+  const [hasActivePosition, setHasActivePosition] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<bigint>(0n);
   const [txHash, setTxHash] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -36,20 +37,24 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
 
   const publicClient = createPublicClient({ chain: ACTIVE_CHAIN, transport: http(RPC) });
 
+  const rangeIdx = market.ranges.findIndex((r) => r.id === range.id);
+
   useEffect(() => {
     if (!address || !contractAddress) return;
     const addr = address as `0x${string}`;
     Promise.all([
       publicClient.readContract({ address: G_TOKEN_ADDRESS, abi: ERC20_ABI, functionName: "balanceOf", args: [addr] }),
       publicClient.readContract({ address: contractAddress, abi: MARKET_ABI, functionName: "minStakeAmount" }),
-      publicClient.readContract({ address: contractAddress, abi: MARKET_ABI, functionName: "hasStaked", args: [addr] }),
-    ]).then(([bal, min, staked]) => {
+      publicClient.readContract({ address: contractAddress, abi: MARKET_ABI, functionName: "hasActivePosition", args: [addr] }),
+      publicClient.readContract({ address: contractAddress, abi: MARKET_ABI, functionName: "getCurrentPrice", args: [BigInt(rangeIdx >= 0 ? rangeIdx : 0)] }),
+    ]).then(([bal, min, activePos, price]) => {
       setGdBalance(formatGD(bal as bigint));
       setMinStake(formatGD(min as bigint));
-      setAlreadyStaked(staked as boolean);
+      setHasActivePosition(activePos as boolean);
+      setCurrentPrice(price as bigint);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, contractAddress]);
+  }, [address, contractAddress, rangeIdx]);
 
   const handleStake = async () => {
     if (!contractAddress) { setErrorMsg("This market has no on-chain contract yet."); setStep("error"); return; }
@@ -108,7 +113,10 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
     }
   };
 
-  const rangeIdx = market.ranges.findIndex((r) => r.id === range.id);
+  // Estimated shares the user will receive for the entered amount
+  const estimatedShares = currentPrice > 0n && amount
+    ? (parseFloat(amount) * 1e18) / Number(currentPrice)
+    : 0;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-4 sm:items-center">
@@ -151,9 +159,9 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
               <p className="font-display text-base font-bold">{range.label}</p>
             </div>
 
-            {alreadyStaked && (
+            {hasActivePosition && (
               <div className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                You already have a stake in this market.
+                You have an active position in this market. Sell it first before staking on a new range.
               </div>
             )}
 
@@ -177,7 +185,7 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
                   placeholder={`Min ${minStake}`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  disabled={!!alreadyStaked || !contractAddress || step !== "input"}
+                  disabled={!!hasActivePosition || !contractAddress || step !== "input"}
                   className="h-12 w-full rounded-xl border border-input bg-background px-4 pr-16 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30 disabled:opacity-50"
                 />
                 <button
@@ -189,6 +197,14 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">Min stake: {minStake} G$ · Range #{rangeIdx}</p>
+              {currentPrice > 0n && (
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                  <span>Price per share: <span className="font-semibold text-foreground">{formatGD(currentPrice, 4)} G$</span></span>
+                  {estimatedShares > 0 && (
+                    <span>Est. shares: <span className="font-semibold text-foreground">{estimatedShares.toFixed(4)}</span></span>
+                  )}
+                </div>
+              )}
             </div>
 
             <Button
@@ -198,7 +214,7 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
                 parseFloat(amount) <= 0 ||
                 parseFloat(amount) < parseFloat(minStake) ||
                 parseFloat(amount) > parseFloat(gdBalance) ||
-                alreadyStaked ||
+                hasActivePosition ||
                 !contractAddress ||
                 step !== "input"
               }

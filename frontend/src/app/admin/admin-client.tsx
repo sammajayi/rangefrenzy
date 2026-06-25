@@ -80,6 +80,9 @@ export default function AdminPage() {
     volume_label: "$0 staked",
     deadline: "",
     contract_address: "",
+    initialPrice: "1",
+    multiplier: "0.05",
+    priceCap: "0",
   });
   const [ranges, setRanges] = useState<RangeInput[]>(defaultRanges);
   const [createLoading, setCreateLoading] = useState(false);
@@ -186,6 +189,10 @@ export default function AdminPage() {
 
         const category = CATEGORY_MAP[form.category] ?? 0;
 
+        const initialPrice = parseUnits(form.initialPrice || "1", 18);
+        const multiplier = parseUnits(form.multiplier || "0.05", 18);
+        const priceCap = parseUnits(form.priceCap || "0", 18);
+
         const hash = await walletClient.writeContract({
           address: FACTORY_ADDRESS,
           abi: marketFactoryAbi,
@@ -195,6 +202,9 @@ export default function AdminPage() {
             category,
             BigInt(deadlineUnix),
             parseUnits("1", 18), // minStakeAmount = 1 G$
+            initialPrice,
+            multiplier,
+            priceCap,
             rangeLabels,
             lowerBounds,
             upperBounds,
@@ -250,7 +260,7 @@ export default function AdminPage() {
       }
 
       setCreateMsg(contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)");
-      setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "" });
+      setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "", initialPrice: "1", multiplier: "0.05", priceCap: "0" });
       setRanges(defaultRanges);
       setImageFile(null);
       setImagePreview(null);
@@ -498,6 +508,47 @@ export default function AdminPage() {
               />
               <p className="mt-1 text-[11px] text-muted-foreground">The deployed RangeFrenzyMarket proxy for this market. Enables on-chain staking and resolution.</p>
             </Field>
+
+            {/* Bonding curve params */}
+            <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bonding curve</p>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Initial price (G$)">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={form.initialPrice}
+                    onChange={(e) => setForm({ ...form, initialPrice: e.target.value })}
+                    placeholder="1"
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Multiplier (G$)">
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={form.multiplier}
+                    onChange={(e) => setForm({ ...form, multiplier: e.target.value })}
+                    placeholder="0.05"
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Price cap (0 = none)">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.priceCap}
+                    onChange={(e) => setForm({ ...form, priceCap: e.target.value })}
+                    placeholder="0"
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Price per share = initialPrice + multiplier × totalStaked / 1e18. Price cap of 0 means no ceiling.</p>
+            </div>
 
             {/* Image upload */}
             <Field label="Market image">

@@ -45,24 +45,55 @@ export const MARKET_ABI = [
     ],
   },
   {
-    name: "getUserStake",
+    // Public mapping getter: userStakes(address) → (rangeIndex, shares, pricePaid, amountStaked, claimed)
+    name: "userStakes",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "user", type: "address" }],
     outputs: [
-      { name: "rangeIndex",      type: "uint256" },
-      { name: "amount",          type: "uint256" },
-      { name: "claimed",         type: "bool" },
-      { name: "rangeLabel",      type: "string" },
-      { name: "estimatedPayout", type: "uint256" },
+      { name: "rangeIndex",   type: "uint256" },
+      { name: "shares",       type: "uint256" },
+      { name: "pricePaid",    type: "uint256" },
+      { name: "amountStaked", type: "uint256" },
+      { name: "claimed",      type: "bool" },
     ],
   },
   {
-    name: "hasStaked",
+    // Public mapping getter replacing _hasStaked
+    name: "hasActivePosition",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "user", type: "address" }],
     outputs: [{ type: "bool" }],
+  },
+  {
+    // Bonding curve price for a range: initialPrice + multiplier * totalStaked / 1e18
+    name: "getCurrentPrice",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "rangeIndex", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "initialPrice",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "multiplier",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "priceCap",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
   },
   {
     name: "totalPool",
@@ -92,6 +123,7 @@ export const MARKET_ABI = [
           { name: "lowerBound",  type: "uint256" },
           { name: "upperBound",  type: "uint256" },
           { name: "totalStaked", type: "uint256" },
+          { name: "totalShares", type: "uint256" },
         ],
       },
     ],
@@ -112,6 +144,14 @@ export const MARKET_ABI = [
       { name: "rangeIndex", type: "uint256" },
       { name: "amount",     type: "uint256" },
     ],
+    outputs: [],
+  },
+  {
+    // Exit current position at the current curve price
+    name: "sell",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
     outputs: [],
   },
   {
@@ -143,6 +183,19 @@ export const MARKET_ABI = [
       { name: "user",         type: "address", indexed: true },
       { name: "rangeIndex",   type: "uint256", indexed: true },
       { name: "amount",       type: "uint256", indexed: false },
+      { name: "shares",       type: "uint256", indexed: false },
+      { name: "pricePaid",    type: "uint256", indexed: false },
+      { name: "newTotalPool", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "PositionSold",
+    type: "event",
+    inputs: [
+      { name: "user",         type: "address", indexed: true },
+      { name: "rangeIndex",   type: "uint256", indexed: true },
+      { name: "shares",       type: "uint256", indexed: false },
+      { name: "proceeds",     type: "uint256", indexed: false },
       { name: "newTotalPool", type: "uint256", indexed: false },
     ],
   },
@@ -222,13 +275,16 @@ export const marketFactoryAbi = [
     type: "function",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "_question", type: "string" },
-      { name: "_category", type: "uint8" },
+      { name: "_question",           type: "string" },
+      { name: "_category",           type: "uint8" },
       { name: "_resolutionDeadline", type: "uint256" },
-      { name: "_minStakeAmount", type: "uint256" },
-      { name: "_rangeLabels", type: "string[]" },
-      { name: "_lowerBounds", type: "uint256[]" },
-      { name: "_upperBounds", type: "uint256[]" },
+      { name: "_minStakeAmount",     type: "uint256" },
+      { name: "_initialPrice",       type: "uint256" },
+      { name: "_multiplier",         type: "uint256" },
+      { name: "_priceCap",           type: "uint256" },
+      { name: "_rangeLabels",        type: "string[]" },
+      { name: "_lowerBounds",        type: "uint256[]" },
+      { name: "_upperBounds",        type: "uint256[]" },
     ],
     outputs: [{ name: "proxyAddress", type: "address" }],
   },
@@ -300,6 +356,7 @@ export type OnChainRange = {
   lowerBound: bigint;
   upperBound: bigint;
   totalStaked: bigint;
+  totalShares: bigint;
 };
 
 export type OnChainMarketSummary = {
@@ -316,8 +373,8 @@ export type OnChainMarketSummary = {
 
 export type OnChainUserStake = {
   rangeIndex: bigint;
-  amount: bigint;
+  shares: bigint;
+  pricePaid: bigint;
+  amountStaked: bigint;
   claimed: boolean;
-  rangeLabel: string;
-  estimatedPayout: bigint;
 };

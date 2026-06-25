@@ -128,8 +128,9 @@ async function waitForTx(hash: `0x${string}`) {
 
 function parseContractError(err: any): string {
   const msg: string = err?.message ?? err?.shortMessage ?? String(err);
-  if (msg.includes("AlreadyStaked")) return "You have already staked on this market.";
+  if (msg.includes("MustSellPositionFirst")) return "You have an active position. Sell it first before staking on a new range.";
   if (msg.includes("BelowMinStake")) return "Amount is below the minimum stake.";
+  if (msg.includes("ZeroShares")) return "Amount too small — not enough to buy any shares at the current price.";
   if (msg.includes("MarketNotOpen")) return "This market is no longer accepting stakes.";
   if (msg.includes("DeadlinePassed")) return "The betting deadline has passed.";
   if (msg.includes("InvalidRangeIndex")) return "Invalid range selected.";

@@ -69,7 +69,11 @@ function HomeInner() {
   // Skip auth page when returning user has a valid session.
   // Also verify on-chain status before routing — unwhitelisted → verify phase.
   const handleSplashFinish = async () => {
-    if (address && profile && ready && authenticated) {
+    // `authenticated` is intentionally omitted: Privy auto-restores embedded
+    // wallet sessions but never auto-reconnects external wallets (WalletConnect,
+    // MetaMask) on refresh. Checking it would reset connect-wallet users to the
+    // auth screen on every page reload. Stored address + profile are sufficient.
+    if (address && profile && ready) {
       const verified = await syncVerification(address);
       setPhase(verified ? "home" : "verify");
     } else {

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { celoPublicClient } from "@/lib/gooddollar";
 import { buildEmbeddedViemClient } from "@/lib/privy-wallet";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
+import { createWalletClient, http } from "viem";
+import { celo } from "viem/chains";
 
 interface ClaimState {
   status: "not_whitelisted" | "can_claim" | "already_claimed" | "loading" | "error";
@@ -43,10 +45,37 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   });
   const [countdown, setCountdown] = useState("");
 
-  const buildSDKs = useCallback(async () => {
+  // Read-only SDK build — uses an http wallet client so it never blocks on
+  // WalletConnect reconnection. Safe for getWalletClaimStatus (pure reads).
+  const buildReadSDKs = useCallback(async () => {
+    if (!address) return null;
+    const { IdentitySDK, ClaimSDK } = await import("@goodsdks/citizen-sdk");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const readWalletClient = createWalletClient({
+      account: address as `0x${string}`,
+      chain: celo,
+      transport: http("https://forno.celo.org"),
+    }) as any;
+    const identitySDK = new IdentitySDK({
+      publicClient: celoPublicClient,
+      walletClient: readWalletClient,
+      env: "production",
+      account: address as `0x${string}`,
+    });
+    const claimSDK = new ClaimSDK({
+      account: address as `0x${string}`,
+      publicClient: celoPublicClient,
+      walletClient: readWalletClient,
+      identitySDK,
+      env: "production",
+    });
+    return { identitySDK, claimSDK };
+  }, [address]);
+
+  // Full SDK build — requires the real wallet provider for signing (claim tx).
+  const buildWriteSDKs = useCallback(async () => {
     if (!address || !wallets.length) return null;
     const walletClient = await buildEmbeddedViemClient(wallets, address);
-
     const { IdentitySDK, ClaimSDK } = await import("@goodsdks/citizen-sdk");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const identitySDK = new IdentitySDK({
@@ -66,9 +95,9 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   }, [wallets, address]);
 
   const fetchStatus = useCallback(async () => {
-    if (!address || !wallets.length) return;
+    if (!address) return;
     try {
-      const sdks = await buildSDKs();
+      const sdks = await buildReadSDKs();
       if (!sdks) return;
       const { status, entitlement, nextClaimTime } =
         await sdks.claimSDK.getWalletClaimStatus();
@@ -91,7 +120,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
         error: err instanceof Error ? err.message : "Failed to load claim status.",
       }));
     }
-  }, [address, wallets, buildSDKs, setClaimBadge]);
+  }, [address, buildReadSDKs, setClaimBadge]);
 
   // Poll every 60 seconds
   useEffect(() => {
@@ -115,8 +144,8 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   const handleClaim = async () => {
     setState((prev) => ({ ...prev, claiming: true, error: null }));
     try {
-      const sdks = await buildSDKs();
-      if (!sdks) throw new Error("Wallet not connected");
+      const sdks = await buildWriteSDKs();
+      if (!sdks) throw new Error("Wallet not connected. Please reconnect your wallet.");
       await sdks.claimSDK.claim();
       await fetchStatus();
       setState((prev) => ({ ...prev, claiming: false }));
