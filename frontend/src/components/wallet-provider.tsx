@@ -22,8 +22,12 @@ function PrivyWagmiConnector({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (wallets.length === 0) return;
-    const embedded = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
-    setActiveWallet(embedded);
+    // Prefer the external wallet (MetaMask, WalletConnect, etc.) when the user
+    // signed in with "connect wallet". Fall back to the Privy embedded wallet
+    // for email-login users who have no external wallet.
+    const external = wallets.find((w) => w.walletClientType !== "privy");
+    const embedded = wallets.find((w) => w.walletClientType === "privy");
+    setActiveWallet(external ?? embedded ?? wallets[0]);
   }, [wallets, setActiveWallet]);
 
   return <>{children}</>;
