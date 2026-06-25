@@ -539,11 +539,38 @@ function StakeModal({
   useEffect(() => {
     if (stakeStep !== "success" || !stakeTxHash || !amount || !userAddress) return;
     (async () => {
-      const { data: marketRow } = await supabase
+      let { data: marketRow } = await supabase
         .from("markets")
         .select("id")
         .eq("contract_address", market.address.toLowerCase())
         .maybeSingle();
+
+      if (!marketRow) {
+        // Market not in Supabase yet — auto-create a minimal record from on-chain data
+        const MAX_U255 = BigInt(1) << BigInt(255);
+        const { data: created } = await supabase
+          .from("markets")
+          .insert({
+            title: market.question,
+            category: market.categoryLabel,
+            asset: "",
+            window_label: market.deadlineLabel,
+            volume_label: market.poolLabel,
+            deadline: new Date(Number(market.deadline) * 1000).toISOString(),
+            ranges: market.ranges.map((r, idx) => ({
+              id: `r${idx}`,
+              label: r.label || formatRangeLabel(r),
+              min: parseFloat(formatUnits(r.lowerBound, 18)),
+              max: r.upperBound >= MAX_U255 ? null : parseFloat(formatUnits(r.upperBound, 18)),
+            })),
+            status: market.isResolved ? "resolved" : "active",
+            contract_address: market.address.toLowerCase(),
+          })
+          .select("id")
+          .maybeSingle();
+        marketRow = created;
+      }
+
       if (!marketRow) return;
       await supabase.from("stakes").insert({
         wallet_address: userAddress.toLowerCase(),
