@@ -199,6 +199,22 @@ export const MARKET_ABI = [
       { name: "newTotalPool", type: "uint256", indexed: false },
     ],
   },
+  {
+    // Extended view: returns rangeLabel + estimatedPayout (0 if market not resolved)
+    name: "getUserStake",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [
+      { name: "rangeIndex",      type: "uint256" },
+      { name: "shares",          type: "uint256" },
+      { name: "pricePaid",       type: "uint256" },
+      { name: "amountStaked",    type: "uint256" },
+      { name: "claimed",         type: "bool" },
+      { name: "rangeLabel",      type: "string" },
+      { name: "estimatedPayout", type: "uint256" },
+    ],
+  },
 ] as const;
 
 // ── ERC20 ABI (G$ token — approve + balanceOf) ────────────────────────────────
@@ -377,4 +393,6 @@ export type OnChainUserStake = {
   pricePaid: bigint;
   amountStaked: bigint;
   claimed: boolean;
+  rangeLabel: string;
+  estimatedPayout: bigint;
 };

@@ -92,7 +92,7 @@ export function useFactoryMarkets() {
       summaryResult.result as [string, number, bigint, number, bigint, bigint, bigint, boolean];
 
     const rawRanges = rangesResult?.status === "success" && rangesResult.result
-      ? (rangesResult.result as Array<{ label: string; lowerBound: bigint; upperBound: bigint; totalStaked: bigint }>)
+      ? (rangesResult.result as unknown as Array<{ label: string; lowerBound: bigint; upperBound: bigint; totalStaked: bigint }>)
       : [];
 
     const poolFloat = parseFloat(formatUnits(pool, 18));

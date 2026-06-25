@@ -17,7 +17,9 @@ import { ProfileView } from "@/components/profile-view";
 import { useFactoryMarkets, formatRangeLabel, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
 import { useMarketContract } from "@/lib/hooks/use-market-contract";
 import { useStake } from "@/lib/hooks/use-stake";
-import { erc20Abi, STAKE_TOKEN_ADDRESS, MarketStatus } from "@/lib/contracts";
+import { useSell } from "@/lib/hooks/use-sell";
+import { useClaim } from "@/lib/hooks/use-claim";
+import { erc20Abi, rangeFrenzyMarketAbi, STAKE_TOKEN_ADDRESS, MarketStatus } from "@/lib/contracts";
 import { useAppStore } from "@/lib/store";
 import { EarnTab } from "@/components/EarnTab";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
@@ -453,8 +455,10 @@ function StakeModal({
 }) {
   const [amount, setAmount] = useState("");
 
-  const { summary, userStake, hasStaked } = useMarketContract(market.address, userAddress);
-  const { stake, reset, step, errorMsg, symbol, decimals, stakeTxHash } = useStake(market.address);
+  const { summary, userStake, hasActivePosition, refetch } = useMarketContract(market.address, userAddress);
+  const { stake, reset: resetStake, step: stakeStep, errorMsg: stakeError, symbol, decimals, stakeTxHash } = useStake(market.address);
+  const { sell, reset: resetSell, step: sellStep, errorMsg: sellError } = useSell(market.address);
+  const { execute: executeClaim, reset: resetClaim, step: claimStep, errorMsg: claimError } = useClaim(market.address);
 
   const { data: balanceRaw } = useReadContract({
     address: STAKE_TOKEN_ADDRESS,
@@ -463,17 +467,61 @@ function StakeModal({
     args: [userAddress],
   });
 
+  // Bonding curve price for selected range (shown while staking)
+  const { data: stakePriceRaw } = useReadContract({
+    address: market.address,
+    abi: rangeFrenzyMarketAbi,
+    functionName: "getCurrentPrice",
+    args: [BigInt(selectedRange.index)],
+    query: { enabled: !!market.address },
+  });
+
+  // Current price for user's position range (sell proceeds preview)
+  const { data: sellPriceRaw } = useReadContract({
+    address: market.address,
+    abi: rangeFrenzyMarketAbi,
+    functionName: "getCurrentPrice",
+    args: [userStake?.rangeIndex ?? 0n],
+    query: { enabled: !!market.address && hasActivePosition && !!userStake },
+  });
+
   const tokenDecimals = decimals ?? 18;
   const balance = balanceRaw ? parseFloat(formatUnits(balanceRaw as bigint, tokenDecimals)) : 0;
   const tokenSymbol = symbol ?? "G$";
-
   const minStake = summary ? parseFloat(formatUnits((summary as any).minStakeAmount ?? 1000000000000000000n, tokenDecimals)) : 1;
 
   const isOpen = market.status === MarketStatus.OPEN;
   const isResolved = market.status === MarketStatus.RESOLVED;
+  const isCancelled = market.status === MarketStatus.CANCELLED;
 
+  // Sell is allowed when open or closed (contract blocks RESOLVED/CANCELLED)
+  const canSell = hasActivePosition && !isResolved && !isCancelled;
+  const canClaim = isResolved && hasActivePosition && userStake && !userStake.claimed && (userStake.estimatedPayout ?? 0n) > 0n;
+  const canRefund = isCancelled && userStake && userStake.amountStaked > 0n && !userStake.claimed;
+
+  const stakePrice = stakePriceRaw as bigint | undefined;
+  const sellPrice = sellPriceRaw as bigint | undefined;
+
+  // How many shares the entered amount would buy
+  const estimatedShares = stakePrice && stakePrice > 0n && amount
+    ? (parseFloat(amount) * 1e18) / Number(stakePrice)
+    : 0;
+
+  // Proceeds user would receive when selling at current price
+  const expectedProceeds = userStake && sellPrice
+    ? (userStake.shares * sellPrice) / BigInt(1e18)
+    : 0n;
+
+  // Range label for user's current position
+  const positionRangeLabel =
+    userStake?.rangeLabel ||
+    (userStake && market.ranges[Number(userStake.rangeIndex)]
+      ? formatRangeLabel(market.ranges[Number(userStake.rangeIndex)])
+      : "");
+
+  // Earn API calls after a successful stake
   useEffect(() => {
-    if (step === "success" && userAddress) {
+    if (stakeStep === "success" && userAddress) {
       fetch("/api/earn/first-bet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -485,10 +533,11 @@ function StakeModal({
         body: JSON.stringify({ wallet_address: userAddress }),
       }).catch(() => {});
     }
-  }, [step, userAddress]);
+  }, [stakeStep, userAddress]);
 
+  // Write stake record to Supabase after on-chain confirm
   useEffect(() => {
-    if (step !== "success" || !stakeTxHash || !amount || !userAddress) return;
+    if (stakeStep !== "success" || !stakeTxHash || !amount || !userAddress) return;
     (async () => {
       const { data: marketRow } = await supabase
         .from("markets")
@@ -506,7 +555,14 @@ function StakeModal({
         status: "open",
       });
     })();
-  }, [step, stakeTxHash, amount, userAddress, market.address, selectedRange]);
+  }, [stakeStep, stakeTxHash, amount, userAddress, market.address, selectedRange]);
+
+  // Refetch on-chain state after any tx succeeds
+  useEffect(() => {
+    if (stakeStep === "success" || sellStep === "success" || claimStep === "success") {
+      refetch();
+    }
+  }, [stakeStep, sellStep, claimStep, refetch]);
 
   const handleStake = async () => {
     if (!amount || isNaN(parseFloat(amount))) return;
@@ -515,7 +571,9 @@ function StakeModal({
   };
 
   const handleClose = () => {
-    reset();
+    resetStake();
+    resetSell();
+    resetClaim();
     setAmount("");
     onClose();
   };
@@ -530,9 +588,12 @@ function StakeModal({
     market.status === MarketStatus.RESOLVED ? "bg-blue-100 text-blue-700" :
     "bg-muted text-muted-foreground";
 
+  const anySuccess = stakeStep === "success" || sellStep === "success" || claimStep === "success";
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl max-h-[90dvh] overflow-y-auto">
+
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
@@ -543,11 +604,7 @@ function StakeModal({
             <h3 className="font-display text-lg font-bold leading-snug">{market.question}</h3>
             <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition shrink-0"
-          >
+          <button type="button" onClick={handleClose} className="text-muted-foreground hover:text-foreground transition shrink-0">
             <Cancel01Icon className="h-5 w-5" />
           </button>
         </div>
@@ -564,97 +621,238 @@ function StakeModal({
           </div>
         </div>
 
-        {/* User's existing stake */}
-        {hasStaked && userStake && userStake.amount > 0n && (
-          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3">
-            <p className="text-xs font-semibold text-primary mb-1">Your stake</p>
-            <p className="text-sm">
-              <span className="font-bold">{formatUnits(userStake.amount, tokenDecimals)} {tokenSymbol}</span>
-              {" "}on <span className="font-bold">{userStake.rangeLabel}</span>
-            </p>
-            {isResolved && userStake.estimatedPayout > 0n && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Payout: {parseFloat(formatUnits(userStake.estimatedPayout, tokenDecimals)).toFixed(4)} {tokenSymbol}
-              </p>
+        {/* ── ACTIVE POSITION CARD ── */}
+        {hasActivePosition && userStake && userStake.amountStaked > 0n && (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Your Position</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Range</span>
+                <span className="font-semibold">{positionRangeLabel}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Staked</span>
+                <span className="font-semibold tabular-nums">{formatUnits(userStake.amountStaked, tokenDecimals)} {tokenSymbol}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Shares</span>
+                <span className="font-semibold tabular-nums">{(Number(userStake.shares) / 1e18).toFixed(4)}</span>
+              </div>
+              {canSell && expectedProceeds > 0n && (
+                <div className="flex items-center justify-between text-sm pt-1.5 border-t border-primary/20 mt-1.5">
+                  <span className="text-muted-foreground">Exit value now</span>
+                  <span className="font-semibold tabular-nums">{formatUnits(expectedProceeds, tokenDecimals)} {tokenSymbol}</span>
+                </div>
+              )}
+              {isResolved && (userStake.estimatedPayout ?? 0n) > 0n && (
+                <div className="flex items-center justify-between text-sm pt-1.5 border-t border-primary/20 mt-1.5">
+                  <span className="font-semibold text-[#07955F]">Payout</span>
+                  <span className="font-bold text-[#07955F] tabular-nums">{formatUnits(userStake.estimatedPayout, tokenDecimals)} {tokenSymbol}</span>
+                </div>
+              )}
+              {isResolved && !canClaim && !userStake.claimed && (
+                <p className="text-xs text-muted-foreground pt-1 border-t border-primary/20 mt-1">Your range did not win this market.</p>
+              )}
+              {userStake.claimed && (
+                <p className="text-xs text-[#07955F] pt-1 border-t border-primary/20 mt-1">Claimed.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── SELL POSITION ── */}
+        {canSell && (
+          <div className="mb-4">
+            {sellStep === "success" ? (
+              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                <p className="font-semibold text-green-700">Position sold!</p>
+                <p className="text-xs text-green-600 mt-1">Your G$ has been returned to your wallet.</p>
+              </div>
+            ) : (
+              <>
+                {sellStep === "error" && (
+                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    {sellError}
+                    <button type="button" onClick={resetSell} className="ml-2 text-xs underline">Retry</button>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:border-destructive"
+                  disabled={sellStep === "selling"}
+                  onClick={sell}
+                >
+                  {sellStep === "selling" ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-destructive/30 border-t-destructive" />
+                      Selling…
+                    </span>
+                  ) : "Sell Position"}
+                </Button>
+              </>
             )}
           </div>
         )}
 
-        {/* Range selection */}
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Pick your range</p>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {market.ranges.map((r) => {
-            const rangePool = parseFloat(formatUnits(r.totalStaked, tokenDecimals));
-            return (
-              <button
-                key={r.index}
-                type="button"
-                onClick={() => !hasStaked && isOpen && onRangeSelect(r)}
-                disabled={hasStaked || !isOpen}
-                className={cn(
-                  "rounded-xl border px-3 py-3 text-left text-sm font-medium transition",
-                  selectedRange.index === r.index
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-muted/30 text-muted-foreground",
-                  (hasStaked || !isOpen) && "opacity-60 cursor-default hover:border-border",
-                  !hasStaked && isOpen && "hover:border-primary/40 cursor-pointer"
-                )}
-              >
-                <p className="font-semibold">{formatRangeLabel(r)}</p>
-                {rangePool > 0 && <p className="text-[10px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Stake input — only when open and not yet staked */}
-        {isOpen && !hasStaked && step !== "success" && (
+        {/* ── CLAIM WINNINGS ── */}
+        {canClaim && (
           <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount ({tokenSymbol})</p>
-              <button
-                type="button"
-                onClick={() => setAmount(balance.toString())}
-                className="text-xs text-primary hover:underline"
-              >
-                Max: {balance.toFixed(4)}
-              </button>
+            {claimStep === "success" ? (
+              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                <p className="font-semibold text-green-700">Winnings claimed!</p>
+                <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.estimatedPayout, tokenDecimals)} {tokenSymbol} sent to your wallet.</p>
+              </div>
+            ) : (
+              <>
+                {claimStep === "error" && (
+                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    {claimError}
+                    <button type="button" onClick={resetClaim} className="ml-2 text-xs underline">Retry</button>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  className="w-full bg-[#07955F] hover:bg-[#068050] text-white"
+                  disabled={claimStep === "claiming"}
+                  onClick={() => executeClaim("claim")}
+                >
+                  {claimStep === "claiming" ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Claiming…
+                    </span>
+                  ) : `Claim ${formatUnits(userStake!.estimatedPayout, tokenDecimals)} ${tokenSymbol}`}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── REFUND (cancelled market) ── */}
+        {canRefund && (
+          <div className="mb-4">
+            {claimStep === "success" ? (
+              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                <p className="font-semibold text-green-700">Refund received!</p>
+                <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.amountStaked, tokenDecimals)} {tokenSymbol} returned to your wallet.</p>
+              </div>
+            ) : (
+              <>
+                {claimStep === "error" && (
+                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    {claimError}
+                    <button type="button" onClick={resetClaim} className="ml-2 text-xs underline">Retry</button>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={claimStep === "claiming"}
+                  onClick={() => executeClaim("refund")}
+                >
+                  {claimStep === "claiming" ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                      Processing…
+                    </span>
+                  ) : `Refund ${formatUnits(userStake!.amountStaked, tokenDecimals)} ${tokenSymbol}`}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── STAKE INPUT (no active position, market open) ── */}
+        {!hasActivePosition && isOpen && (
+          <>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Pick your range</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {market.ranges.map((r) => {
+                const rangePool = parseFloat(formatUnits(r.totalStaked, tokenDecimals));
+                return (
+                  <button
+                    key={r.index}
+                    type="button"
+                    onClick={() => onRangeSelect(r)}
+                    className={cn(
+                      "rounded-xl border px-3 py-3 text-left text-sm font-medium transition cursor-pointer",
+                      selectedRange.index === r.index
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40",
+                    )}
+                  >
+                    <p className="font-semibold">{formatRangeLabel(r)}</p>
+                    {rangePool > 0 && <p className="text-[10px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
+                  </button>
+                );
+              })}
             </div>
-            <input
-              type="number"
-              min={minStake}
-              step="0.01"
-              placeholder={`Min ${minStake} ${tokenSymbol}`}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
-            />
-            {errorMsg && <p className="mt-1.5 text-xs text-destructive">{errorMsg}</p>}
+
+            {stakeStep !== "success" && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount ({tokenSymbol})</p>
+                  <button type="button" onClick={() => setAmount(balance.toString())} className="text-xs text-primary hover:underline">
+                    Max: {balance.toFixed(4)}
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  min={minStake}
+                  step="0.01"
+                  placeholder={`Min ${minStake} ${tokenSymbol}`}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
+                />
+                {stakePrice && stakePrice > 0n && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                    <span>Price per share: <span className="font-semibold text-foreground">{(Number(stakePrice) / 1e18).toFixed(4)} {tokenSymbol}</span></span>
+                    {estimatedShares > 0 && (
+                      <span>Est. shares: <span className="font-semibold text-foreground">{estimatedShares.toFixed(4)}</span></span>
+                    )}
+                  </div>
+                )}
+                {stakeError && <p className="mt-1.5 text-xs text-destructive">{stakeError}</p>}
+              </div>
+            )}
+
+            {stakeStep === "success" && (
+              <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                <p className="font-semibold text-green-700">Stake confirmed!</p>
+                <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── CLOSED / NO POSITION ── */}
+        {!hasActivePosition && !isOpen && (
+          <div className="mb-4 rounded-xl bg-muted/50 p-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              {isResolved ? "This market has been resolved." :
+               isCancelled ? "This market has been cancelled." :
+               "Staking is closed for this market."}
+            </p>
           </div>
         )}
 
-        {/* Success state */}
-        {step === "success" && (
-          <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-            <p className="font-semibold text-green-700">Stake confirmed!</p>
-            <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
-          </div>
-        )}
-
-        {/* Actions */}
+        {/* Footer actions */}
         <div className="flex gap-3">
           <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
-            {step === "success" ? "Done" : "Close"}
+            {anySuccess ? "Done" : "Close"}
           </Button>
-          {isOpen && !hasStaked && step !== "success" && (
+          {!hasActivePosition && isOpen && stakeStep !== "success" && (
             <Button
               type="button"
-              className="flex-1"
-              disabled={!amount || parseFloat(amount) < minStake || step === "approving" || step === "staking"}
+              className="flex-1 bg-[#07955F] hover:bg-[#068050] text-white"
+              disabled={!amount || parseFloat(amount) < minStake || stakeStep === "approving" || stakeStep === "staking"}
               onClick={handleStake}
             >
-              {step === "approving" ? "Approving…" :
-               step === "staking" ? "Staking…" :
+              {stakeStep === "approving" ? "Approving…" :
+               stakeStep === "staking" ? "Staking…" :
                `Stake on ${formatRangeLabel(selectedRange)}`}
             </Button>
           )}

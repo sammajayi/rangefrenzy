@@ -19,7 +19,8 @@ export function useMarketContract(
 
   const { data: userData, isLoading: userLoading } = useReadContracts({
     contracts: [
-      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "userStakes", args: [userAddress!] },
+      // getUserStake returns 7 fields including rangeLabel and estimatedPayout (0 when not resolved)
+      { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "getUserStake", args: [userAddress!] },
       { address: contractAddress!, abi: rangeFrenzyMarketAbi, functionName: "hasActivePosition", args: [userAddress!] },
     ] as any[],
     query: { enabled: enabled && !!userAddress },
@@ -43,9 +44,9 @@ export function useMarketContract(
   let userStake: OnChainUserStake | undefined;
   const u0 = userData?.[0] as { status: string; result: unknown } | undefined;
   if (u0?.status === "success" && u0.result) {
-    const [rangeIndex, shares, pricePaid, amountStaked, claimed] =
-      u0.result as [bigint, bigint, bigint, bigint, boolean];
-    userStake = { rangeIndex, shares, pricePaid, amountStaked, claimed };
+    const [rangeIndex, shares, pricePaid, amountStaked, claimed, rangeLabel, estimatedPayout] =
+      u0.result as [bigint, bigint, bigint, bigint, boolean, string, bigint];
+    userStake = { rangeIndex, shares, pricePaid, amountStaked, claimed, rangeLabel, estimatedPayout };
   }
 
   const u1 = userData?.[1] as { status: string; result: unknown } | undefined;
