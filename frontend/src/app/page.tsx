@@ -233,7 +233,7 @@ function HomeInner() {
               <Button
                 className="mt-5 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
                 size="lg"
-                onClick={() => window.open("https://t.me/rangefrenzy", "_blank")}
+                onClick={() => window.open("https://t.me/+_ichLhk_TQ5kZmVk", "_blank")}
               >
                 Get Gas
               </Button>
