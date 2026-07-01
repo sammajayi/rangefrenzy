@@ -27,7 +27,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
   };
 
   const handleTelegram = async () => {
-    window.open("https://t.me/+_ichLhk_TQ5kZmVk", "_blank");
+    window.open("https://t.me/+Vz9Ze9dNIww0OGY0", "_blank");
     setTelegramDone(true);
     await fetch("/api/social-reward", {
       method: "POST",
