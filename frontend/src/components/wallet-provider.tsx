@@ -12,6 +12,9 @@ const wagmiConfig = createConfig({
   transports: {
     [celo.id]: http("https://forno.celo.org"),
   },
+  // Privy manages all wallet connections — disable EIP-6963 injected wallet
+  // discovery so MetaMask does not auto-prompt on every page load.
+  multiInjectedProviderDiscovery: false,
 });
 
 const queryClient = new QueryClient();
