@@ -112,10 +112,6 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
     setShowStakeModal(false);
   };
 
-  const handleStakeClick = () => {
-    setShowStakeModal(true);
-  };
-
   const handleCloseAll = () => {
     setSelected(null);
     setShowStakeModal(false);
@@ -388,84 +384,17 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
 
       {/* ── MARKET DETAIL MODAL ── */}
       {selected && !showStakeModal && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
-            <div className={cn("flex h-36 items-center justify-center overflow-hidden", selected.market.imageUrl ? "" : `bg-gradient-to-br ${CATEGORY_GRADIENT[selected.market.categoryLabel.toLowerCase()] ?? "from-muted to-muted/60"}`)}>
-              {selected.market.imageUrl ? (
-                <img src={selected.market.imageUrl} alt={selected.market.question} className="h-full w-full object-cover" />
-              ) : (
-                <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
-              )}
-            </div>
-            <div className="p-6">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP[selected.market.categoryLabel.toLowerCase()] ?? "bg-muted text-muted-foreground border-border")}>
-                    {selected.market.categoryLabel}
-                  </span>
-                  <span className="text-xs text-muted-foreground">G$</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleShareMarket(selected.market)}
-                  className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-[#07955F]/40 hover:text-foreground"
-                >
-                  {copiedShare ? (
-                    <>
-                      <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-[#07955F]" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Share01Icon className="h-3.5 w-3.5" />
-                      Share
-                    </>
-                  )}
-                </button>
-              </div>
-              <h3 className="font-display text-xl font-bold">{selected.market.question}</h3>
-              <div className="mt-1 flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">{selected.market.deadlineLabel}</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/10 px-2.5 py-0.5 text-xs font-bold text-[#07955F] tabular-nums">
-                  <Chart01Icon className="h-3.5 w-3.5" />
-                  {selected.market.poolLabel === "No stakes yet" ? "0" : selected.market.poolLabel.split(" ")[0]}
-                </span>
-              </div>
-
-              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pick your range</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {selected.market.ranges.map((r) => (
-                  <button
-                    key={r.index}
-                    type="button"
-                    onClick={() => setSelected({ ...selected, range: r })}
-                    className={cn(
-                      "rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",
-                      selected.range.index === r.index
-                        ? "border-[#07955F] bg-[#07955F]/8 text-foreground"
-                        : "border-border bg-muted/30 text-muted-foreground hover:border-[#07955F]/40",
-                    )}
-                  >
-                    {formatRangeLabel(r)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6 flex gap-3">
-                <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={handleCloseAll}>
-                  Close
-                </Button>
-                <Button
-                  type="button"
-                  className="flex-1 rounded-2xl bg-[#07955F] hover:bg-[#068050] text-white"
-                  onClick={handleStakeClick}
-                >
-                  Stake G$
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <MarketDetailModal
+          market={selected.market}
+          userAddress={address as `0x${string}`}
+          copiedShare={copiedShare}
+          onClose={handleCloseAll}
+          onShareMarket={handleShareMarket}
+          onGoToStake={(range) => {
+            setSelected({ market: selected.market, range });
+            setShowStakeModal(true);
+          }}
+        />
       )}
 
       {/* ── STAKE MODAL ── */}
@@ -935,6 +864,137 @@ function StakeModal({
                `Stake on ${formatRangeLabel(selectedRange)}`}
             </Button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Market Detail Modal ── */
+function MarketDetailModal({
+  market,
+  userAddress,
+  copiedShare,
+  onClose,
+  onShareMarket,
+  onGoToStake,
+}: {
+  market: OnChainMarket;
+  userAddress: `0x${string}`;
+  copiedShare: boolean;
+  onClose: () => void;
+  onShareMarket: (market: OnChainMarket) => void;
+  onGoToStake: (range: OnChainRange) => void;
+}) {
+  const [selectedRange, setSelectedRange] = useState(market.ranges[0]);
+  const { hasActivePosition, userStake } = useMarketContract(market.address as `0x${string}`, userAddress);
+
+  const handleCta = () => {
+    if (hasActivePosition && userStake) {
+      const userRange = market.ranges[Number(userStake.rangeIndex)] ?? market.ranges[0];
+      onGoToStake(userRange);
+    } else {
+      onGoToStake(selectedRange);
+    }
+  };
+
+  const catKey = market.categoryLabel.toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
+        <div className={cn("flex h-36 items-center justify-center overflow-hidden shrink-0", market.imageUrl ? "" : `bg-gradient-to-br ${CATEGORY_GRADIENT[catKey] ?? "from-muted to-muted/60"}`)}>
+          {market.imageUrl ? (
+            <img src={market.imageUrl} alt={market.question} className="h-full w-full object-cover" />
+          ) : (
+            <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
+          )}
+        </div>
+        <div className="p-6">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP[catKey] ?? "bg-muted text-muted-foreground border-border")}>
+                {market.categoryLabel}
+              </span>
+              <span className="text-xs text-muted-foreground">G$</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onShareMarket(market)}
+              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-[#07955F]/40 hover:text-foreground"
+            >
+              {copiedShare ? (
+                <>
+                  <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-[#07955F]" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Share01Icon className="h-3.5 w-3.5" />
+                  Share
+                </>
+              )}
+            </button>
+          </div>
+          <h3 className="font-display text-xl font-bold">{market.question}</h3>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">{market.deadlineLabel}</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/10 px-2.5 py-0.5 text-xs font-bold text-[#07955F] tabular-nums">
+              <Chart01Icon className="h-3.5 w-3.5" />
+              {market.poolLabel === "No stakes yet" ? "0" : market.poolLabel.split(" ")[0]}
+            </span>
+          </div>
+
+          {/* Price chart — always visible */}
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Price movement</p>
+            <MiniPriceChart
+              marketAddress={market.address}
+              ranges={market.ranges.map((r) => ({ index: r.index, label: formatRangeLabel(r) }))}
+            />
+          </div>
+
+          {/* Active position notice */}
+          {hasActivePosition ? (
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+              <p className="text-sm font-semibold text-primary">You have an active position</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Open the position panel to track price or sell.</p>
+            </div>
+          ) : (
+            <>
+              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pick your range</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {market.ranges.map((r) => (
+                  <button
+                    key={r.index}
+                    type="button"
+                    onClick={() => setSelectedRange(r)}
+                    className={cn(
+                      "rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",
+                      selectedRange.index === r.index
+                        ? "border-[#07955F] bg-[#07955F]/8 text-foreground"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-[#07955F]/40",
+                    )}
+                  >
+                    {formatRangeLabel(r)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="mt-6 flex gap-3">
+            <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>
+              Close
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 rounded-2xl bg-[#07955F] hover:bg-[#068050] text-white"
+              onClick={handleCta}
+            >
+              {hasActivePosition ? "Manage Position" : "Stake G$"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
