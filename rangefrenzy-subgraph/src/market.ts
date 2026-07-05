@@ -1,5 +1,6 @@
 import {
   Staked as StakedEvent,
+  PositionSold as PositionSoldEvent,
   BettingClosed as BettingClosedEvent,
   MarketResolved as MarketResolvedEvent,
   WinningsClaimed as WinningsClaimedEvent,
@@ -9,8 +10,19 @@ import {
 import { User, Market, MarketRange, Stake, Transaction } from "../generated/schema"
 import { BigInt, BigDecimal, Address, log } from "@graphprotocol/graph-ts"
 
-function bigIntToDecimal(amount: BigInt): BigDecimal {
-  return amount.toBigDecimal()
+const TOKEN_DECIMALS = 18
+
+function tokenExponent(): BigDecimal {
+  let bd = BigDecimal.fromString("1")
+  let ten = BigDecimal.fromString("10")
+  for (let i = 0; i < TOKEN_DECIMALS; i++) {
+    bd = bd.times(ten)
+  }
+  return bd
+}
+
+function normalizeAmount(amount: BigInt): BigDecimal {
+  return amount.toBigDecimal().div(tokenExponent())
 }
 
 function getOrCreateUser(address: string, timestamp: BigInt): User {
@@ -23,6 +35,7 @@ function getOrCreateUser(address: string, timestamp: BigInt): User {
     user.totalBets = 0
     user.wins = 0
     user.losses = 0
+    user.realizedPnl = BigDecimal.zero()
     user.createdAt = timestamp
     user.updatedAt = timestamp
     user.save()
@@ -51,7 +64,8 @@ export function handleStaked(event: StakedEvent): void {
     return
   }
 
-  let amountDecimal = bigIntToDecimal(event.params.amount)
+  let amountDecimal = normalizeAmount(event.params.amount)
+  let pricePaidDecimal = normalizeAmount(event.params.pricePaid)
 
   let stake = new Stake(stakeId)
   stake.transactionHash = event.transaction.hash
@@ -60,6 +74,8 @@ export function handleStaked(event: StakedEvent): void {
   stake.rangeIndex = event.params.rangeIndex.toI32()
   stake.rangeLabel = ""
   stake.amount = amountDecimal
+  stake.shares = event.params.shares
+  stake.pricePaid = pricePaidDecimal
   stake.claimed = false
   stake.status = "OPEN"
   stake.createdAt = event.block.timestamp
@@ -68,7 +84,7 @@ export function handleStaked(event: StakedEvent): void {
   let stakeIds = market.stakeIds
   stakeIds.push(stakeId)
   market.stakeIds = stakeIds
-  market.pool = market.pool.plus(amountDecimal)
+  market.pool = normalizeAmount(event.params.newTotalPool)
   market.totalStakers = market.totalStakers + 1
   market.save()
 
@@ -90,6 +106,54 @@ export function handleStaked(event: StakedEvent): void {
   tx.market = marketId
   tx.type = "STAKE"
   tx.amount = amountDecimal
+  tx.timestamp = event.block.timestamp
+  tx.blockNumber = event.block.number
+  tx.save()
+}
+
+export function handlePositionSold(event: PositionSoldEvent): void {
+  let marketId = event.address.toHexString()
+  let userId = event.params.user.toHexString()
+  let proceedsDecimal = normalizeAmount(event.params.proceeds)
+
+  let user = getOrCreateUser(userId, event.block.timestamp)
+  let market = Market.load(marketId)
+  if (!market) {
+    log.warning("Market not found for PositionSold event: {}", [marketId])
+    return
+  }
+
+  let stakeIds = market.stakeIds
+  let matched = false
+  for (let i = 0; i < stakeIds.length; i++) {
+    let stake = Stake.load(stakeIds[i])
+    if (stake && stake.user == userId && stake.status == "OPEN") {
+      stake.status = "SOLD"
+      stake.proceeds = proceedsDecimal
+      stake.soldAt = event.block.timestamp
+      stake.save()
+      matched = true
+      break
+    }
+  }
+  if (!matched) {
+    log.warning("Stake not found during PositionSold for user {} in market {}", [userId, marketId])
+  }
+
+  market.pool = normalizeAmount(event.params.newTotalPool)
+  market.save()
+
+  user.realizedPnl = user.realizedPnl.plus(proceedsDecimal)
+  user.updatedAt = event.block.timestamp
+  user.save()
+
+  let txId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  let tx = new Transaction(txId)
+  tx.transactionHash = event.transaction.hash
+  tx.user = userId
+  tx.market = marketId
+  tx.type = "SELL"
+  tx.amount = proceedsDecimal
   tx.timestamp = event.block.timestamp
   tx.blockNumber = event.block.number
   tx.save()
@@ -118,7 +182,7 @@ export function handleMarketResolved(event: MarketResolvedEvent): void {
   market.status = "RESOLVED"
   market.actualOutcome = event.params.actualOutcome
   market.winningRangeIndexes = event.params.winningRangeIndexes
-  market.feePaid = bigIntToDecimal(event.params.feePaid)
+  market.feePaid = normalizeAmount(event.params.feePaid)
   market.resolvedAt = event.block.timestamp
   market.save()
 
@@ -129,6 +193,10 @@ export function handleMarketResolved(event: MarketResolvedEvent): void {
     let stake = Stake.load(stakeIds[i])
     if (!stake) {
       log.warning("Stake not found during resolution: {}", [stakeIds[i]])
+      continue
+    }
+    if (stake.status != "OPEN") {
+      // Already sold/refunded before resolution — leave as-is
       continue
     }
 
@@ -159,7 +227,7 @@ export function handleMarketResolved(event: MarketResolvedEvent): void {
 export function handleWinningsClaimed(event: WinningsClaimedEvent): void {
   let marketId = event.address.toHexString()
   let userId = event.params.user.toHexString()
-  let payoutDecimal = bigIntToDecimal(event.params.payout)
+  let payoutDecimal = normalizeAmount(event.params.payout)
 
   let user = getOrCreateUser(userId, event.block.timestamp)
 
@@ -182,6 +250,7 @@ export function handleWinningsClaimed(event: WinningsClaimedEvent): void {
   }
 
   user.totalPayout = user.totalPayout.plus(payoutDecimal)
+  user.realizedPnl = user.realizedPnl.plus(payoutDecimal)
   user.updatedAt = event.block.timestamp
   user.save()
 
@@ -200,7 +269,7 @@ export function handleWinningsClaimed(event: WinningsClaimedEvent): void {
 export function handleStakeRefunded(event: StakeRefundedEvent): void {
   let marketId = event.address.toHexString()
   let userId = event.params.user.toHexString()
-  let amountDecimal = bigIntToDecimal(event.params.amount)
+  let amountDecimal = normalizeAmount(event.params.amount)
 
   let user = getOrCreateUser(userId, event.block.timestamp)
 
@@ -222,6 +291,7 @@ export function handleStakeRefunded(event: StakeRefundedEvent): void {
     }
   }
 
+  user.realizedPnl = user.realizedPnl.plus(amountDecimal)
   user.updatedAt = event.block.timestamp
   user.save()
 

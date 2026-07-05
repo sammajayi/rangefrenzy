@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useWallets } from "@privy-io/react-auth";
+import { ShieldUserIcon, Alert01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { supabase, sendNotification } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
@@ -107,8 +108,8 @@ export function VerificationGate({ onVerified }: Props) {
     <div className="flex flex-col items-center px-6 pt-16">
       <div className="w-full max-w-sm text-center">
         <div className="mb-8 flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
-            <span className="font-display text-3xl font-black text-primary">RF</span>
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+            <ShieldUserIcon className="h-10 w-10" />
           </div>
         </div>
 
@@ -121,8 +122,9 @@ export function VerificationGate({ onVerified }: Props) {
         </p>
 
         {error && (
-          <div className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <Alert01Icon className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSendTransaction } from "@privy-io/react-auth";
 import { createPublicClient, http, parseUnits, encodeFunctionData } from "viem";
 import { celo } from "viem/chains";
+import { CheckmarkCircle01Icon, Alert01Icon, Cancel01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { MARKET_ABI, ERC20_ABI, G_TOKEN_ADDRESS, STAKE_TOKEN_ADDRESS, formatGD } from "@/lib/contracts";
@@ -124,7 +125,9 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
 
         {step === "done" ? (
           <div className="text-center py-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl">🎉</div>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <CheckmarkCircle01Icon className="h-8 w-8" />
+            </div>
             <h3 className="font-display text-xl font-bold">Stake placed!</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">{amount} G$</span> on <span className="font-semibold text-foreground">{range.label}</span>
@@ -138,7 +141,9 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
           </div>
         ) : step === "error" ? (
           <div className="text-center py-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-3xl">⚠️</div>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Alert01Icon className="h-8 w-8" />
+            </div>
             <h3 className="font-display text-lg font-bold">Transaction failed</h3>
             <p className="mt-2 text-sm text-muted-foreground">{errorMsg}</p>
             <div className="mt-6 flex gap-3">
@@ -150,7 +155,9 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
           <>
             <div className="mb-1 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold">Stake G$</h3>
-              <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition text-xl leading-none">×</button>
+              <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
+                <Cancel01Icon className="h-5 w-5" />
+              </button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">{market.title}</p>
 
@@ -160,15 +167,19 @@ export function StakeModal({ market, range, address, onClose, onSuccess }: Props
             </div>
 
             {hasActivePosition && (
-              <div className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                You have an active position in this market. Sell it first before staking on a new range.
+              <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                <Alert01Icon className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>You have an active position in this market. Sell it first before staking on a new range.</span>
               </div>
             )}
 
             {!contractAddress && (
-              <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-                <p className="text-sm font-semibold text-amber-800">On-chain staking not available yet</p>
-                <p className="text-xs text-amber-700 mt-0.5">This market hasn&apos;t been deployed to the contract. Contact the admin to enable staking.</p>
+              <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                <Alert01Icon className="h-4 w-4 shrink-0 mt-0.5 text-amber-800" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">On-chain staking not available yet</p>
+                  <p className="text-xs text-amber-700 mt-0.5">This market hasn&apos;t been deployed to the contract. Contact the admin to enable staking.</p>
+                </div>
               </div>
             )}
 

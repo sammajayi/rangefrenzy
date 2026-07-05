@@ -8,9 +8,9 @@ dataSources:
     name: MarketFactory
     network: celo
     source:
-      address: "0x1bD2131B78E40928d7A0aB47425492F80262ddD0"
+      address: "0x73448cE25EEf5E3E9c092D880371Aba892fB3447"
       abi: MarketFactory
-      startBlock: 68677990
+      startBlock: 70488827
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -48,8 +48,10 @@ templates:
         - name: RangeFrenzyMarket
           file: ./abis/RangeFrenzyMarket.json
       eventHandlers:
-        - event: Staked(indexed address,indexed uint256,uint256,uint256)
+        - event: Staked(indexed address,indexed uint256,uint256,uint256,uint256,uint256)
           handler: handleStaked
+        - event: PositionSold(indexed address,indexed uint256,uint256,uint256,uint256)
+          handler: handlePositionSold
         - event: BettingClosed(uint256)
           handler: handleBettingClosed
         - event: MarketResolved(uint256,uint256[],uint256,uint256)

@@ -1,40 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
-import { PrivyProvider, useWallets } from "@privy-io/react-auth";
-import { WagmiProvider, createConfig, useSetActiveWallet } from "@privy-io/wagmi";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { celo } from "viem/chains";
 import { http } from "viem";
 
+// @privy-io/wagmi's createConfig already forces multiInjectedProviderDiscovery:
+// false and its WagmiProvider already syncs Privy's wallets into wagmi
+// (via an internal useSyncPrivyWallets hook) using wagmi's silent reconnect()
+// path. A previous hand-rolled connector here called useSetActiveWallet()
+// directly on every mount, which — with no persisted wagmi connection yet —
+// always fell back to a fresh connect() against the injected provider,
+// re-triggering MetaMask's approval popup on every page refresh. Removed in
+// favor of relying on @privy-io/wagmi's own (safe) built-in sync.
 const wagmiConfig = createConfig({
   chains: [celo],
   transports: {
     [celo.id]: http("https://forno.celo.org"),
   },
-  // Privy manages all wallet connections — disable EIP-6963 injected wallet
-  // discovery so MetaMask does not auto-prompt on every page load.
-  multiInjectedProviderDiscovery: false,
 });
 
 const queryClient = new QueryClient();
-
-function PrivyWagmiConnector({ children }: { children: React.ReactNode }) {
-  const { wallets } = useWallets();
-  const { setActiveWallet } = useSetActiveWallet();
-
-  useEffect(() => {
-    if (wallets.length === 0) return;
-    // Prefer the external wallet (MetaMask, WalletConnect, etc.) when the user
-    // signed in with "connect wallet". Fall back to the Privy embedded wallet
-    // for email-login users who have no external wallet.
-    const external = wallets.find((w) => w.walletClientType !== "privy");
-    const embedded = wallets.find((w) => w.walletClientType === "privy");
-    setActiveWallet(external ?? embedded ?? wallets[0]);
-  }, [wallets, setActiveWallet]);
-
-  return <>{children}</>;
-}
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -51,9 +38,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>
-          <PrivyWagmiConnector>{children}</PrivyWagmiConnector>
-        </WagmiProvider>
+        <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
   );

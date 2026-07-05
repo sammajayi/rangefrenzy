@@ -1,15 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { Copy01Icon, Logout01Icon, Setting07Icon, Upload01Icon, CheckmarkCircle01Icon, UserCheck01Icon } from "hugeicons-react";
+import {
+  Copy01Icon,
+  Logout01Icon,
+  Setting07Icon,
+  Upload01Icon,
+  CheckmarkCircle01Icon,
+  UserCheck01Icon,
+  ChartUpIcon,
+  Clock01Icon,
+  Target01Icon,
+  Wallet01Icon,
+} from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { supabase, uploadAvatar } from "@/lib/supabase";
-import type { Profile, Stake } from "@/lib/supabase";
+import type { Profile } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { MyBets } from "@/components/MyBets";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
+import { useUserStakes } from "@/lib/hooks/use-user-stakes";
+import { computeStakeStats } from "@/lib/stake-stats";
 import { useBalance, useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
@@ -43,29 +57,11 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
     args: [addr],
   });
 
-  // Real stats from stakes table
-  const [stakeStats, setStakeStats] = useState({ pnl: 0, open: 0, closed: 0, winRate: 0 });
-  useEffect(() => {
-    if (!address) return;
-    supabase
-      .from("stakes")
-      .select("status, amount_gd, payout_gd")
-      .eq("wallet_address", address.toLowerCase())
-      .then(({ data }) => {
-        if (!data?.length) return;
-        const stakes = data as Pick<Stake, "status" | "amount_gd" | "payout_gd">[];
-        const closed = stakes.filter((s) => s.status !== "open");
-        const wins = stakes.filter((s) => s.status === "won");
-        const totalStaked = stakes.reduce((acc, s) => acc + parseFloat(s.amount_gd ?? "0"), 0);
-        const totalPayout = wins.reduce((acc, s) => acc + parseFloat(s.payout_gd ?? "0"), 0);
-        setStakeStats({
-          pnl: totalPayout - totalStaked,
-          open: stakes.filter((s) => s.status === "open").length,
-          closed: closed.length,
-          winRate: closed.length ? wins.length / closed.length : 0,
-        });
-      });
-  }, [address]);
+  // Real stats from the subgraph — same query/computation as My Bets, so the
+  // numbers shown here can never disagree with the My Bets list below.
+  const { data: bets } = useUserStakes(address);
+  const { open, closed, winRate, realizedPnl } = computeStakeStats(bets ?? []);
+  const stakeStats = { pnl: realizedPnl, open, closed, winRate };
 
   const short = `${displayAddress.slice(0, 6)}…${displayAddress.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
@@ -97,16 +93,41 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const pnlPositive = stakeStats.pnl >= 0;
   const stats = [
-    { label: "Total P&L", value: `${stakeStats.pnl >= 0 ? "+" : ""}${stakeStats.pnl.toFixed(2)} G$` },
-    { label: "Open", value: String(stakeStats.open) },
-    { label: "Closed", value: String(stakeStats.closed) },
-    { label: "Win rate", value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "—" },
+    {
+      label: "Total P&L",
+      value: `${pnlPositive ? "+" : ""}${stakeStats.pnl.toFixed(2)} G$`,
+      icon: ChartUpIcon,
+      tint: pnlPositive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600",
+      valueClass: pnlPositive ? "text-emerald-600" : "text-red-600",
+    },
+    {
+      label: "Open",
+      value: String(stakeStats.open),
+      icon: Clock01Icon,
+      tint: "bg-blue-50 text-blue-600",
+      valueClass: "",
+    },
+    {
+      label: "Closed",
+      value: String(stakeStats.closed),
+      icon: CheckmarkCircle01Icon,
+      tint: "bg-muted text-muted-foreground",
+      valueClass: "",
+    },
+    {
+      label: "Win rate",
+      value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "—",
+      icon: Target01Icon,
+      tint: "bg-amber-50 text-amber-600",
+      valueClass: "",
+    },
   ];
 
   return (
-    <div className="min-h-[calc(100dvh-8rem)] rounded-t-3xl bg-white pb-8 pt-1 text-foreground shadow-sm ring-1 ring-border relative">
-      <div className="px-4 pt-3">
+    <div className="min-h-[calc(100dvh-8rem)] rounded-t-3xl bg-white pb-8 pt-5 text-foreground shadow-sm ring-1 ring-border relative overflow-hidden">
+      <div className="px-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
             <div className="relative shrink-0">
@@ -117,9 +138,9 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                 className="group relative"
               >
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={displayName} className="h-14 w-14 rounded-full object-cover" />
+                  <img src={profile.avatar_url} alt={displayName} className="h-16 w-16 rounded-full object-cover ring-4 ring-primary/10 shadow-sm" />
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary ring-4 ring-primary/10 shadow-sm">
                     {initials}
                   </div>
                 )}
@@ -161,7 +182,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-full border-border"
+              className="h-9 w-9 shrink-0 rounded-full border-border bg-white shadow-sm"
               onClick={() => setShowSettings((v) => !v)}
               aria-label="Profile settings"
             >
@@ -215,28 +236,37 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
         </div>
 
         {/* Stats */}
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-xl border border-border bg-muted/30 px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-              <p className="mt-1 font-display text-base font-bold tabular-nums">{s.value}</p>
-            </div>
-          ))}
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stats.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
+                <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", s.tint)}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                <p className={cn("mt-0.5 font-display text-base font-bold tabular-nums", s.valueClass)}>{s.value}</p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Wallet balances — live from chain */}
         <section className="mt-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Wallet balances</h3>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Wallet01Icon className="h-3.5 w-3.5" />
+            Wallet balances
+          </h3>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-transparent px-4 py-3">
             <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/celo.png" alt="CELO" className="h-4 w-4 rounded-full shrink-0" />
+              <img src="/icons/celo.png" alt="CELO" className="h-5 w-5 rounded-full shrink-0 shadow-sm" />
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">CELO</span>
-              <span className="text-xs font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
+              <span className="text-sm font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/goodollar.png" alt="G$" className="h-4 w-4 rounded-full shrink-0" />
+              <img src="/icons/goodollar.png" alt="G$" className="h-5 w-5 rounded-full shrink-0 shadow-sm" />
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">G$</span>
-              <span className="text-xs font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>
+              <span className="text-sm font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>
             </div>
           </div>
         </section>

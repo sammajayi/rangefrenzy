@@ -3,16 +3,19 @@ import { gql } from "graphql-request";
 export const LEADERBOARD_QUERY = gql`
   query Leaderboard {
     users(
-      first: 20
-      orderBy: totalBets
+      first: 50
+      orderBy: totalStaked
       orderDirection: desc
+      where: { totalBets_gt: 0 }
     ) {
       id
       address
       totalStaked
+      totalPayout
       totalBets
       wins
       losses
+      realizedPnl
     }
   }
 `;
@@ -27,6 +30,7 @@ export const USER_PROFILE_QUERY = gql`
       totalBets
       wins
       losses
+      realizedPnl
     }
   }
 `;
@@ -43,11 +47,15 @@ export const USER_STAKES_QUERY = gql`
       rangeIndex
       rangeLabel
       amount
+      shares
+      pricePaid
       claimed
       payout
+      proceeds
       status
       createdAt
       claimedAt
+      soldAt
       market {
         id
         address
@@ -84,6 +92,22 @@ export const USER_TRANSACTIONS_QUERY = gql`
   }
 `;
 
+export const MARKET_STAKES_QUERY = gql`
+  query MarketStakes($marketId: String!) {
+    stakes(
+      where: { market: $marketId }
+      orderBy: createdAt
+      orderDirection: asc
+      first: 1000
+    ) {
+      rangeIndex
+      rangeLabel
+      pricePaid
+      createdAt
+    }
+  }
+`;
+
 export const USER_BY_WALLET_QUERY = gql`
   query UserByWallet($address: Bytes!) {
     users(where: { address: $address }) {
@@ -94,6 +118,7 @@ export const USER_BY_WALLET_QUERY = gql`
       totalBets
       wins
       losses
+      realizedPnl
     }
   }
 `;
@@ -106,7 +131,10 @@ export type SubgraphUser = {
   totalBets: number;
   wins: number;
   losses: number;
+  realizedPnl: string;
 };
+
+export type StakeStatus = "OPEN" | "WON" | "LOST" | "REFUNDED" | "SOLD";
 
 export type SubgraphStake = {
   id: string;
@@ -114,11 +142,15 @@ export type SubgraphStake = {
   rangeIndex: number;
   rangeLabel: string;
   amount: string;
+  shares: string;
+  pricePaid: string;
   claimed: boolean;
   payout: string | null;
-  status: "OPEN" | "WON" | "LOST" | "REFUNDED";
+  proceeds: string | null;
+  status: StakeStatus;
   createdAt: string;
   claimedAt: string | null;
+  soldAt: string | null;
   market: {
     id: string;
     address: string;
@@ -135,18 +167,27 @@ export type SubgraphStake = {
 export type SubgraphTransaction = {
   id: string;
   transactionHash: string;
-  type: "STAKE" | "CLAIM" | "REFUND";
+  type: "STAKE" | "SELL" | "CLAIM" | "REFUND";
   amount: string;
   timestamp: string;
   blockNumber: string;
   market: { id: string; question: string } | null;
 };
 
+export type SubgraphMarketStakePoint = {
+  rangeIndex: number;
+  rangeLabel: string;
+  pricePaid: string;
+  createdAt: string;
+};
+
 export type SubgraphLeaderRow = {
   id: string;
   address: string;
   totalStaked: string;
+  totalPayout: string;
   totalBets: number;
   wins: number;
   losses: number;
+  realizedPnl: string;
 };

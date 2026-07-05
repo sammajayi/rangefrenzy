@@ -3,10 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   GiftIcon,
-  Award01Icon,
   CheckmarkCircle01Icon,
   Loading03Icon,
   Link03Icon,
+  FireIcon,
+  Rocket01Icon,
+  UserGroupIcon,
+  NewTwitterIcon,
 } from "hugeicons-react";
 import { supabase } from "@/lib/supabase";
 import type { BonusEarning, BonusSource } from "@/lib/supabase";
@@ -28,6 +31,8 @@ interface TaskState {
   description: string;
   reward: number;
   status: "completed" | "pending" | "available";
+  icon: typeof GiftIcon;
+  accent: string;
   actionLabel?: string;
   actionHref?: string;
   onAction?: () => Promise<void>;
@@ -144,6 +149,8 @@ export function EarnTab({ address }: Props) {
           : "Place your first bet to earn 10 G$ instantly",
       reward: BONUS_AMOUNTS.first_bet,
       status: hasBonus("first_bet") ? "completed" : betCount > 0 ? "pending" : "available",
+      icon: Rocket01Icon,
+      accent: "from-[#07955F] to-emerald-400",
     },
     {
       id: "streak",
@@ -154,6 +161,8 @@ export function EarnTab({ address }: Props) {
         : `${streak} day${streak === 1 ? "" : "s"} — next milestone: ${streak < 7 ? "7 days" : "30 days"}`,
       reward: 0,
       status: "available",
+      icon: FireIcon,
+      accent: "from-amber-400 to-orange-500",
     },
     {
       id: "referral",
@@ -165,6 +174,8 @@ export function EarnTab({ address }: Props) {
       reward: BONUS_AMOUNTS.referral_bonus,
       status: hasBonus("referral_bonus") || hasBonus("referral_reward") ? "completed" : "available",
       comingSoon: true,
+      icon: UserGroupIcon,
+      accent: "from-sky-400 to-blue-500",
     },
     {
       id: "social-twitter",
@@ -176,6 +187,8 @@ export function EarnTab({ address }: Props) {
       reward: BONUS_AMOUNTS.social_twitter,
       status: hasBonus("social_twitter") ? "completed" : "available",
       comingSoon: true,
+      icon: NewTwitterIcon,
+      accent: "from-neutral-700 to-neutral-900",
     },
   ];
 
@@ -206,10 +219,11 @@ export function EarnTab({ address }: Props) {
       <ClaimPage compact />
 
       {/* Header */}
-      <div className="rounded-3xl border border-border bg-gradient-to-br from-[#07955F]/5 to-transparent p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#07955F]/10">
-            <GiftIcon className="h-6 w-6 text-[#07955F]" />
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-[#07955F]/10 via-[#07955F]/5 to-transparent p-5 shadow-sm">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#07955F]/20 blur-3xl" />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#07955F] shadow-lg shadow-[#07955F]/30">
+            <GiftIcon className="h-6 w-6 text-white" />
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">Earn G$</h2>
@@ -217,7 +231,7 @@ export function EarnTab({ address }: Props) {
           </div>
         </div>
         {totalEarned > 0 && (
-          <div className="mt-3 rounded-xl bg-[#07955F]/8 px-4 py-2.5">
+          <div className="relative mt-3 rounded-xl bg-white/70 px-4 py-2.5 ring-1 ring-[#07955F]/15">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#07955F]">
               Total earned
             </p>
@@ -227,11 +241,12 @@ export function EarnTab({ address }: Props) {
       </div>
 
       {/* Streak progress card */}
-      <div className="rounded-3xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
+      <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-50 via-orange-50 to-white p-5 shadow-sm">
+        <div className="pointer-events-none absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-amber-300/20 blur-3xl" />
+        <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-              <Award01Icon className="h-5 w-5 text-amber-700" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
+              <FireIcon className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="font-semibold">Daily Streak</p>
@@ -239,17 +254,17 @@ export function EarnTab({ address }: Props) {
             </div>
           </div>
           <div className="text-right">
-            <p className="font-display text-2xl font-bold tabular-nums">{streak}</p>
+            <p className="font-display text-2xl font-bold tabular-nums text-amber-700">{streak}</p>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">days</p>
           </div>
         </div>
-        <div className="mt-3 h-2 rounded-full bg-muted">
+        <div className="relative mt-3 h-2.5 rounded-full bg-amber-100/80">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all"
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all"
             style={{ width: `${Math.min((streak / 30) * 100, 100)}%` }}
           />
         </div>
-        <div className="mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
+        <div className="relative mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
           <span>Day 1</span>
           <span className={cn(streak >= 7 && "text-amber-600 font-semibold")}>7 days — 25 G$</span>
           <span className={cn(streak >= 30 && "text-amber-600 font-semibold")}>30 days — 100 G$</span>
@@ -258,7 +273,7 @@ export function EarnTab({ address }: Props) {
           type="button"
           onClick={handleDailyCheckIn}
           disabled={checkedInToday || streakLoading}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600 disabled:opacity-60"
+          className="relative mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-500/30 transition hover:shadow-lg hover:brightness-105 active:scale-[0.99] disabled:opacity-60 disabled:hover:brightness-100"
         >
           {streakLoading ? (
             <span className="flex items-center gap-2">
@@ -266,13 +281,16 @@ export function EarnTab({ address }: Props) {
               Checking in…
             </span>
           ) : checkedInToday ? (
-            "✓ Checked In"
+            <span className="flex items-center gap-2">
+              <CheckmarkCircle01Icon className="h-4 w-4" />
+              Checked In
+            </span>
           ) : (
-            "☕ Check In"
+            "Check In"
           )}
         </button>
         {streakMsg && (
-          <p className="mt-2 text-center text-xs font-medium text-amber-700">{streakMsg}</p>
+          <p className="relative mt-2 text-center text-xs font-medium text-amber-700">{streakMsg}</p>
         )}
       </div>
 
@@ -291,6 +309,7 @@ export function EarnTab({ address }: Props) {
 
 function TaskCard({ task }: { task: TaskState }) {
   const isDone = task.status === "completed";
+  const Icon = task.icon;
 
   return (
     <div
@@ -298,18 +317,25 @@ function TaskCard({ task }: { task: TaskState }) {
         "rounded-2xl border p-4 transition",
         isDone
           ? "border-border/60 bg-muted/30 opacity-70"
-          : "border-border bg-card shadow-sm"
+          : "border-border bg-card shadow-sm hover:-translate-y-0.5 hover:shadow-md"
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {isDone && <CheckmarkCircle01Icon className="h-4 w-4 shrink-0 text-[#07955F]" />}
+        <div className="flex flex-1 min-w-0 items-start gap-3">
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white",
+              isDone ? "from-muted-foreground/40 to-muted-foreground/40" : task.accent
+            )}
+          >
+            {isDone ? <CheckmarkCircle01Icon className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+          </div>
+          <div className="min-w-0">
             <p className={cn("font-semibold", isDone && "text-muted-foreground line-through")}>
               {task.label}
             </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{task.description}</p>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">{task.description}</p>
         </div>
         {task.reward > 0 && !isDone && (
           <span className="shrink-0 rounded-full bg-[#07955F]/10 px-3 py-1 text-xs font-bold text-[#07955F] tabular-nums">

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { parseUnits, formatUnits } from "viem";
 import { useReadContract } from "wagmi";
 import {
   Activity02Icon, User02Icon, Chart01Icon, ArrowRight01Icon,
-  MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon,
-  GiftIcon, Notification03Icon, Cancel01Icon,
+  GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +14,8 @@ import type { Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/navbar";
 import { ProfileView } from "@/components/profile-view";
+import { Leaderboard } from "@/components/Leaderboard";
+import { MiniPriceChart } from "@/components/MiniPriceChart";
 import { useFactoryMarkets, formatRangeLabel, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
 import { useMarketContract } from "@/lib/hooks/use-market-contract";
 import { useStake } from "@/lib/hooks/use-stake";
@@ -70,6 +72,28 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { markets, isLoading } = useFactoryMarkets();
+  const searchParams = useSearchParams();
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  // Deep link: ?market=<address> auto-opens that market's detail modal.
+  useEffect(() => {
+    const marketParam = searchParams.get("market");
+    if (!marketParam || !markets.length) return;
+    const match = markets.find((m) => m.address.toLowerCase() === marketParam.toLowerCase());
+    if (match) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing component state from the URL on mount
+      setSelected({ market: match, range: match.ranges[0] });
+      setTab("play");
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [searchParams, markets]);
+
+  const handleShareMarket = (market: OnChainMarket) => {
+    const url = `${window.location.origin}${window.location.pathname}?market=${market.address}`;
+    void navigator.clipboard.writeText(url);
+    setCopiedShare(true);
+    setTimeout(() => setCopiedShare(false), 2000);
+  };
 
   const categories = [...new Set(markets.map((m) => m.categoryLabel))];
 
@@ -232,7 +256,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
             </div>
 
             {boardSub === "leaderboard" ? (
-              <LeaderboardSection currentAddress={address} />
+              <Leaderboard address={address} />
             ) : (
               <WeeklyCampaignSection />
             )}
@@ -374,11 +398,30 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
               )}
             </div>
             <div className="p-6">
-              <div className="mb-1 flex items-center gap-2">
-                <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP[selected.market.categoryLabel.toLowerCase()] ?? "bg-muted text-muted-foreground border-border")}>
-                  {selected.market.categoryLabel}
-                </span>
-                <span className="text-xs text-muted-foreground">G$</span>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP[selected.market.categoryLabel.toLowerCase()] ?? "bg-muted text-muted-foreground border-border")}>
+                    {selected.market.categoryLabel}
+                  </span>
+                  <span className="text-xs text-muted-foreground">G$</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleShareMarket(selected.market)}
+                  className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-[#07955F]/40 hover:text-foreground"
+                >
+                  {copiedShare ? (
+                    <>
+                      <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-[#07955F]" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Share01Icon className="h-3.5 w-3.5" />
+                      Share
+                    </>
+                  )}
+                </button>
               </div>
               <h3 className="font-display text-xl font-bold">{selected.market.question}</h3>
               <div className="mt-1 flex items-center gap-2">
@@ -648,6 +691,15 @@ function StakeModal({
           </div>
         </div>
 
+        {/* ── PRICE MOVEMENT ── */}
+        <div className="mb-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Price movement</p>
+          <MiniPriceChart
+            marketAddress={market.address}
+            ranges={market.ranges.map((r) => ({ index: r.index, label: formatRangeLabel(r) }))}
+          />
+        </div>
+
         {/* ── ACTIVE POSITION CARD ── */}
         {hasActivePosition && userStake && userStake.amountStaked > 0n && (
           <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
@@ -887,147 +939,6 @@ function StakeModal({
       </div>
     </div>
   );
-}
-
-/* ── Leaderboard ── */
-type LeaderRow = {
-  wallet_address: string;
-  username: string;
-  avatar_url: string | null;
-  total_staked: number;
-  wins: number;
-  total_bets: number;
-};
-
-const PODIUM_COLORS = [
-  "bg-yellow-100 border-yellow-400 text-yellow-800",
-  "bg-gray-100 border-gray-400 text-gray-700",
-  "bg-orange-100 border-orange-400 text-orange-800",
-];
-const PODIUM_ICONS = [MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon];
-
-function LeaderboardSection({ currentAddress }: { currentAddress: string }) {
-  const [leaders, setLeaders] = useState<LeaderRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase
-      .from("stakes")
-      .select("wallet_address, amount_gd, status, profile:profiles!stakes_wallet_address_fkey(username, avatar_url)")
-      .then(({ data }) => {
-        if (!data?.length) { setLoading(false); return; }
-
-        const map: Record<string, LeaderRow> = {};
-        for (const row of data as any[]) {
-          const addr = row.wallet_address as string;
-          if (!map[addr]) {
-            map[addr] = {
-              wallet_address: addr,
-              username: row.profile?.username ?? addr.slice(0, 6),
-              avatar_url: row.profile?.avatar_url ?? null,
-              total_staked: 0,
-              wins: 0,
-              total_bets: 0,
-            };
-          }
-          map[addr].total_staked += parseFloat(row.amount_gd ?? "0");
-          map[addr].total_bets += 1;
-          if (row.status === "won") map[addr].wins += 1;
-        }
-
-        const sorted = Object.values(map).sort((a, b) => b.wins - a.wins || b.total_staked - a.total_staked);
-        setLeaders(sorted.slice(0, 20));
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return <div className="flex justify-center py-12"><div className="h-7 w-7 animate-spin rounded-full border-4 border-muted border-t-primary" /></div>;
-  }
-
-  if (!leaders.length) {
-    return (
-      <div className="py-16 text-center">
-        <p className="font-display text-xl font-bold">Leaderboard</p>
-        <p className="text-sm text-muted-foreground mt-2">No bets yet — be the first to stake!</p>
-      </div>
-    );
-  }
-
-  const top3 = leaders.slice(0, 3);
-  const rest = leaders.slice(3);
-
-  return (
-    <div>
-      <div className="mb-4">
-        <h2 className="font-display text-xl font-bold">Leaderboard</h2>
-        <p className="text-sm text-muted-foreground">Top performers by wins</p>
-      </div>
-
-      {/* Podium */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {top3.map((entry, i) => {
-          const Icon = PODIUM_ICONS[i];
-          const winRate = entry.total_bets ? entry.wins / entry.total_bets : 0;
-          return (
-            <div key={entry.wallet_address} className={cn("flex flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center", PODIUM_COLORS[i])}>
-              <Icon className="h-6 w-6" />
-              <LeaderAvatar entry={entry} size="md" />
-              <div>
-                <p className="text-xs font-bold leading-tight">@{entry.username}</p>
-                <p className="text-sm font-bold tabular-nums">{entry.wins}W</p>
-                <p className="text-[10px] opacity-70">{winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`} win</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {rest.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-border">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">#</th>
-                <th className="px-3 py-2">User</th>
-                <th className="px-3 py-2 text-right">Wins</th>
-                <th className="px-3 py-2 text-right">Win %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rest.map((row, i) => {
-                const winRate = row.total_bets ? row.wins / row.total_bets : 0;
-                return (
-                  <tr key={row.wallet_address} className="border-t border-border bg-card">
-                    <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{i + 4}</td>
-                    <td className="px-3 py-3 font-medium">
-                      <div className="flex items-center gap-2">
-                        <LeaderAvatar entry={row} size="sm" />
-                        @{row.username}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">{row.wins}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                      {winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LeaderAvatar({ entry, size }: { entry: LeaderRow; size: "sm" | "md" }) {
-  const dim = size === "sm" ? "h-6 w-6 text-[10px]" : "h-9 w-9 text-sm";
-  const initial = entry.username.charAt(0).toUpperCase();
-  if (entry.avatar_url) {
-    return <img src={entry.avatar_url} alt={entry.username} className={`${dim} shrink-0 rounded-full object-cover`} />;
-  }
-  return <div className={`${dim} flex shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary`}>{initial}</div>;
 }
 
 /* ── Weekly Campaign ── */

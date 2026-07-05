@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import confetti from "canvas-confetti";
 import { useWallets } from "@privy-io/react-auth";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,12 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
       await sdks.claimSDK.claim();
       await fetchStatus();
       setState((prev) => ({ ...prev, claiming: false }));
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#07955F", "#dcf5eb", "#34d399", "#facc15"],
+      });
     } catch (err) {
       setState((prev) => ({
         ...prev,

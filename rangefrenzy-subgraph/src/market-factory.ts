@@ -23,7 +23,12 @@ export function handleMarketCreated(event: MarketCreatedEvent): void {
   market.save()
 
   let contract = RangeFrenzyMarketContract.bind(event.params.marketProxy)
-  let rangesCount = contract.rangesCount()
+  let rangesCountResult = contract.try_rangesCount()
+  if (rangesCountResult.reverted) {
+    log.warning("Failed to read rangesCount for market {}", [market.id])
+    return
+  }
+  let rangesCount = rangesCountResult.value
 
   for (let i = 0; i < rangesCount.toI32(); i++) {
     let rangeResult = contract.try_ranges(BigInt.fromI32(i))

@@ -7,6 +7,7 @@ type User @entity(immutable: false) {
   totalBets: Int!
   wins: Int!
   losses: Int!
+  realizedPnl: BigDecimal!
   stakes: [Stake!]! @derivedFrom(field: "user")
   transactions: [Transaction!]! @derivedFrom(field: "user")
   createdAt: BigInt!
@@ -62,11 +63,15 @@ type Stake @entity(immutable: false) {
   rangeIndex: Int!
   rangeLabel: String!
   amount: BigDecimal!
+  shares: BigInt!
+  pricePaid: BigDecimal!
   claimed: Boolean!
   payout: BigDecimal
+  proceeds: BigDecimal
   status: StakeStatus!
   createdAt: BigInt!
   claimedAt: BigInt
+  soldAt: BigInt
 }
 
 enum StakeStatus {
@@ -74,10 +79,12 @@ enum StakeStatus {
   WON
   LOST
   REFUNDED
+  SOLD
 }
 
 enum TransactionType {
   STAKE
+  SELL
   CLAIM
   REFUND
 }

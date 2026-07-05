@@ -464,6 +464,21 @@
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "_initialPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_multiplier",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_priceCap",
+        "type": "uint256"
+      },
+      {
         "internalType": "string[]",
         "name": "_rangeLabels",
         "type": "string[]"
