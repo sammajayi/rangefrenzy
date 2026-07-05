@@ -369,7 +369,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                 onClick={saveUsername}
                 disabled={usernameSaving}
               >
-                {usernameSaving ? "Saving…" : "Save"}
+                {usernameSaving ? "Updating…" : "Update"}
               </Button>
             </div>
           </div>
