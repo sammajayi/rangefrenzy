@@ -13,6 +13,7 @@ import {
   Clock01Icon,
   Target01Icon,
   Wallet01Icon,
+  PencilEdit01Icon,
 } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,10 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
   const [showVerification, setShowVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(!!profile?.is_whitelisted_gd);
+  const [showUsernameEdit, setShowUsernameEdit] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
 
@@ -84,6 +89,42 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
       console.error("Avatar upload error:", err);
     } finally {
       setAvatarUploading(false);
+    }
+  };
+
+  const openUsernameEdit = () => {
+    setNewUsername(profile?.username ?? "");
+    setUsernameError("");
+    setShowSettings(false);
+    setShowUsernameEdit(true);
+  };
+
+  const saveUsername = async () => {
+    const trimmed = newUsername.trim().toLowerCase().replace(/\s+/g, "_");
+    if (trimmed.length < 3 || trimmed.length > 30) {
+      setUsernameError("Username must be 3–30 characters.");
+      return;
+    }
+    if (!/^[a-z0-9_]+$/.test(trimmed)) {
+      setUsernameError("Only letters, numbers, and underscores allowed.");
+      return;
+    }
+    setUsernameSaving(true);
+    setUsernameError("");
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ username: trimmed })
+        .eq("wallet_address", address.toLowerCase());
+      if (error) {
+        if (error.code === "23505") setUsernameError("That username is already taken.");
+        else setUsernameError("Failed to update username. Please try again.");
+        return;
+      }
+      if (profile) setProfile({ ...profile, username: trimmed });
+      setShowUsernameEdit(false);
+    } finally {
+      setUsernameSaving(false);
     }
   };
 
@@ -202,6 +243,15 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                     Change avatar
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={openUsernameEdit}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                  >
+                    <PencilEdit01Icon className="h-4 w-4" />
+                    Change username
+                  </button>
+
                   {/* GoodDollar verification — show if not yet verified */}
                   {isVerified ? (
                     <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
@@ -285,6 +335,45 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
             setShowVerification(false);
           }}
         />
+      )}
+
+      {/* Username edit modal */}
+      {showUsernameEdit && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUsernameEdit(false)} />
+          <div className="relative z-10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-xl">
+            <h3 className="font-display text-lg font-bold mb-1">Change username</h3>
+            <p className="text-sm text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
+              placeholder="new_username"
+              maxLength={30}
+              autoFocus
+              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            {usernameError && <p className="mt-2 text-xs text-destructive">{usernameError}</p>}
+            <div className="mt-4 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowUsernameEdit(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={saveUsername}
+                disabled={usernameSaving}
+              >
+                {usernameSaving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
