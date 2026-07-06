@@ -99,14 +99,14 @@ export function PwaInstallPrompt() {
           {!ios && (
             <Button
               type="button"
-              className="flex-1 bg-[#07955F] hover:bg-[#068050] text-white"
+              className="flex-1 bg-brand hover:bg-brand-dark text-white"
               onClick={install}
             >
               Install
             </Button>
           )}
           {ios && (
-            <Button type="button" className="flex-1 bg-[#07955F] hover:bg-[#068050] text-white" onClick={dismiss}>
+            <Button type="button" className="flex-1 bg-brand hover:bg-brand-dark text-white" onClick={dismiss}>
               Got it
             </Button>
           )}

@@ -65,7 +65,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
                 placeholder="Search markets…"
                 value={filterSearch ?? ""}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="h-9 w-36 rounded-xl border border-input bg-muted px-3 text-sm outline-none ring-2 ring-transparent focus:ring-[#07955F]/30"
+                className="h-9 w-36 rounded-xl border border-input bg-muted px-3 text-sm outline-none ring-2 ring-transparent focus:ring-brand/30"
                 autoFocus
               />
               <button

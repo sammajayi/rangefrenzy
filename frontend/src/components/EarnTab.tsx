@@ -150,7 +150,7 @@ export function EarnTab({ address }: Props) {
       reward: BONUS_AMOUNTS.first_bet,
       status: hasBonus("first_bet") ? "completed" : betCount > 0 ? "pending" : "available",
       icon: Rocket01Icon,
-      accent: "from-[#07955F] to-emerald-400",
+      accent: "from-brand to-emerald-400",
     },
     {
       id: "streak",
@@ -197,7 +197,7 @@ export function EarnTab({ address }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-[#07955F]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-brand" />
       </div>
     );
   }
@@ -219,10 +219,10 @@ export function EarnTab({ address }: Props) {
       <ClaimPage compact />
 
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-[#07955F]/10 via-[#07955F]/5 to-transparent p-5 shadow-sm">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#07955F]/20 blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-brand/10 via-brand/5 to-transparent p-5 shadow-sm">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand/20 blur-3xl" />
         <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#07955F] shadow-lg shadow-[#07955F]/30">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand shadow-lg shadow-brand/30">
             <GiftIcon className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -231,8 +231,8 @@ export function EarnTab({ address }: Props) {
           </div>
         </div>
         {totalEarned > 0 && (
-          <div className="relative mt-3 rounded-xl bg-white/70 px-4 py-2.5 ring-1 ring-[#07955F]/15">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#07955F]">
+          <div className="relative mt-3 rounded-xl bg-white/70 px-4 py-2.5 ring-1 ring-brand/15">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand">
               Total earned
             </p>
             <p className="font-display text-2xl font-bold tabular-nums">{totalEarned} G$</p>
@@ -338,7 +338,7 @@ function TaskCard({ task }: { task: TaskState }) {
           </div>
         </div>
         {task.reward > 0 && !isDone && (
-          <span className="shrink-0 rounded-full bg-[#07955F]/10 px-3 py-1 text-xs font-bold text-[#07955F] tabular-nums">
+          <span className="shrink-0 rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand tabular-nums">
             +{task.reward} G$
           </span>
         )}
@@ -365,7 +365,7 @@ function TaskCard({ task }: { task: TaskState }) {
                 <p className={cn("text-xs font-semibold", done && "text-muted-foreground line-through")}>
                   {ms.label}
                 </p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[#07955F]">
+                <p className="mt-1 text-lg font-bold tabular-nums text-brand">
                   +{ms.reward} G$
                 </p>
               </div>

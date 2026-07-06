@@ -13,7 +13,7 @@ export default function LandingPage() {
       </div>
       <a
         href="https://app.rangefrenzy.xyz"
-        className="rounded-xl bg-[#07955F] px-6 py-3 text-sm font-semibold text-white hover:bg-[#068050]"
+        className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand-dark"
       >
         Launch app
       </a>

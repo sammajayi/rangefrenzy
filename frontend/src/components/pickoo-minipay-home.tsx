@@ -170,8 +170,8 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                       className={cn(
                         "rounded-full px-4 py-1.5 text-xs font-semibold transition border",
                         active
-                          ? "bg-[#07955F] text-white border-[#07955F] shadow-sm"
-                          : "border-border bg-card text-muted-foreground hover:border-[#07955F]/40 hover:text-foreground",
+                          ? "bg-brand text-white border-brand shadow-sm"
+                          : "border-border bg-card text-muted-foreground hover:border-brand/40 hover:text-foreground",
                       )}
                     >
                       {c}
@@ -183,7 +183,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
 
             {isLoading ? (
               <div className="flex justify-center py-16">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-[#07955F]" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-brand" />
               </div>
             ) : filteredMarkets.length === 0 ? (
               <div className="flex flex-col items-center py-20 text-center">
@@ -204,7 +204,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                       <button
                         type="button"
                         onClick={() => handleSelectMarket(market)}
-                        className="group w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-[#07955F]/30 hover:shadow-md"
+                        className="group w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-brand/30 hover:shadow-md"
                       >
                         <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : `bg-gradient-to-br ${gradientClass}`)}>
                           {market.imageUrl ? (
@@ -226,11 +226,11 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                             <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1.5">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/10 px-2.5 py-0.5 text-[11px] font-bold text-[#07955F] tabular-nums">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-bold text-brand tabular-nums">
                               <Chart01Icon className="h-3 w-3" />
                               {market.poolLabel === "No stakes yet" ? "0" : market.poolLabel.split(" ")[0]}
                             </span>
-                            <ArrowRight01Icon className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-[#07955F]" />
+                            <ArrowRight01Icon className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
                           </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -311,11 +311,11 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                 onClick={() => setTab(item.id)}
                 className={cn(
                   "relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[11px] font-semibold transition-all",
-                  active ? "text-[#07955F]" : "text-muted-foreground"
+                  active ? "text-brand" : "text-muted-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute inset-0 rounded-2xl bg-[#07955F]/8" />
+                  <span className="absolute inset-0 rounded-2xl bg-brand/8" />
                 )}
                 <span className="relative">
                   <Icon className="h-5 w-5" />
@@ -682,15 +682,15 @@ function StakeModal({
               )}
               {isResolved && (userStake.estimatedPayout ?? 0n) > 0n && (
                 <div className="flex items-center justify-between text-sm pt-1.5 border-t border-primary/20 mt-1.5">
-                  <span className="font-semibold text-[#07955F]">Payout</span>
-                  <span className="font-bold text-[#07955F] tabular-nums">{formatUnits(userStake.estimatedPayout, tokenDecimals)} {tokenSymbol}</span>
+                  <span className="font-semibold text-brand">Payout</span>
+                  <span className="font-bold text-brand tabular-nums">{formatUnits(userStake.estimatedPayout, tokenDecimals)} {tokenSymbol}</span>
                 </div>
               )}
               {isResolved && !canClaim && !userStake.claimed && (
                 <p className="text-xs text-muted-foreground pt-1 border-t border-primary/20 mt-1">Your range did not win this market.</p>
               )}
               {userStake.claimed && (
-                <p className="text-xs text-[#07955F] pt-1 border-t border-primary/20 mt-1">Claimed.</p>
+                <p className="text-xs text-brand pt-1 border-t border-primary/20 mt-1">Claimed.</p>
               )}
             </div>
           </div>
@@ -749,7 +749,7 @@ function StakeModal({
                 )}
                 <Button
                   type="button"
-                  className="w-full bg-[#07955F] hover:bg-[#068050] text-white"
+                  className="w-full bg-brand hover:bg-brand-dark text-white"
                   disabled={claimStep === "claiming"}
                   onClick={() => executeClaim("claim")}
                 >
@@ -890,7 +890,7 @@ function StakeModal({
           {!hasActivePosition && isOpen && stakeStep !== "success" && (
             <Button
               type="button"
-              className="flex-1 bg-[#07955F] hover:bg-[#068050] text-white"
+              className="flex-1 bg-brand hover:bg-brand-dark text-white"
               disabled={!walletReady || !amount || parseFloat(amount) < minStake || stakeStep === "approving" || stakeStep === "staking"}
               onClick={handleStake}
             >
@@ -956,11 +956,11 @@ function MarketDetailModal({
             <button
               type="button"
               onClick={() => onShareMarket(market)}
-              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-[#07955F]/40 hover:text-foreground"
+              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-brand/40 hover:text-foreground"
             >
               {copiedShare ? (
                 <>
-                  <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-[#07955F]" />
+                  <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-brand" />
                   Copied
                 </>
               ) : (
@@ -974,7 +974,7 @@ function MarketDetailModal({
           <h3 className="font-display text-xl font-bold">{market.question}</h3>
           <div className="mt-1 flex items-center gap-2">
             <p className="text-sm text-muted-foreground">{market.deadlineLabel}</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/10 px-2.5 py-0.5 text-xs font-bold text-[#07955F] tabular-nums">
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand tabular-nums">
               <Chart01Icon className="h-3.5 w-3.5" />
               {market.poolLabel === "No stakes yet" ? "0" : market.poolLabel.split(" ")[0]}
             </span>
@@ -1007,8 +1007,8 @@ function MarketDetailModal({
                     className={cn(
                       "rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",
                       selectedRange.index === r.index
-                        ? "border-[#07955F] bg-[#07955F]/8 text-foreground"
-                        : "border-border bg-muted/30 text-muted-foreground hover:border-[#07955F]/40",
+                        ? "border-brand bg-brand/8 text-foreground"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-brand/40",
                     )}
                   >
                     {formatRangeLabel(r)}
@@ -1024,7 +1024,7 @@ function MarketDetailModal({
             </Button>
             <Button
               type="button"
-              className="flex-1 rounded-2xl bg-[#07955F] hover:bg-[#068050] text-white"
+              className="flex-1 rounded-2xl bg-brand hover:bg-brand-dark text-white"
               onClick={handleCta}
             >
               {hasActivePosition ? "Manage Position" : "Stake G$"}

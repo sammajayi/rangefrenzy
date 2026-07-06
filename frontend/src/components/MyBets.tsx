@@ -66,7 +66,7 @@ function BetCard({ bet, onClaimMarket }: { bet: SubgraphStake; onClaimMarket?: (
     )}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#07955F] truncate">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand truncate">
             {bet.market?.categoryLabel ?? "Market"}
           </p>
           <p className="font-semibold text-sm mt-0.5 leading-tight">{bet.market?.question ?? "Unknown market"}</p>
@@ -111,7 +111,7 @@ function BetCard({ bet, onClaimMarket }: { bet: SubgraphStake; onClaimMarket?: (
             href={`${EXPLORER}/tx/${bet.transactionHash}`}
             target="_blank"
             rel="noreferrer"
-            className="text-[11px] text-[#07955F] underline-offset-4 hover:underline"
+            className="text-[11px] text-brand underline-offset-4 hover:underline"
           >
             Tx ↗
           </a>
@@ -170,7 +170,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-2 text-sm font-semibold text-[#07955F] underline-offset-4 hover:underline"
+          className="mt-2 text-sm font-semibold text-brand underline-offset-4 hover:underline"
         >
           Try again
         </button>
@@ -238,10 +238,10 @@ export function MyBets({ address, onClaimMarket }: Props) {
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition border",
               filter === f.key
-                ? "bg-[#07955F] text-white border-[#07955F] shadow-sm"
+                ? "bg-brand text-white border-brand shadow-sm"
                 : f.key === "CLAIMABLE" && claimableCount > 0
                 ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                : "border-border bg-card text-muted-foreground hover:border-[#07955F]/40 hover:text-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-brand/40 hover:text-foreground"
             )}
           >
             {f.label}

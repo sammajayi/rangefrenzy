@@ -23,7 +23,20 @@
   --color-popover: #ffffff;
   --color-popover-foreground: hsl(222.2 84% 4.9%);
   --color-brand: #07955F;
+  --color-brand-dark: #068050;
   --color-brand-light: #dcf5eb;
+
+  /* Splash screen */
+  --color-splash-bg: #0D1420;
+  --color-splash-dark: #080D18;
+
+  /* Semantic status colors (mirrors Tailwind's palette for consistency) */
+  --color-won: #10b981;
+  --color-lost: #ef4444;
+  --color-pending: #f59e0b;
+  --color-open: #3b82f6;
+  --color-resolved: #a855f7;
+
   --radius: 0.5rem;
 }
 

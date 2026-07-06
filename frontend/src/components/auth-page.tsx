@@ -362,7 +362,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         {step === "choose" && (
           <div className="space-y-3">
             <Button
-              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
+              className="h-12 w-full rounded-xl bg-brand text-base font-semibold text-white hover:bg-brand-dark"
               size="lg"
               onClick={() => setStep("email_input")}
             >
@@ -424,17 +424,17 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-4 pr-20 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
+                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-4 pr-20 text-base outline-none ring-2 ring-transparent transition focus:ring-brand/25"
                   autoFocus
                   required
                 />
                 <button
                   type="submit"
                   disabled={!email || isSendingCode}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#07955F] transition disabled:opacity-40 hover:opacity-70"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-brand transition disabled:opacity-40 hover:opacity-70"
                 >
                   {isSendingCode ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#07955F]/40 border-t-[#07955F] inline-block" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand/40 border-t-brand inline-block" />
                   ) : "Submit"}
                 </button>
               </div>
@@ -474,7 +474,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 placeholder="123456"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="h-14 w-full rounded-xl border border-input bg-muted/40 px-4 text-center text-2xl font-bold tracking-[0.35em] outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
+                className="h-14 w-full rounded-xl border border-input bg-muted/40 px-4 text-center text-2xl font-bold tracking-[0.35em] outline-none ring-2 ring-transparent transition focus:ring-brand/25"
                 autoFocus
                 required
                 maxLength={6}
@@ -495,10 +495,10 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               type="button"
               onClick={handleResendCode}
               disabled={resendLoading || isSendingCode}
-              className="flex w-full items-center justify-center gap-1.5 text-sm text-[#07955F] transition hover:opacity-70 disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-1.5 text-sm text-brand transition hover:opacity-70 disabled:opacity-40"
             >
               {resendLoading ? (
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#07955F]/40 border-t-[#07955F]" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand/40 border-t-brand" />
               ) : null}
               Resend code
             </button>
@@ -525,7 +525,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                   placeholder="range_queen"
                   value={username}
                   onChange={(e) => setUsername(e.target.value.replace(/\s/g, "_").toLowerCase())}
-                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-8 pr-4 text-base outline-none ring-2 ring-transparent transition focus:ring-[#07955F]/25"
+                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-8 pr-4 text-base outline-none ring-2 ring-transparent transition focus:ring-brand/25"
                   autoFocus
                   required
                   minLength={3}
@@ -547,7 +547,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted/30 transition hover:border-[#07955F]/50"
+                className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted/30 transition hover:border-brand/50"
               >
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Preview" className="h-full w-full rounded-full object-cover" />
@@ -559,7 +559,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
 
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
+              className="h-12 w-full rounded-xl bg-brand text-base font-semibold text-white hover:bg-brand-dark"
               size="lg"
               disabled={!username.trim() || profileLoading}
             >

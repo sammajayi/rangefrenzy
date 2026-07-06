@@ -129,7 +129,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
 
       {/* Progress bar */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 h-px w-32 overflow-hidden rounded-full bg-white/10">
-        <div className="animate-splash-progress h-full rounded-full bg-[#07955F]" />
+        <div className="animate-splash-progress h-full rounded-full bg-brand" />
       </div>
 
       {/* Version / powered-by hint */}

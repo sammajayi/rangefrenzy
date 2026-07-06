@@ -224,7 +224,7 @@ function HomeInner() {
                   className={cn(
                     "flex h-8 cursor-pointer w-8 items-center justify-center rounded-lg transition shrink-0",
                     copied
-                      ? "text-[#07955F]"
+                      ? "text-brand"
                       : "text-muted-foreground hover:bg-background hover:text-foreground",
                   )}
                   aria-label="Copy wallet address"
@@ -233,11 +233,11 @@ function HomeInner() {
                 </button>
               </div>
               {copied && (
-                <p className="mt-1.5 text-xs text-[#07955F]">Copied!</p>
+                <p className="mt-1.5 text-xs text-brand">Copied!</p>
               )}
 
               <Button
-                className="mt-5 w-full rounded-xl bg-[#07955F] text-base font-semibold text-white hover:bg-[#068050]"
+                className="mt-5 w-full rounded-xl bg-brand text-base font-semibold text-white hover:bg-brand-dark"
                 size="lg"
                 onClick={() => window.open("https://t.me/+Vz9Ze9dNIww0OGY0", "_blank")}
               >

@@ -753,7 +753,7 @@ export default function AdminPage() {
               <Activity01Icon className="h-3.5 w-3.5" />
               {loading ? "Loading…" : "Refresh"}
             </button>
-            <div className="flex h-6 items-center rounded-full bg-[#07955F]/10 px-3 text-[11px] font-semibold text-[#07955F]">
+            <div className="flex h-6 items-center rounded-full bg-brand/10 px-3 text-[11px] font-semibold text-brand">
               RangeFrenzy Admin
             </div>
           </div>
@@ -850,7 +850,7 @@ export default function AdminPage() {
                           </div>
                           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-[#07955F] transition-all"
+                              className="h-full rounded-full bg-brand transition-all"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -908,7 +908,7 @@ export default function AdminPage() {
                             {s.market?.title ?? s.market_id.slice(0, 8)}
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground">{s.range_label}</td>
-                          <td className="px-3 py-2.5 font-semibold text-[#07955F]">
+                          <td className="px-3 py-2.5 font-semibold text-brand">
                             {fmtGD(s.amount_gd)}
                           </td>
                           <td className="px-3 py-2.5">
@@ -1094,7 +1094,7 @@ export default function AdminPage() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Total Amount
                 </p>
-                <p className="mt-0.5 text-sm font-bold text-[#07955F]">
+                <p className="mt-0.5 text-sm font-bold text-brand">
                   {fmtGD(
                     filteredStakes.reduce(
                       (sum, s) => sum + (parseFloat(s.amount_gd) || 0),
@@ -1167,7 +1167,7 @@ export default function AdminPage() {
                             <td className="px-3 py-2.5 text-muted-foreground">
                               {s.range_label}
                             </td>
-                            <td className="px-3 py-2.5 font-semibold text-[#07955F]">
+                            <td className="px-3 py-2.5 font-semibold text-brand">
                               {fmtGD(s.amount_gd)}
                             </td>
                             <td className="px-3 py-2.5">
@@ -1461,10 +1461,10 @@ export default function AdminPage() {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total users</p>
                 <p className="mt-1 font-display text-2xl font-bold tabular-nums">{profiles.length}</p>
               </div>
-              <div className="rounded-2xl border border-[#07955F]/30 bg-[#07955F]/5 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#07955F]">GD Verified</p>
-                <p className="mt-1 font-display text-2xl font-bold tabular-nums text-[#07955F]">{verifiedCount}</p>
-                <p className="text-[11px] text-[#07955F]/70">
+              <div className="rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand">GD Verified</p>
+                <p className="mt-1 font-display text-2xl font-bold tabular-nums text-brand">{verifiedCount}</p>
+                <p className="text-[11px] text-brand/70">
                   {profiles.length ? Math.round((verifiedCount / profiles.length) * 100) : 0}% of users
                 </p>
               </div>
@@ -1496,7 +1496,7 @@ export default function AdminPage() {
                     "rounded-full px-3 py-1 text-xs font-semibold transition border",
                     usersFilter === f
                       ? f === "verified"
-                        ? "bg-[#07955F] text-white border-[#07955F]"
+                        ? "bg-brand text-white border-brand"
                         : "bg-foreground text-background border-foreground"
                       : "border-border text-muted-foreground hover:border-foreground/40"
                   )}
@@ -1534,7 +1534,7 @@ export default function AdminPage() {
                           key={p.wallet_address}
                           className={cn(
                             "border-t border-border",
-                            p.is_whitelisted_gd ? "bg-[#07955F]/3" : "bg-card"
+                            p.is_whitelisted_gd ? "bg-brand/3" : "bg-card"
                           )}
                         >
                           <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
@@ -1556,8 +1556,8 @@ export default function AdminPage() {
                           </td>
                           <td className="px-3 py-3">
                             {p.is_whitelisted_gd ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/15 px-2 py-0.5 text-[10px] font-bold text-[#07955F]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#07955F]" />
+                              <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                                 GD Verified
                               </span>
                             ) : (

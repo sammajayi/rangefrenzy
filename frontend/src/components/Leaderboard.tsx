@@ -34,7 +34,7 @@ function Avatar({ entry, size }: { entry: LeaderboardEntry; size: "sm" | "md" })
   if (entry.avatar_url) {
     return <img src={entry.avatar_url} alt={entry.username} className={`${dim} shrink-0 rounded-full object-cover`} />;
   }
-  return <div className={`${dim} flex shrink-0 items-center justify-center rounded-full bg-[#07955F]/10 font-bold text-[#07955F]`}>{initial}</div>;
+  return <div className={`${dim} flex shrink-0 items-center justify-center rounded-full bg-brand/10 font-bold text-brand`}>{initial}</div>;
 }
 
 function PnlBadge({ value }: { value: number }) {
@@ -86,7 +86,7 @@ export function Leaderboard({ address }: Props) {
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-2 text-sm font-semibold text-[#07955F] underline-offset-4 hover:underline"
+          className="mt-2 text-sm font-semibold text-brand underline-offset-4 hover:underline"
         >
           Try again
         </button>
@@ -122,7 +122,7 @@ export function Leaderboard({ address }: Props) {
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-semibold transition",
                 sort === s.key
-                  ? "bg-[#07955F] text-white shadow-sm"
+                  ? "bg-brand text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -144,7 +144,7 @@ export function Leaderboard({ address }: Props) {
               className={cn(
                 "flex flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center",
                 PODIUM_COLORS[i],
-                isYou && "ring-2 ring-[#07955F] ring-offset-1"
+                isYou && "ring-2 ring-brand ring-offset-1"
               )}
             >
               <Icon className="h-6 w-6" />
@@ -176,7 +176,7 @@ export function Leaderboard({ address }: Props) {
                 const isYou = address && row.address.toLowerCase() === address.toLowerCase();
                 const winRate = winRateOf(row);
                 return (
-                  <tr key={row.address} className={cn("border-t border-border bg-card", isYou && "bg-[#07955F]/5")}>
+                  <tr key={row.address} className={cn("border-t border-border bg-card", isYou && "bg-brand/5")}>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{i + 4}</td>
                     <td className="px-3 py-3 font-medium">
                       <div className="flex items-center gap-2">
