@@ -47,22 +47,30 @@ export function usePushNotifications(address: string | undefined, username: stri
     setLoading(true);
     setError(null);
 
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out — try again")), 15_000)
-    );
+    const mkTimeout = (label: string) =>
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timed out at: ${label}`)), 12_000)
+      );
 
     try {
-      const perm = await Promise.race([Notification.requestPermission(), timeout]);
+      const perm = await Promise.race([
+        Notification.requestPermission(),
+        mkTimeout("requestPermission"),
+      ]);
       setPermission(perm);
       if (perm !== "granted") return;
 
-      const registration = await Promise.race([navigator.serviceWorker.ready, timeout]);
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        mkTimeout("serviceWorker.ready"),
+      ]);
+
       const subscription = await Promise.race([
         registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
         }),
-        timeout,
+        mkTimeout("pushManager.subscribe"),
       ]);
 
       const res = await fetch("/api/push/subscribe", {
