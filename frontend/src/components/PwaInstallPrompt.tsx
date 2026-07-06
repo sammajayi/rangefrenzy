@@ -18,6 +18,12 @@ function isIos() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 }
 
+function isMobile() {
+  if (typeof window === "undefined") return false;
+  return /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent) ||
+    "ontouchstart" in window;
+}
+
 export function PwaInstallPrompt() {
   const [show, setShow] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -25,6 +31,7 @@ export function PwaInstallPrompt() {
 
   useEffect(() => {
     if (isStandalone()) return;
+    if (!isMobile()) return;
     if (sessionStorage.getItem(STORAGE_KEY)) return;
 
     const handler = (e: Event) => {

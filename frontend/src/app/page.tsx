@@ -66,20 +66,26 @@ function HomeInner() {
     window.history.replaceState({}, "", window.location.pathname);
   }, [isGdCallback, address, isVerified, setPhase, setPendingTab, syncVerification]);
 
-  // Skip auth page when returning user has a valid session.
-  // Also verify on-chain status before routing — unwhitelisted → verify phase.
-  const handleSplashFinish = async () => {
-    // `authenticated` is intentionally omitted: Privy auto-restores embedded
-    // wallet sessions but never auto-reconnects external wallets (WalletConnect,
-    // MetaMask) on refresh. Checking it would reset connect-wallet users to the
-    // auth screen on every page reload. Stored address + profile are sufficient.
-    if (address && profile && ready) {
-      const verified = await syncVerification(address);
-      setPhase(verified ? "home" : "verify");
-    } else {
-      setPhase("auth");
-    }
-  };
+  const [splashDone, setSplashDone] = useState(false);
+
+  const handleSplashFinish = () => setSplashDone(true);
+
+  // Route after splash AND after Privy is ready to avoid race condition where
+  // Privy hasn't initialized yet, making `ready` false and forcing a sign-out.
+  useEffect(() => {
+    if (!splashDone || !ready) return;
+    // `authenticated` intentionally omitted — Privy never auto-reconnects external
+    // wallets on refresh. Stored address + profile are sufficient.
+    const route = async () => {
+      if (address && profile) {
+        const verified = await syncVerification(address);
+        setPhase(verified ? "home" : "verify");
+      } else {
+        setPhase("auth");
+      }
+    };
+    void route();
+  }, [splashDone, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSignOut = async () => {
     try {
