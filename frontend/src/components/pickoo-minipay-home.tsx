@@ -451,8 +451,9 @@ function StakeModal({
 }) {
   const [amount, setAmount] = useState("");
 
-  const { address: wagmiAddress } = useAccount();
+  const { address: wagmiAddress, status: wagmiStatus } = useAccount();
   const walletReady = !!wagmiAddress;
+  const walletReconnecting = wagmiStatus === "reconnecting" || wagmiStatus === "connecting";
 
   const { summary, userStake, hasActivePosition, refetch } = useMarketContract(market.address, userAddress);
   const { stake, reset: resetStake, step: stakeStep, errorMsg: stakeError, symbol, decimals, stakeTxHash } = useStake(market.address);
@@ -874,8 +875,8 @@ function StakeModal({
           </div>
         )}
 
-        {/* Wallet disconnect warning */}
-        {!walletReady && (
+        {/* Wallet disconnect warning — only after wagmi has finished reconnecting */}
+        {!walletReady && !walletReconnecting && (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Wallet session expired. Please sign out and sign back in to stake or sell.
           </div>
