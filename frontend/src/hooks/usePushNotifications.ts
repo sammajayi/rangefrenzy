@@ -38,9 +38,13 @@ export function usePushNotifications(address: string | undefined, username: stri
   }, [supported]);
 
   const subscribe = useCallback(async () => {
-    if (!supported || !address) return;
+    if (!supported || !address) {
+      alert(`DEBUG: cannot subscribe (supported=${supported}, address=${address})`);
+      return;
+    }
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) {
+      alert("DEBUG: NEXT_PUBLIC_VAPID_PUBLIC_KEY is not configured on this build.");
       console.error("NEXT_PUBLIC_VAPID_PUBLIC_KEY is not configured.");
       return;
     }
@@ -48,7 +52,10 @@ export function usePushNotifications(address: string | undefined, username: stri
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== "granted") return;
+      if (perm !== "granted") {
+        alert(`DEBUG: permission not granted (got "${perm}")`);
+        return;
+      }
 
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
@@ -70,7 +77,9 @@ export function usePushNotifications(address: string | undefined, username: stri
         throw new Error(`subscribe request failed: ${res.status} ${body}`);
       }
       setSubscribed(true);
+      alert("DEBUG: subscribe succeeded!");
     } catch (err) {
+      alert(`DEBUG: subscribe threw: ${err instanceof Error ? err.message : String(err)}`);
       console.error("Push subscribe error:", err);
     } finally {
       setLoading(false);
