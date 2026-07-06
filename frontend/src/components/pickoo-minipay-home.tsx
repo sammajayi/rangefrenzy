@@ -451,17 +451,8 @@ function StakeModal({
 }) {
   const [amount, setAmount] = useState("");
 
-  const { address: wagmiAddress, status: wagmiStatus } = useAccount();
+  const { address: wagmiAddress } = useAccount();
   const walletReady = !!wagmiAddress;
-  // Only show disconnected state after 8s of sustained disconnect — wagmi
-  // briefly drops and recovers the connection during access-token refresh
-  // and on mobile background/foreground cycles.
-  const [walletGenuinelyDisconnected, setWalletGenuinelyDisconnected] = useState(false);
-  useEffect(() => {
-    if (wagmiAddress) { setWalletGenuinelyDisconnected(false); return; }
-    const t = setTimeout(() => setWalletGenuinelyDisconnected(true), 8_000);
-    return () => clearTimeout(t);
-  }, [wagmiAddress]);
 
   const { summary, userStake, hasActivePosition, refetch } = useMarketContract(market.address, userAddress);
   const { stake, reset: resetStake, step: stakeStep, errorMsg: stakeError, symbol, decimals, stakeTxHash } = useStake(market.address);
@@ -883,12 +874,6 @@ function StakeModal({
           </div>
         )}
 
-        {/* Only shown after 8s of sustained disconnect to avoid false positives */}
-        {walletGenuinelyDisconnected && (
-          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Wallet disconnected. Please sign out and sign back in to stake or sell.
-          </div>
-        )}
 
         {/* Footer actions */}
         <div className="flex gap-3">
