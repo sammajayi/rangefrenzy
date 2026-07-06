@@ -40,6 +40,42 @@ interface AuthPageProps {
 
 type Step = "choose" | "email_input" | "otp_input" | "profile_setup";
 
+function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function isInWalletBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const eth = (window as any).ethereum;
+  return !!(eth?.isMetaMask || eth?.isTrust || eth?.isCoinbaseWallet || eth?.isRainbow);
+}
+
+const DAPP_URL = "app.rangefrenzy.xyz";
+
+const WALLET_LINKS = [
+  {
+    name: "MetaMask",
+    icon: "🦊",
+    url: `https://metamask.app.link/dapp/${DAPP_URL}`,
+  },
+  {
+    name: "Trust Wallet",
+    icon: "🛡️",
+    url: `https://link.trustwallet.com/open_url?coin_id=60&url=https://${DAPP_URL}`,
+  },
+  {
+    name: "Coinbase Wallet",
+    icon: "🔵",
+    url: `https://go.cb-wallet.io/dapp?url=https://${DAPP_URL}`,
+  },
+  {
+    name: "Rainbow",
+    icon: "🌈",
+    url: `https://rnbwapp.com/dapp?url=https://${DAPP_URL}`,
+  },
+];
+
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [step, setStep] = useState<Step>("choose");
   const [email, setEmail] = useState("");
@@ -398,6 +434,27 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 </>
               )}
             </Button>
+
+            {/* Mobile: open dapp inside wallet browser for reliable connection */}
+            {isMobileBrowser() && !isInWalletBrowser() && (
+              <div className="rounded-2xl border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-[11px] text-center text-muted-foreground font-medium">
+                  On mobile? Open directly in your wallet app
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {WALLET_LINKS.map((w) => (
+                    <a
+                      key={w.name}
+                      href={w.url}
+                      className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
+                    >
+                      <span className="text-base">{w.icon}</span>
+                      <span className="text-xs">{w.name}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {authError && (
               <p className="rounded-lg bg-destructive/8 px-3 py-2 text-center text-xs text-destructive">
