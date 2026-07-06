@@ -252,6 +252,7 @@ export default function AdminPage() {
   );
   const [marketsFilter, setMarketsFilter] = useState<"all" | "active" | "resolved">("all");
   const [userSearch, setUserSearch] = useState("");
+  const [usersFilter, setUsersFilter] = useState<"all" | "verified" | "unverified">("all");
 
   // Create form
   const [form, setForm] = useState({
@@ -371,7 +372,10 @@ export default function AdminPage() {
   );
 
   // ── Filtered users ────────────────────────────────────────────────────────
+  const verifiedCount = profiles.filter((p) => p.is_whitelisted_gd).length;
   const filteredProfiles = profiles.filter((p) => {
+    if (usersFilter === "verified" && !p.is_whitelisted_gd) return false;
+    if (usersFilter === "unverified" && p.is_whitelisted_gd) return false;
     if (!userSearch.trim()) return true;
     const q = userSearch.toLowerCase();
     return (
@@ -1451,17 +1455,55 @@ export default function AdminPage() {
         {/* ── USERS TABLE ── */}
         {tab === "users" && (
           <div className="space-y-4">
-            {/* Search */}
-            <div>
+            {/* GD Verification summary cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-border bg-card px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total users</p>
+                <p className="mt-1 font-display text-2xl font-bold tabular-nums">{profiles.length}</p>
+              </div>
+              <div className="rounded-2xl border border-[#07955F]/30 bg-[#07955F]/5 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#07955F]">GD Verified</p>
+                <p className="mt-1 font-display text-2xl font-bold tabular-nums text-[#07955F]">{verifiedCount}</p>
+                <p className="text-[11px] text-[#07955F]/70">
+                  {profiles.length ? Math.round((verifiedCount / profiles.length) * 100) : 0}% of users
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Unverified</p>
+                <p className="mt-1 font-display text-2xl font-bold tabular-nums">{profiles.length - verifiedCount}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {profiles.length ? Math.round(((profiles.length - verifiedCount) / profiles.length) * 100) : 0}% of users
+                </p>
+              </div>
+            </div>
+
+            {/* Search + filter row */}
+            <div className="flex gap-2">
               <input
                 value={userSearch}
-                onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setUsersPage(1);
-                }}
-                placeholder="Search by username or wallet address…"
-                className={inputCls}
+                onChange={(e) => { setUserSearch(e.target.value); setUsersPage(1); }}
+                placeholder="Search by username or wallet…"
+                className={cn(inputCls, "flex-1")}
               />
+            </div>
+            <div className="flex gap-2">
+              {(["all", "verified", "unverified"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => { setUsersFilter(f); setUsersPage(1); }}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition border",
+                    usersFilter === f
+                      ? f === "verified"
+                        ? "bg-[#07955F] text-white border-[#07955F]"
+                        : "bg-foreground text-background border-foreground"
+                      : "border-border text-muted-foreground hover:border-foreground/40"
+                  )}
+                >
+                  {f === "all" ? `All (${profiles.length})` : f === "verified" ? `GD Verified (${verifiedCount})` : `Unverified (${profiles.length - verifiedCount})`}
+                </button>
+              ))}
             </div>
 
             {loading ? (
@@ -1473,8 +1515,7 @@ export default function AdminPage() {
             ) : (
               <>
                 <p className="text-xs text-muted-foreground">
-                  {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
-                  {userSearch && " matching"}
+                  Showing {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-border">
                   <table className="w-full text-left text-sm">
@@ -1483,7 +1524,7 @@ export default function AdminPage() {
                         <th className="px-3 py-2">#</th>
                         <th className="px-3 py-2">Username</th>
                         <th className="px-3 py-2">Wallet</th>
-                        <th className="px-3 py-2 text-center">Verified</th>
+                        <th className="px-3 py-2">GD Status</th>
                         <th className="px-3 py-2 text-right">Joined</th>
                       </tr>
                     </thead>
@@ -1491,32 +1532,40 @@ export default function AdminPage() {
                       {pagedProfiles.map((p, i) => (
                         <tr
                           key={p.wallet_address}
-                          className="border-t border-border bg-card"
+                          className={cn(
+                            "border-t border-border",
+                            p.is_whitelisted_gd ? "bg-[#07955F]/3" : "bg-card"
+                          )}
                         >
                           <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                             {(usersPage - 1) * USERS_PER_PAGE + i + 1}
                           </td>
                           <td className="px-3 py-3">
-                            <div>
-                              <p className="font-medium">@{p.username}</p>
-                              {p.email && (
-                                <p className="text-[11px] text-muted-foreground">{p.email}</p>
-                              )}
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold uppercase">
+                                {(p.username ?? "?").slice(0, 2)}
+                              </div>
+                              <div>
+                                <p className="font-medium">@{p.username}</p>
+                                {p.email && <p className="text-[11px] text-muted-foreground">{p.email}</p>}
+                              </div>
                             </div>
                           </td>
                           <td className="px-3 py-3">
                             <WalletAddress address={p.wallet_address} />
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span
-                              className={cn(
-                                "inline-block h-2 w-2 rounded-full",
-                                p.is_whitelisted_gd
-                                  ? "bg-green-500"
-                                  : "bg-muted-foreground/30"
-                              )}
-                              title={p.is_whitelisted_gd ? "GD Verified" : "Not verified"}
-                            />
+                          <td className="px-3 py-3">
+                            {p.is_whitelisted_gd ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#07955F]/15 px-2 py-0.5 text-[10px] font-bold text-[#07955F]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#07955F]" />
+                                GD Verified
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                                Unverified
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right text-xs text-muted-foreground">
                             {new Date(p.created_at).toLocaleDateString()}
