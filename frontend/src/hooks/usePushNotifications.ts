@@ -56,7 +56,7 @@ export function usePushNotifications(address: string | undefined, username: stri
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
 
-      await fetch("/api/push/subscribe", {
+      const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -65,6 +65,10 @@ export function usePushNotifications(address: string | undefined, username: stri
           subscription: subscription.toJSON(),
         }),
       });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`subscribe request failed: ${res.status} ${body}`);
+      }
       setSubscribed(true);
     } catch (err) {
       console.error("Push subscribe error:", err);

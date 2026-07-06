@@ -135,3 +135,23 @@ create policy "Service role only for referrals" on public.referrals
 -- ─── 10. Helper: make a wallet an admin ──────────────────────────────────────
 -- Run manually when needed:
 -- update public.profiles set role = 'admin' where wallet_address = '0xYOUR_ADDRESS';
+
+-- ─── 11. Push subscriptions — Web Push (VAPID) endpoints ─────────────────────
+-- Keyed by wallet_address (always present) rather than username (may be unset).
+create table if not exists public.push_subscriptions (
+  id             uuid default gen_random_uuid() primary key,
+  wallet_address text not null,
+  username       text,
+  endpoint       text not null unique,
+  p256dh         text not null,
+  auth           text not null,
+  created_at     timestamptz default timezone('utc', now()) not null
+);
+
+create index if not exists idx_push_subscriptions_wallet
+  on public.push_subscriptions (wallet_address);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "Service role only for push subscriptions" on public.push_subscriptions
+  for all using (false);
