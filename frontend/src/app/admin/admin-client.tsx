@@ -617,7 +617,7 @@ export default function AdminPage() {
 
         const { data: openStakes } = await supabase
           .from("stakes")
-          .select("id, range_index")
+          .select("id, range_index, username")
           .eq("market_id", resolving.id)
           .eq("status", "open");
 
@@ -628,6 +628,18 @@ export default function AdminPage() {
               .from("stakes")
               .update({ status: won ? "won" : "lost" })
               .eq("id", stake.id);
+            if (stake.username) {
+              const rangeLabel =
+                resolving.ranges?.[Number(stake.range_index)]?.label ??
+                `Range ${stake.range_index}`;
+              await sendNotification(
+                stake.username,
+                won ? "You won! 🎉" : "Market resolved",
+                won
+                  ? `Your prediction "${rangeLabel}" was correct in "${resolving.title}". Winnings credited!`
+                  : `Your prediction "${rangeLabel}" didn't win in "${resolving.title}".`,
+              );
+            }
           }
         }
       }

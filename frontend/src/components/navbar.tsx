@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Logo } from "@/components/logo"
 import { Search01Icon, FilterHorizontalIcon, Cancel01Icon, Notification03Icon } from "hugeicons-react"
-import { useNotifications } from "@/hooks/useNotifications"
+import { useNotifications, type Notification } from "@/hooks/useNotifications"
 
 interface NavbarProps {
   tab?: string
@@ -15,9 +15,44 @@ interface NavbarProps {
   username?: string
 }
 
+function NotifToast({ notif, onClose }: { notif: Notification; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 5000)
+    return () => clearTimeout(t)
+  }, [onClose])
+
+  const isWin = notif.title.toLowerCase().includes("won")
+
+  return (
+    <div className="fixed bottom-24 left-1/2 z-[200] -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md ${isWin ? "border-won/30 bg-won/10" : "border-border bg-card"}`}>
+        <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${isWin ? "bg-won" : "bg-primary"}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">{notif.title}</p>
+          {notif.body && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{notif.body}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition"
+          aria-label="Dismiss"
+        >
+          <Cancel01Icon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearchChange, onToggleFilter, username }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false)
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(username)
+  const [toast, setToast] = useState<Notification | null>(null)
+
+  const handleNew = useCallback((n: Notification) => {
+    setToast(n)
+  }, [])
+
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(username, handleNew)
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
@@ -130,6 +165,11 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
             </div>
           </div>
         </>
+      )}
+
+      {/* In-app toast for new notifications */}
+      {toast && (
+        <NotifToast notif={toast} onClose={() => setToast(null)} />
       )}
     </header>
   )
