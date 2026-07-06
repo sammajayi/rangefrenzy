@@ -76,6 +76,7 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
     permission: pushPermission,
     subscribed: pushSubscribed,
     loading: pushLoading,
+    error: pushError,
     subscribe: subscribePush,
     unsubscribe: unsubscribePush,
   } = usePushNotifications(address, profile?.username);
@@ -266,19 +267,23 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
 
                   {/* Push notifications toggle */}
                   {pushSupported && pushPermission !== "denied" && (
-                    <button
-                      type="button"
-                      disabled={pushLoading}
-                      onClick={() => {
-                        setShowSettings(false);
-                        if (pushSubscribed) unsubscribePush();
-                        else subscribePush();
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition disabled:opacity-50"
-                    >
-                      <Notification03Icon className="h-4 w-4" />
-                      {pushSubscribed ? "Notifications on" : "Enable notifications"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={pushLoading}
+                        onClick={() => {
+                          if (pushSubscribed) unsubscribePush();
+                          else subscribePush();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition disabled:opacity-50"
+                      >
+                        <Notification03Icon className="h-4 w-4" />
+                        {pushLoading ? "Please wait…" : pushSubscribed ? "Notifications on" : "Enable notifications"}
+                      </button>
+                      {pushError && (
+                        <p className="px-3 text-[11px] text-destructive">{pushError}</p>
+                      )}
+                    </>
                   )}
 
                   {/* GoodDollar verification — show if not yet verified */}

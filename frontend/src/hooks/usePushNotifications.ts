@@ -27,10 +27,10 @@ export function usePushNotifications(address: string | undefined, username: stri
   );
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supported) return;
-
     navigator.serviceWorker.ready.then(async (registration) => {
       const sub = await registration.pushManager.getSubscription();
       setSubscribed(!!sub);
@@ -38,24 +38,18 @@ export function usePushNotifications(address: string | undefined, username: stri
   }, [supported]);
 
   const subscribe = useCallback(async () => {
-    if (!supported || !address) {
-      alert(`DEBUG: cannot subscribe (supported=${supported}, address=${address})`);
-      return;
-    }
+    if (!supported || !address) return;
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) {
-      alert("DEBUG: NEXT_PUBLIC_VAPID_PUBLIC_KEY is not configured on this build.");
-      console.error("NEXT_PUBLIC_VAPID_PUBLIC_KEY is not configured.");
+      setError("Push notifications are not configured on this deployment.");
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== "granted") {
-        alert(`DEBUG: permission not granted (got "${perm}")`);
-        return;
-      }
+      if (perm !== "granted") return;
 
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
@@ -72,14 +66,10 @@ export function usePushNotifications(address: string | undefined, username: stri
           subscription: subscription.toJSON(),
         }),
       });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`subscribe request failed: ${res.status} ${body}`);
-      }
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
       setSubscribed(true);
-      alert("DEBUG: subscribe succeeded!");
     } catch (err) {
-      alert(`DEBUG: subscribe threw: ${err instanceof Error ? err.message : String(err)}`);
+      setError(err instanceof Error ? err.message : "Failed to enable notifications");
       console.error("Push subscribe error:", err);
     } finally {
       setLoading(false);
@@ -89,6 +79,7 @@ export function usePushNotifications(address: string | undefined, username: stri
   const unsubscribe = useCallback(async () => {
     if (!supported) return;
     setLoading(true);
+    setError(null);
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
@@ -103,11 +94,12 @@ export function usePushNotifications(address: string | undefined, username: stri
       }
       setSubscribed(false);
     } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to disable notifications");
       console.error("Push unsubscribe error:", err);
     } finally {
       setLoading(false);
     }
   }, [supported]);
 
-  return { supported, permission, subscribed, loading, subscribe, unsubscribe };
+  return { supported, permission, subscribed, loading, error, subscribe, unsubscribe };
 }
