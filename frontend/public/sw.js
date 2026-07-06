@@ -1,5 +1,5 @@
-const CACHE_NAME = 'rangefrenzy-v1';
-const URLS_TO_CACHE = ['/', '/offline'];
+const CACHE_NAME = 'rangefrenzy-v2';
+const URLS_TO_CACHE = ['/'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
