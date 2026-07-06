@@ -34,7 +34,7 @@ export type OnChainMarket = {
   imageUrl: string | null;
 };
 
-const CATEGORY_LABELS = ["Crypto", "Sports", "Local"];
+const CATEGORY_LABELS = ["Crypto", "Sports", "Local", "Weather", "Stocks", "Social Media"];
 
 export function formatRangeLabel(r: { lowerBound: bigint; upperBound: bigint; label?: string }): string {
   const isMax = r.upperBound >= MAX_UINT_255;
@@ -65,21 +65,25 @@ export function useFactoryMarkets() {
   });
 
   const [imageMap, setImageMap] = useState<Record<string, string | null>>({});
+  const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     supabase
       .from("markets")
-      .select("contract_address, image_url")
+      .select("contract_address, image_url, category")
       .not("contract_address", "is", null)
       .then(({ data }) => {
         if (!data) return;
-        const map: Record<string, string | null> = {};
+        const imgs: Record<string, string | null> = {};
+        const cats: Record<string, string> = {};
         for (const m of data) {
           if (m.contract_address) {
-            map[m.contract_address.toLowerCase()] = m.image_url ?? null;
+            imgs[m.contract_address.toLowerCase()] = m.image_url ?? null;
+            if (m.category) cats[m.contract_address.toLowerCase()] = m.category;
           }
         }
-        setImageMap(map);
+        setImageMap(imgs);
+        setCategoryMap(cats);
       });
   }, []);
 
@@ -103,7 +107,7 @@ export function useFactoryMarkets() {
       address: addr,
       question,
       category: cat,
-      categoryLabel: CATEGORY_LABELS[cat] ?? "Other",
+      categoryLabel: categoryMap[addr.toLowerCase()] ?? CATEGORY_LABELS[cat] ?? "Other",
       deadline,
       deadlineLabel,
       status,

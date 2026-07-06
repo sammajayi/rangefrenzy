@@ -282,7 +282,7 @@ export const erc20Abi = ERC20_ABI;
 
 // MarketFactory ABI (CRYPTO=0, SPORTS=1, LOCAL=2)
 export const CATEGORY_MAP: Record<string, number> = {
-  Crypto: 0, Sports: 1, Weather: 1, Stocks: 0, Local: 2,
+  Crypto: 0, Sports: 1, Local: 2, Weather: 3, Stocks: 4, "Social Media": 5,
 };
 
 export const marketFactoryAbi = [

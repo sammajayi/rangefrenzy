@@ -14,6 +14,7 @@ import {
   Target01Icon,
   Wallet01Icon,
   PencilEdit01Icon,
+  Notification03Icon,
 } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { MyBets } from "@/components/MyBets";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useUserStakes } from "@/lib/hooks/use-user-stakes";
 import { computeStakeStats } from "@/lib/stake-stats";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useBalance, useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
@@ -33,9 +35,10 @@ interface Props {
   address: string;
   profile: Profile | null;
   onSignOut: () => void;
+  onClaimMarket?: (marketAddress: string) => void;
 }
 
-export function ProfileView({ address, profile, onSignOut }: Props) {
+export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Props) {
   const { wallets } = useWallets();
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
   const displayAddress = embeddedWallet?.address ?? address;
@@ -67,6 +70,15 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
   const { data: bets } = useUserStakes(address);
   const { open, closed, winRate, realizedPnl } = computeStakeStats(bets ?? []);
   const stakeStats = { pnl: realizedPnl, open, closed, winRate };
+
+  const {
+    supported: pushSupported,
+    permission: pushPermission,
+    subscribed: pushSubscribed,
+    loading: pushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+  } = usePushNotifications(address, profile?.username);
 
   const short = `${displayAddress.slice(0, 6)}…${displayAddress.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
@@ -252,6 +264,23 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
                     Change username
                   </button>
 
+                  {/* Push notifications toggle */}
+                  {pushSupported && pushPermission !== "denied" && (
+                    <button
+                      type="button"
+                      disabled={pushLoading}
+                      onClick={() => {
+                        setShowSettings(false);
+                        if (pushSubscribed) unsubscribePush();
+                        else subscribePush();
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition disabled:opacity-50"
+                    >
+                      <Notification03Icon className="h-4 w-4" />
+                      {pushSubscribed ? "Notifications on" : "Enable notifications"}
+                    </button>
+                  )}
+
                   {/* GoodDollar verification — show if not yet verified */}
                   {isVerified ? (
                     <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[#07955F]">
@@ -324,7 +353,7 @@ export function ProfileView({ address, profile, onSignOut }: Props) {
         {/* My Bets */}
         <section className="mt-8">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">My Bets</h3>
-          <MyBets address={address} />
+          <MyBets address={address} onClaimMarket={onClaimMarket} />
         </section>
       </div>
       {/* GoodDollar verification overlay */}

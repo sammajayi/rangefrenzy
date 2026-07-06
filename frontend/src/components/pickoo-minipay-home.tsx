@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { parseUnits, formatUnits } from "viem";
 import { useReadContract } from "wagmi";
@@ -23,6 +23,7 @@ import { useSell } from "@/lib/hooks/use-sell";
 import { useClaim } from "@/lib/hooks/use-claim";
 import { erc20Abi, rangeFrenzyMarketAbi, STAKE_TOKEN_ADDRESS, MarketStatus } from "@/lib/contracts";
 import { useAppStore } from "@/lib/store";
+import { useUserStakes } from "@/lib/hooks/use-user-stakes";
 import { EarnTab } from "@/components/EarnTab";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -44,11 +45,17 @@ const CATEGORY_CHIP: Record<string, string> = {
   crypto: "bg-blue-50 text-blue-700 border-blue-200",
   sports: "bg-amber-50 text-amber-700 border-amber-200",
   local: "bg-purple-50 text-purple-700 border-purple-200",
+  weather: "bg-sky-50 text-sky-700 border-sky-200",
+  stocks: "bg-green-50 text-green-700 border-green-200",
+  "social media": "bg-pink-50 text-pink-700 border-pink-200",
 };
 const CATEGORY_GRADIENT: Record<string, string> = {
   crypto: "from-blue-50 to-blue-100",
   sports: "from-amber-50 to-amber-100",
   local: "from-purple-50 to-purple-100",
+  weather: "from-sky-50 to-sky-100",
+  stocks: "from-green-50 to-green-100",
+  "social media": "from-pink-50 to-pink-100",
 };
 
 export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
@@ -72,6 +79,11 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { markets, isLoading } = useFactoryMarkets();
+  const { data: userBets } = useUserStakes(address);
+  const claimableCount = useMemo(
+    () => (userBets ?? []).filter((b) => b.status === "WON" && !b.claimed).length,
+    [userBets],
+  );
   const searchParams = useSearchParams();
   const [copiedShare, setCopiedShare] = useState(false);
 
@@ -110,6 +122,13 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
   const handleSelectMarket = (market: OnChainMarket) => {
     setSelected({ market, range: market.ranges[0] });
     setShowStakeModal(false);
+  };
+
+  const handleClaimMarket = (marketAddress: string) => {
+    const market = markets.find((m) => m.address.toLowerCase() === marketAddress.toLowerCase());
+    if (!market) return;
+    setSelected({ market, range: market.ranges[0] });
+    setShowStakeModal(true);
   };
 
   const handleCloseAll = () => {
@@ -268,7 +287,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
 
         {/* ── PROFILE TAB ── */}
         {tab === "profile" && (
-          <ProfileView address={address} profile={profile} onSignOut={onSignOut} />
+          <ProfileView address={address} profile={profile} onSignOut={onSignOut} onClaimMarket={handleClaimMarket} />
         )}
       </div>
 
@@ -302,6 +321,11 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
                   <Icon className="h-5 w-5" />
                   {item.id === "earn" && claimBadgeActive && (
                     <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive" />
+                  )}
+                  {item.id === "profile" && claimableCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white">
+                      {claimableCount}
+                    </span>
                   )}
                 </span>
                 <span className="relative">{item.label}</span>

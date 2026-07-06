@@ -259,6 +259,15 @@ export default function AdminPage() {
         await supabase.from("markets").update({ image_url: url }).eq("id", data.id);
       }
 
+      // 4. Notify all users (in-app + push) — best-effort, never blocks market creation.
+      if (data) {
+        fetch("/api/markets/notify-new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: form.title, category: form.category, market_id: data.id }),
+        }).catch((e) => console.error("notify-new failed:", e));
+      }
+
       setCreateMsg(contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)");
       setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "", initialPrice: "1", multiplier: "0.05", priceCap: "0" });
       setRanges(defaultRanges);
@@ -487,7 +496,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Category">
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
-                  {["Crypto", "Sports", "Weather", "Stocks", "Local"].map((c) => <option key={c}>{c}</option>)}
+                  {["Crypto", "Sports", "Weather", "Stocks", "Local", "Social Media"].map((c) => <option key={c}>{c}</option>)}
                 </select>
               </Field>
               <Field label="Volume label">
