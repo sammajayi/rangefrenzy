@@ -96,6 +96,9 @@ export default function AdminPage() {
   const [resolveValue, setResolveValue] = useState("");
   const [resolveLoading, setResolveLoading] = useState(false);
   const [reFixMsg, setReFixMsg] = useState<string | null>(null);
+  // Re-fix: market + manual override input
+  const [reFixMarket, setReFixMarket] = useState<Market | null>(null);
+  const [reFixValue, setReFixValue] = useState("");
 
   // Image upload per market in list
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -366,11 +369,16 @@ export default function AdminPage() {
     }
   }
 
-  async function handleReFix(market: Market, winningValue: string) {
+  async function handleReFix(e: React.FormEvent) {
+    e.preventDefault();
+    const market = reFixMarket;
+    if (!market) return;
     if (!market.ranges?.length) { setReFixMsg("Market has no ranges stored."); return; }
     setReFixMsg(null);
-    const outcomeNum = parseFloat(winningValue);
-    if (isNaN(outcomeNum)) { setReFixMsg("Invalid winning value on market."); return; }
+
+    const rawVal = reFixValue.trim() || String(market.winning_outcome ?? market.winning_value ?? "");
+    const outcomeNum = parseFloat(rawVal);
+    if (isNaN(outcomeNum)) { setReFixMsg("Enter a valid winning value."); return; }
 
     const winningRanges = market.ranges
       .map((r, i) => ({ r, i }))
@@ -393,6 +401,8 @@ export default function AdminPage() {
       await supabase.from("stakes").update({ status: won ? "won" : "lost" }).eq("id", stake.id);
     }
     setReFixMsg(`Fixed ${stakes.length} stake(s). Winning ranges: [${winningRanges.join(", ")}]`);
+    setReFixMarket(null);
+    setReFixValue("");
   }
 
   async function handleMarketImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -521,22 +531,24 @@ export default function AdminPage() {
             )}
 
             {/* Re-fix resolved markets whose stakes may have been marked incorrectly */}
-            {markets.filter((m) => m.status === "resolved" && m.winning_outcome).length > 0 && (
+            {markets.filter((m) => m.status === "resolved").length > 0 && (
               <div className="mt-6">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Re-apply resolution to stakes</p>
-                {markets.filter((m) => m.status === "resolved" && m.winning_outcome).map((m) => (
+                {markets.filter((m) => m.status === "resolved").map((m) => (
                   <div key={m.id} className="rounded-2xl border border-border bg-card p-4 mb-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-sm">{m.title}</p>
-                        <p className="text-xs text-muted-foreground">Winning value: {m.winning_outcome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Stored value: {m.winning_outcome ?? m.winning_value ?? "—"}
+                        </p>
                       </div>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         className="shrink-0 text-xs"
-                        onClick={() => handleReFix(m, String((m as any).winning_outcome))}
+                        onClick={() => { setReFixMarket(m); setReFixValue(String(m.winning_outcome ?? m.winning_value ?? "")); }}
                       >
                         Fix stakes
                       </Button>
@@ -808,6 +820,53 @@ export default function AdminPage() {
         {/* ── NOTIFY ── */}
         {tab === "notify" && <NotifySection />}
       </div>
+
+      {/* ── RE-FIX MODAL ── */}
+      {reFixMarket && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="font-display text-lg font-bold">Fix stake outcomes</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{reFixMarket.title}</p>
+            <form onSubmit={handleReFix} className="mt-4 space-y-4">
+              {reFixMarket.ranges?.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranges</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {reFixMarket.ranges.map((r, i) => (
+                      <span key={i} className="rounded-lg border border-border bg-muted/40 px-2 py-1 text-[11px]">
+                        <span className="font-mono text-muted-foreground mr-1">[{i}]</span>
+                        {r.label} ({(r as any).min ?? "–"} – {(r as any).max ?? "∞"})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Field label="Correct winning value">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter the actual outcome"
+                  value={reFixValue}
+                  onChange={(e) => setReFixValue(e.target.value)}
+                  required
+                  className={inputCls}
+                  autoFocus
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">This will re-mark all open/won/lost stakes for this market.</p>
+              </Field>
+              {reFixMsg && <p className="text-sm font-medium text-emerald-600">{reFixMsg}</p>}
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => { setReFixMarket(null); setReFixValue(""); setReFixMsg(null); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Apply fix
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── RESOLVE MODAL ── */}
       {resolving && (
