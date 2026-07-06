@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { WalletProvider } from "@/components/wallet-provider";
 import RegisterSW from "@/components/register-sw";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 export const metadata: Metadata = {
   title: "RangeFrenzy",
@@ -55,6 +56,7 @@ export default function RootLayout({
           </WalletProvider>
         </div>
         <RegisterSW />
+        <PwaInstallPrompt />
       </body>
     </html>
   );
