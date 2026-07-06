@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { parseUnits, formatUnits } from "viem";
-import { useReadContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import {
   Activity02Icon, User02Icon, Chart01Icon, ArrowRight01Icon,
   GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon,
@@ -451,6 +451,9 @@ function StakeModal({
 }) {
   const [amount, setAmount] = useState("");
 
+  const { address: wagmiAddress } = useAccount();
+  const walletReady = !!wagmiAddress;
+
   const { summary, userStake, hasActivePosition, refetch } = useMarketContract(market.address, userAddress);
   const { stake, reset: resetStake, step: stakeStep, errorMsg: stakeError, symbol, decimals, stakeTxHash } = useStake(market.address);
   const { sell, reset: resetSell, step: sellStep, errorMsg: sellError } = useSell(market.address);
@@ -712,7 +715,7 @@ function StakeModal({
                   type="button"
                   variant="outline"
                   className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:border-destructive"
-                  disabled={sellStep === "selling"}
+                  disabled={!walletReady || sellStep === "selling"}
                   onClick={sell}
                 >
                   {sellStep === "selling" ? (
@@ -871,6 +874,13 @@ function StakeModal({
           </div>
         )}
 
+        {/* Wallet disconnect warning */}
+        {!walletReady && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Wallet session expired. Please sign out and sign back in to stake or sell.
+          </div>
+        )}
+
         {/* Footer actions */}
         <div className="flex gap-3">
           <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
@@ -880,7 +890,7 @@ function StakeModal({
             <Button
               type="button"
               className="flex-1 bg-[#07955F] hover:bg-[#068050] text-white"
-              disabled={!amount || parseFloat(amount) < minStake || stakeStep === "approving" || stakeStep === "staking"}
+              disabled={!walletReady || !amount || parseFloat(amount) < minStake || stakeStep === "approving" || stakeStep === "staking"}
               onClick={handleStake}
             >
               {stakeStep === "approving" ? "Approving…" :
