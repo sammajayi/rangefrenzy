@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "pwa-install-dismissed";
+const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+function isDismissedRecently(): boolean {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return false;
+  if (raw === "permanent") return true;
+  return Date.now() - parseInt(raw, 10) < DISMISS_TTL_MS;
+}
 
 function isStandalone() {
   if (typeof window === "undefined") return false;
@@ -32,7 +40,7 @@ export function PwaInstallPrompt() {
   useEffect(() => {
     if (isStandalone()) return;
     if (!isMobile()) return;
-    if (sessionStorage.getItem(STORAGE_KEY)) return;
+    if (isDismissedRecently()) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -50,7 +58,7 @@ export function PwaInstallPrompt() {
   }, []);
 
   const dismiss = () => {
-    sessionStorage.setItem(STORAGE_KEY, "1");
+    localStorage.setItem(STORAGE_KEY, String(Date.now()));
     setShow(false);
   };
 
@@ -59,6 +67,7 @@ export function PwaInstallPrompt() {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
+        localStorage.setItem(STORAGE_KEY, "permanent");
         setDeferredPrompt(null);
         setShow(false);
         return;
