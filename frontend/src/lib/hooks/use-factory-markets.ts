@@ -36,13 +36,18 @@ export type OnChainMarket = {
 
 const CATEGORY_LABELS = ["Crypto", "Sports", "Local", "Weather", "Stocks", "Social Media"];
 
+function fmtNum(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `${+(n / 1_000_000).toPrecision(3)}M`;
+  if (Math.abs(n) >= 1_000) return `${+(n / 1_000).toPrecision(3)}k`;
+  return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+}
+
 export function formatRangeLabel(r: { lowerBound: bigint; upperBound: bigint; label?: string }): string {
   const isMax = r.upperBound >= MAX_UINT_255;
   const lower = parseFloat(formatUnits(r.lowerBound, 18));
   const upper = isMax ? null : parseFloat(formatUnits(r.upperBound, 18));
-  if (upper === null) return `${lower}+`;
-  const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(2));
-  return `${fmt(lower)} – ${fmt(upper)}`;
+  if (upper === null) return `${fmtNum(lower)}+`;
+  return `${fmtNum(lower)} – ${fmtNum(upper)}`;
 }
 
 export function useFactoryMarkets() {
