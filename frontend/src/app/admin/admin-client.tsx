@@ -2,27 +2,31 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase, sendNotification } from "@/lib/supabase";
-import type { Market, Profile } from "@/lib/supabase";
+import type { Market, Profile, Stake } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   PlusSignIcon,
-  CheckmarkCircle01Icon,
   User02Icon,
   Chart01Icon,
   Copy01Icon,
   Tick01Icon,
   ImageUploadIcon,
+  Clock01Icon,
+  ChartIncreaseIcon,
+  UserGroupIcon,
+  Activity01Icon,
 } from "hugeicons-react";
 import { Link } from "wouter";
 import { useWallets } from "@privy-io/react-auth";
 
-type AdminTab = "markets" | "expired" | "create" | "users" | "notify";
+type AdminTab = "overview" | "markets" | "expired" | "stakes" | "create" | "users" | "notify";
 type RangeInput = { label: string; min: string; max: string };
 
 const USERS_PER_PAGE = 10;
+const STAKES_PER_PAGE = 20;
 
-function rangeLabel(min: string, max: string, i: number): string {
+function rangeLabel(min: string, max: string, _i: number): string {
   if (max === "") return `${min}+`;
   return `${min} – ${max}`;
 }
@@ -34,6 +38,138 @@ const defaultRanges: RangeInput[] = [
   { label: "30+", min: "30", max: "" },
 ];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+function fmtGD(val: string | number): string {
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  if (isNaN(n)) return "0 G$";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M G$`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K G$`;
+  return `${n.toFixed(n % 1 === 0 ? 0 : 2)} G$`;
+}
+
+// ── SVG Charts ────────────────────────────────────────────────────────────────
+
+function AreaChart({ data }: { data: { label: string; value: number }[] }) {
+  if (!data.length)
+    return (
+      <div className="h-[120px] flex items-center justify-center text-xs text-muted-foreground">
+        No data yet
+      </div>
+    );
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const W = 600;
+  const H = 100;
+  const PAD = 8;
+  const pts = data.map((d, i) => {
+    const x = PAD + (i / (data.length - 1 || 1)) * (W - PAD * 2);
+    const y = H - PAD - (d.value / max) * (H - PAD * 2);
+    return [x, y] as [number, number];
+  });
+  const linePath = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
+  const areaPath = `${linePath} L${pts[pts.length - 1][0]},${H} L${pts[0][0]},${H} Z`;
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[100px]" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#07955F" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#07955F" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#areaGrad)" />
+        <path d={linePath} fill="none" stroke="#07955F" strokeWidth="2" strokeLinejoin="round" />
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="3" fill="#07955F" />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1">
+        {data
+          .filter((_, i) => i % Math.max(1, Math.floor(data.length / 5)) === 0)
+          .map((d, i) => (
+            <span key={i} className="text-[10px] text-muted-foreground">
+              {d.label}
+            </span>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+function DonutChart({
+  slices,
+}: {
+  slices: { label: string; value: number; color: string }[];
+}) {
+  const total = slices.reduce((s, sl) => s + sl.value, 0) || 1;
+  const R = 40;
+  const CX = 60;
+  const CY = 60;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <div className="flex items-center gap-4">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        {slices.map((sl, i) => {
+          const dash = (sl.value / total) * circumference;
+          const gap = circumference - dash;
+          const el = (
+            <circle
+              key={i}
+              cx={CX}
+              cy={CY}
+              r={R}
+              fill="none"
+              stroke={sl.color}
+              strokeWidth="18"
+              strokeDasharray={`${dash} ${gap}`}
+              strokeDashoffset={-offset}
+              style={{
+                transform: "rotate(-90deg)",
+                transformOrigin: `${CX}px ${CY}px`,
+              }}
+            />
+          );
+          offset += dash;
+          return el;
+        })}
+        <text
+          x={CX}
+          y={CY + 5}
+          textAnchor="middle"
+          style={{ fontSize: 14, fontWeight: 700, fill: "currentColor" }}
+        >
+          {total}
+        </text>
+      </svg>
+      <div className="space-y-1.5">
+        {slices.map((sl) => (
+          <div key={sl.label} className="flex items-center gap-2 text-xs">
+            <span
+              className="h-2 w-2 rounded-full shrink-0"
+              style={{ background: sl.color }}
+            />
+            <span className="text-muted-foreground">{sl.label}</span>
+            <span className="font-semibold ml-auto pl-4">{sl.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Wallet copy button ────────────────────────────────────────────────────────
 function WalletAddress({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
@@ -44,16 +180,53 @@ function WalletAddress({ address }: { address: string }) {
   };
   return (
     <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-      <span>{address.slice(0, 6)}…{address.slice(-4)}</span>
-      <button type="button" onClick={handleCopy} className="p-1 hover:text-primary transition-colors" title="Copy address">
-        {copied
-          ? <Tick01Icon className="h-3.5 w-3.5 text-green-500" />
-          : <Copy01Icon className="h-3.5 w-3.5" />}
+      <span>
+        {address.slice(0, 6)}…{address.slice(-4)}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-1 hover:text-primary transition-colors"
+        title="Copy address"
+      >
+        {copied ? (
+          <Tick01Icon className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Copy01Icon className="h-3.5 w-3.5" />
+        )}
       </button>
     </div>
   );
 }
 
+// ── Status Badge ──────────────────────────────────────────────────────────────
+function StatusBadge({
+  status,
+}: {
+  status: "open" | "won" | "lost" | "refunded" | "active" | "resolved" | "expired";
+}) {
+  const map: Record<string, string> = {
+    open: "bg-blue-100 text-blue-700",
+    won: "bg-emerald-100 text-emerald-700",
+    lost: "bg-red-100 text-red-700",
+    refunded: "bg-gray-100 text-gray-600",
+    active: "bg-emerald-100 text-emerald-700",
+    resolved: "bg-purple-100 text-purple-700",
+    expired: "bg-amber-100 text-amber-700",
+  };
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+        map[status] ?? "bg-muted text-muted-foreground"
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { wallets } = useWallets();
   const providerRef = useRef<any>(null);
@@ -65,13 +238,20 @@ export default function AdminPage() {
     })();
   }, [wallets]);
 
-  const [tab, setTab] = useState<AdminTab>("markets");
+  const [tab, setTab] = useState<AdminTab>("overview");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [stakes, setStakes] = useState<Stake[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Pagination
   const [usersPage, setUsersPage] = useState(1);
+  const [stakesPage, setStakesPage] = useState(1);
+  const [stakesFilter, setStakesFilter] = useState<"all" | "open" | "won" | "lost" | "refunded">(
+    "all"
+  );
+  const [marketsFilter, setMarketsFilter] = useState<"all" | "active" | "resolved">("all");
+  const [userSearch, setUserSearch] = useState("");
 
   // Create form
   const [form, setForm] = useState({
@@ -96,7 +276,6 @@ export default function AdminPage() {
   const [resolveValue, setResolveValue] = useState("");
   const [resolveLoading, setResolveLoading] = useState(false);
   const [reFixMsg, setReFixMsg] = useState<string | null>(null);
-  // Re-fix: market + manual override input
   const [reFixMarket, setReFixMarket] = useState<Market | null>(null);
   const [reFixValue, setReFixValue] = useState("");
 
@@ -106,8 +285,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchData() {
     setLoading(true);
@@ -117,22 +296,92 @@ export default function AdminPage() {
       .order("created_at", { ascending: false });
     if (mData) setMarkets(mData as Market[]);
 
-    if (tab === "users") {
-      const { data: pData } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (pData) setProfiles(pData as Profile[]);
-    }
+    const { data: pData } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (pData) setProfiles(pData as Profile[]);
+
+    const { data: sData } = await supabase
+      .from("stakes")
+      .select("*, market:markets(title,asset,category,deadline,status,winning_value)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (sData) setStakes(sData as Stake[]);
+
     setLoading(false);
   }
 
-  // Markets past deadline that aren't resolved
+  // Derived
   const expiredMarkets = markets.filter(
     (m) => m.status !== "resolved" && new Date(m.deadline) < new Date()
   );
   const activeMarkets = markets.filter(
     (m) => m.status === "active" && new Date(m.deadline) >= new Date()
+  );
+  const resolvedMarkets = markets.filter((m) => m.status === "resolved");
+
+  // ── Overview stats ────────────────────────────────────────────────────────
+  const totalStaked = stakes.reduce((sum, s) => sum + (parseFloat(s.amount_gd) || 0), 0);
+  const uniqueStakers = new Set(stakes.map((s) => s.wallet_address)).size;
+  const wonCount = stakes.filter((s) => s.status === "won").length;
+  const lostCount = stakes.filter((s) => s.status === "lost").length;
+  const winRate =
+    wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : 0;
+
+  // ── Volume chart data (last 14 days) ──────────────────────────────────────
+  const volumeChartData = (() => {
+    const days: { label: string; value: number }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const value = stakes
+        .filter((s) => s.created_at.slice(0, 10) === key)
+        .reduce((sum, s) => sum + (parseFloat(s.amount_gd) || 0), 0);
+      days.push({ label, value });
+    }
+    return days;
+  })();
+
+  // ── Category breakdown ────────────────────────────────────────────────────
+  const categoryBreakdown = (() => {
+    const map: Record<string, number> = {};
+    for (const m of markets) {
+      map[m.category] = (map[m.category] ?? 0) + 1;
+    }
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  })();
+
+  // ── Filtered markets ──────────────────────────────────────────────────────
+  const filteredMarkets = markets.filter((m) => {
+    if (marketsFilter === "active") return m.status === "active" && new Date(m.deadline) >= new Date();
+    if (marketsFilter === "resolved") return m.status === "resolved";
+    return true;
+  });
+
+  // ── Filtered stakes ───────────────────────────────────────────────────────
+  const filteredStakes =
+    stakesFilter === "all" ? stakes : stakes.filter((s) => s.status === stakesFilter);
+  const stakesTotalPages = Math.max(1, Math.ceil(filteredStakes.length / STAKES_PER_PAGE));
+  const pagedStakes = filteredStakes.slice(
+    (stakesPage - 1) * STAKES_PER_PAGE,
+    stakesPage * STAKES_PER_PAGE
+  );
+
+  // ── Filtered users ────────────────────────────────────────────────────────
+  const filteredProfiles = profiles.filter((p) => {
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase();
+    return (
+      p.username?.toLowerCase().includes(q) || p.wallet_address?.toLowerCase().includes(q)
+    );
+  });
+  const totalUsersPages = Math.max(1, Math.ceil(filteredProfiles.length / USERS_PER_PAGE));
+  const pagedProfiles = filteredProfiles.slice(
+    (usersPage - 1) * USERS_PER_PAGE,
+    usersPage * USERS_PER_PAGE
   );
 
   async function uploadMarketImage(marketId: string, file: File): Promise<string> {
@@ -174,25 +423,30 @@ export default function AdminPage() {
       const window_label = deadlineToWindowLabel(form.deadline);
       const deadlineUnix = Math.floor(new Date(form.deadline).getTime() / 1000);
 
-      // 1. Deploy on-chain via factory
       let contractAddress: string | null = null;
       const provider = providerRef.current ?? (window as any).ethereum;
       if (provider) {
         const { createWalletClient, custom, parseUnits } = await import("viem");
         const { celo } = await import("viem/chains");
-        const { marketFactoryAbi, FACTORY_ADDRESS, CATEGORY_MAP } = await import("@/lib/contracts");
+        const { marketFactoryAbi, FACTORY_ADDRESS, CATEGORY_MAP } = await import(
+          "@/lib/contracts"
+        );
 
         const accounts: string[] = await provider.request({ method: "eth_requestAccounts" });
         const adminAddr = accounts[0] as `0x${string}`;
-
-        const walletClient = createWalletClient({ account: adminAddr, chain: celo, transport: custom(provider) });
+        const walletClient = createWalletClient({
+          account: adminAddr,
+          chain: celo,
+          transport: custom(provider),
+        });
 
         const rangeLabels = parsedRanges.map((r) => r.label);
         const lowerBounds = parsedRanges.map((r) => BigInt(Math.round(r.min * 1e18)));
-        const upperBounds = parsedRanges.map((r) => r.max === null ? BigInt(1n << 255n) : BigInt(Math.round(r.max * 1e18)));
+        const upperBounds = parsedRanges.map((r) =>
+          r.max === null ? BigInt(1n << 255n) : BigInt(Math.round(r.max * 1e18))
+        );
 
         const category = CATEGORY_MAP[form.category] ?? 0;
-
         const initialPrice = parseUnits(form.initialPrice || "1", 18);
         const multiplier = parseUnits(form.multiplier || "0.05", 18);
         const priceCap = parseUnits(form.priceCap || "0", 18);
@@ -205,7 +459,7 @@ export default function AdminPage() {
             form.title,
             category,
             BigInt(deadlineUnix),
-            parseUnits("1", 18), // minStakeAmount = 1 G$
+            parseUnits("1", 18),
             initialPrice,
             multiplier,
             priceCap,
@@ -216,12 +470,13 @@ export default function AdminPage() {
         });
 
         const { createPublicClient, http } = await import("viem");
-        const publicClient = createPublicClient({ chain: celo, transport: http("https://forno.celo.org") });
+        const publicClient = createPublicClient({
+          chain: celo,
+          transport: http("https://forno.celo.org"),
+        });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-        // Decode MarketCreated event for proxy address
-        const { decodeEventLog, getAbiItem } = await import("viem");
-        const abiItem = getAbiItem({ abi: marketFactoryAbi, name: "createMarket" });
+        const { decodeEventLog } = await import("viem");
         for (const log of receipt.logs) {
           try {
             const decoded = decodeEventLog({
@@ -231,14 +486,16 @@ export default function AdminPage() {
               strict: false,
             });
             if ((decoded as any).eventName === "MarketCreated") {
-              contractAddress = ((decoded as any).args as any)?.marketProxy?.toLowerCase() ?? null;
+              contractAddress =
+                ((decoded as any).args as any)?.marketProxy?.toLowerCase() ?? null;
               break;
             }
-          } catch { /* skip non-matching logs */ }
+          } catch {
+            /* skip */
+          }
         }
       }
 
-      // 2. Insert into Supabase
       const { data, error } = await supabase
         .from("markets")
         .insert({
@@ -257,13 +514,11 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      // 3. Upload image if provided
       if (imageFile && data) {
         const url = await uploadMarketImage(data.id, imageFile);
         await supabase.from("markets").update({ image_url: url }).eq("id", data.id);
       }
 
-      // 4. Notify all users (in-app + push) — best-effort, never blocks market creation.
       if (data) {
         fetch("/api/markets/notify-new", {
           method: "POST",
@@ -272,8 +527,19 @@ export default function AdminPage() {
         }).catch((e) => console.error("notify-new failed:", e));
       }
 
-      setCreateMsg(contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)");
-      setForm({ title: "", category: "Crypto", volume_label: "$0 staked", deadline: "", contract_address: "", initialPrice: "1", multiplier: "0.05", priceCap: "0" });
+      setCreateMsg(
+        contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)"
+      );
+      setForm({
+        title: "",
+        category: "Crypto",
+        volume_label: "$0 staked",
+        deadline: "",
+        contract_address: "",
+        initialPrice: "1",
+        multiplier: "0.05",
+        priceCap: "0",
+      });
       setRanges(defaultRanges);
       setImageFile(null);
       setImagePreview(null);
@@ -291,26 +557,29 @@ export default function AdminPage() {
     setResolveLoading(true);
     try {
       const outcomeNum = parseFloat(resolveValue);
-
-      // 1. Call on-chain resolve() if the market has a contract address
       const contractAddress = (resolving as any).contract_address as string | null;
       if (contractAddress) {
-        const { createWalletClient, createPublicClient, custom, http, parseUnits } = await import("viem");
+        const { createWalletClient, createPublicClient, custom, http, parseUnits } = await import(
+          "viem"
+        );
         const { celo } = await import("viem/chains");
         const { marketFactoryAbi, FACTORY_ADDRESS } = await import("@/lib/contracts");
-
-        const chain = celo;
-        const rpc = "https://forno.celo.org";
 
         const provider = providerRef.current ?? (window as any).ethereum;
         if (!provider) throw new Error("No wallet provider found.");
         const accounts: string[] = await provider.request({ method: "eth_requestAccounts" });
         const adminAddr = accounts[0] as `0x${string}`;
 
-        const walletClient = createWalletClient({ account: adminAddr, chain, transport: custom(provider) });
-        const publicClient = createPublicClient({ chain, transport: http(rpc) });
+        const walletClient = createWalletClient({
+          account: adminAddr,
+          chain: celo,
+          transport: custom(provider),
+        });
+        const publicClient = createPublicClient({
+          chain: celo,
+          transport: http("https://forno.celo.org"),
+        });
 
-        // outcome scaled to 18 decimals (e.g. 3.5% → 3.5e18)
         const outcomeWei = parseUnits(resolveValue, 18);
         const hash = await walletClient.writeContract({
           address: FACTORY_ADDRESS as `0x${string}`,
@@ -321,7 +590,6 @@ export default function AdminPage() {
         await publicClient.waitForTransactionReceipt({ hash });
       }
 
-      // 2. Update Supabase
       const { error } = await supabase
         .from("markets")
         .update({
@@ -333,7 +601,6 @@ export default function AdminPage() {
         .eq("id", resolving.id);
       if (error) throw error;
 
-      // 3. Mark stakes as won/lost
       if (resolving.ranges?.length) {
         const winningRanges = resolving.ranges
           .map((r, i) => ({ r, i }))
@@ -353,7 +620,10 @@ export default function AdminPage() {
         if (openStakes?.length) {
           for (const stake of openStakes) {
             const won = winningRanges.includes(Number(stake.range_index));
-            await supabase.from("stakes").update({ status: won ? "won" : "lost" }).eq("id", stake.id);
+            await supabase
+              .from("stakes")
+              .update({ status: won ? "won" : "lost" })
+              .eq("id", stake.id);
           }
         }
       }
@@ -373,12 +643,19 @@ export default function AdminPage() {
     e.preventDefault();
     const market = reFixMarket;
     if (!market) return;
-    if (!market.ranges?.length) { setReFixMsg("Market has no ranges stored."); return; }
+    if (!market.ranges?.length) {
+      setReFixMsg("Market has no ranges stored.");
+      return;
+    }
     setReFixMsg(null);
 
-    const rawVal = reFixValue.trim() || String(market.winning_outcome ?? market.winning_value ?? "");
+    const rawVal =
+      reFixValue.trim() || String(market.winning_outcome ?? market.winning_value ?? "");
     const outcomeNum = parseFloat(rawVal);
-    if (isNaN(outcomeNum)) { setReFixMsg("Enter a valid winning value."); return; }
+    if (isNaN(outcomeNum)) {
+      setReFixMsg("Enter a valid winning value.");
+      return;
+    }
 
     const winningRanges = market.ranges
       .map((r, i) => ({ r, i }))
@@ -389,18 +666,26 @@ export default function AdminPage() {
       })
       .map(({ i }) => i);
 
-    const { data: stakes } = await supabase
+    const { data: stakeData } = await supabase
       .from("stakes")
       .select("id, range_index")
       .eq("market_id", market.id)
       .in("status", ["open", "won", "lost"]);
 
-    if (!stakes?.length) { setReFixMsg("No stakes found for this market."); return; }
-    for (const stake of stakes) {
-      const won = winningRanges.includes(Number(stake.range_index));
-      await supabase.from("stakes").update({ status: won ? "won" : "lost" }).eq("id", stake.id);
+    if (!stakeData?.length) {
+      setReFixMsg("No stakes found for this market.");
+      return;
     }
-    setReFixMsg(`Fixed ${stakes.length} stake(s). Winning ranges: [${winningRanges.join(", ")}]`);
+    for (const stake of stakeData) {
+      const won = winningRanges.includes(Number(stake.range_index));
+      await supabase
+        .from("stakes")
+        .update({ status: won ? "won" : "lost" })
+        .eq("id", stake.id);
+    }
+    setReFixMsg(
+      `Fixed ${stakeData.length} stake(s). Winning ranges: [${winningRanges.join(", ")}]`
+    );
     setReFixMarket(null);
     setReFixValue("");
   }
@@ -418,16 +703,14 @@ export default function AdminPage() {
     }
   }
 
-  // Pagination for users
-  const totalPages = Math.max(1, Math.ceil(profiles.length / USERS_PER_PAGE));
-  const pagedProfiles = profiles.slice(
-    (usersPage - 1) * USERS_PER_PAGE,
-    usersPage * USERS_PER_PAGE
-  );
-
   const tabs: { id: AdminTab; label: string }[] = [
+    { id: "overview", label: "Overview" },
     { id: "markets", label: "Markets" },
-    { id: "expired", label: `Expired${expiredMarkets.length ? ` (${expiredMarkets.length})` : ""}` },
+    {
+      id: "expired",
+      label: `Expired${expiredMarkets.length ? ` (${expiredMarkets.length})` : ""}`,
+    },
+    { id: "stakes", label: "Stakes" },
     { id: "create", label: "Create" },
     { id: "users", label: "Users" },
     { id: "notify", label: "Notify" },
@@ -435,43 +718,55 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <input ref={marketImgRef} type="file" accept="image/*" className="hidden" onChange={handleMarketImageUpload} />
+      <input
+        ref={marketImgRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleMarketImageUpload}
+      />
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
-        <div className="container mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+        <div className="container mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
+            >
               ← Home
             </Link>
             <span className="text-muted-foreground/40">/</span>
             <span className="text-sm font-semibold">Admin</span>
           </div>
-          <div className="flex h-6 items-center rounded-full bg-[#07955F]/10 px-3 text-[11px] font-semibold text-[#07955F]">
-            RangeFrenzy Admin
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+            >
+              <Activity01Icon className="h-3.5 w-3.5" />
+              {loading ? "Loading…" : "Refresh"}
+            </button>
+            <div className="flex h-6 items-center rounded-full bg-[#07955F]/10 px-3 text-[11px] font-semibold text-[#07955F]">
+              RangeFrenzy Admin
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto max-w-3xl px-4 py-6">
-        {/* Stat chips */}
-        <div className="mb-6 grid grid-cols-4 gap-3">
-          <StatChip label="Active" value={activeMarkets.length} icon={<Chart01Icon className="h-4 w-4" />} />
-          <StatChip label="Expired" value={expiredMarkets.length} icon={<CheckmarkCircle01Icon className="h-4 w-4" />} accent={expiredMarkets.length > 0} />
-          <StatChip label="Resolved" value={markets.filter((m) => m.status === "resolved").length} icon={<Tick01Icon className="h-4 w-4" />} />
-          <StatChip label="Users" value={profiles.length} icon={<User02Icon className="h-4 w-4" />} />
-        </div>
-
+      <div className="container mx-auto max-w-4xl px-4 py-6">
         {/* Tab bar */}
-        <div className="mb-6 flex gap-1 rounded-2xl border border-border bg-muted/40 p-1">
+        <div className="mb-6 flex gap-1 rounded-2xl border border-border bg-muted/40 p-1 overflow-x-auto">
           {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex-1 rounded-xl py-2.5 text-center text-xs font-semibold transition",
-                tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                "flex-1 whitespace-nowrap rounded-xl py-2.5 text-center text-xs font-semibold transition",
+                tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               )}
             >
               {t.label}
@@ -479,14 +774,188 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* ── ACTIVE MARKETS ── */}
+        {/* ── OVERVIEW ── */}
+        {tab === "overview" && (
+          <div className="space-y-6">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <OverviewCard
+                label="Total G$ Staked"
+                value={fmtGD(totalStaked)}
+                icon={<DollarSquareIcon className="h-5 w-5" />}
+                color="green"
+              />
+              <OverviewCard
+                label="Active Markets"
+                value={String(activeMarkets.length)}
+                icon={<Chart01Icon className="h-5 w-5" />}
+                color="blue"
+              />
+              <OverviewCard
+                label="Total Stakers"
+                value={String(uniqueStakers)}
+                icon={<UserGroupIcon className="h-5 w-5" />}
+                color="purple"
+              />
+              <OverviewCard
+                label="Win Rate"
+                value={`${winRate}%`}
+                icon={<ChartIncreaseIcon className="h-5 w-5" />}
+                color="green"
+              />
+              <OverviewCard
+                label="Pending Resolution"
+                value={String(expiredMarkets.length)}
+                icon={<Clock01Icon className="h-5 w-5" />}
+                color={expiredMarkets.length > 0 ? "amber" : "default"}
+              />
+              <OverviewCard
+                label="Total Users"
+                value={String(profiles.length)}
+                icon={<User02Icon className="h-5 w-5" />}
+                color="default"
+              />
+            </div>
+
+            {/* Volume chart */}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                Stakes Volume — Last 14 Days
+              </p>
+              <AreaChart data={volumeChartData} />
+            </div>
+
+            {/* Category breakdown + Donut */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Category bars */}
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  Category Breakdown
+                </p>
+                {categoryBreakdown.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No markets yet.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {categoryBreakdown.map(([cat, count]) => {
+                      const pct = Math.round((count / markets.length) * 100);
+                      return (
+                        <div key={cat}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-medium">{cat}</span>
+                            <span className="text-muted-foreground">{count}</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#07955F] transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Donut */}
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  Market Status
+                </p>
+                <DonutChart
+                  slices={[
+                    { label: "Active", value: activeMarkets.length, color: "#07955F" },
+                    { label: "Expired pending", value: expiredMarkets.length, color: "#F59E0B" },
+                    { label: "Resolved", value: resolvedMarkets.length, color: "#3B82F6" },
+                  ]}
+                />
+              </div>
+            </div>
+
+            {/* Recent activity */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Recent Activity
+                </p>
+              </div>
+              {stakes.length === 0 ? (
+                <p className="px-4 pb-4 text-xs text-muted-foreground">No stakes yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2">User</th>
+                        <th className="px-3 py-2">Market</th>
+                        <th className="px-3 py-2">Range</th>
+                        <th className="px-3 py-2">Amount</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2 text-right">When</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stakes.slice(0, 10).map((s) => (
+                        <tr key={s.id} className="border-t border-border">
+                          <td className="px-3 py-2.5 font-mono text-muted-foreground">
+                            {s.wallet_address.slice(0, 6)}…{s.wallet_address.slice(-4)}
+                          </td>
+                          <td className="px-3 py-2.5 max-w-[140px] truncate">
+                            {s.market?.title ?? s.market_id.slice(0, 8)}
+                          </td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{s.range_label}</td>
+                          <td className="px-3 py-2.5 font-semibold text-[#07955F]">
+                            {fmtGD(s.amount_gd)}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StatusBadge status={s.status} />
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-muted-foreground">
+                            {timeAgo(s.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── MARKETS ── */}
         {tab === "markets" && (
-          <MarketList
-            markets={activeMarkets}
-            loading={loading}
-            onResolve={setResolving}
-            onUploadImage={(id) => { setUploadingId(id); setTimeout(() => marketImgRef.current?.click(), 0); }}
-          />
+          <div className="space-y-4">
+            {/* Filter chips */}
+            <div className="flex gap-2">
+              {(["all", "active", "resolved"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setMarketsFilter(f)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold border transition",
+                    marketsFilter === f
+                      ? "bg-foreground text-background border-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f === "all" ? `All (${markets.length})` : f === "active" ? `Active (${activeMarkets.length})` : `Resolved (${resolvedMarkets.length})`}
+                </button>
+              ))}
+            </div>
+
+            <MarketList
+              markets={filteredMarkets}
+              stakes={stakes}
+              loading={loading}
+              onResolve={setResolving}
+              onUploadImage={(id) => {
+                setUploadingId(id);
+                setTimeout(() => marketImgRef.current?.click(), 0);
+              }}
+            />
+          </div>
         )}
 
         {/* ── EXPIRED / PENDING RESOLUTION ── */}
@@ -498,23 +967,37 @@ export default function AdminPage() {
               </div>
             )}
             {expiredMarkets.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No expired markets pending resolution.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No expired markets pending resolution.
+              </p>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground mb-2">
                   These markets have passed their deadline and need manual resolution.
                 </p>
                 {expiredMarkets.map((m) => (
-                  <div key={m.id} className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+                  <div
+                    key={m.id}
+                    className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-100 rounded-full px-2 py-0.5">
-                          Awaiting resolution
-                        </span>
+                        <StatusBadge status="expired" />
                         <p className="mt-1 font-display font-semibold">{m.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {m.category} · {m.asset} · Expired {new Date(m.deadline).toLocaleString()}
+                          {m.category} · {m.asset} · Expired{" "}
+                          {new Date(m.deadline).toLocaleString()}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {m.ranges.map((r) => (
+                            <span
+                              key={r.id}
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
+                            >
+                              {r.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       <Button
                         type="button"
@@ -530,12 +1013,17 @@ export default function AdminPage() {
               </>
             )}
 
-            {/* Re-fix resolved markets whose stakes may have been marked incorrectly */}
-            {markets.filter((m) => m.status === "resolved").length > 0 && (
+            {/* Re-fix resolved markets */}
+            {resolvedMarkets.length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Re-apply resolution to stakes</p>
-                {markets.filter((m) => m.status === "resolved").map((m) => (
-                  <div key={m.id} className="rounded-2xl border border-border bg-card p-4 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  Re-apply resolution to stakes
+                </p>
+                {resolvedMarkets.map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-2xl border border-border bg-card p-4 mb-2"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-sm">{m.title}</p>
@@ -548,7 +1036,12 @@ export default function AdminPage() {
                         size="sm"
                         variant="outline"
                         className="shrink-0 text-xs"
-                        onClick={() => { setReFixMarket(m); setReFixValue(String(m.winning_outcome ?? m.winning_value ?? "")); }}
+                        onClick={() => {
+                          setReFixMarket(m);
+                          setReFixValue(
+                            String(m.winning_outcome ?? m.winning_value ?? "")
+                          );
+                        }}
                       >
                         Fix stakes
                       </Button>
@@ -560,24 +1053,208 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* ── STAKES ── */}
+        {tab === "stakes" && (
+          <div className="space-y-4">
+            {/* Filter chips */}
+            <div className="flex flex-wrap gap-2">
+              {(["all", "open", "won", "lost", "refunded"] as const).map((f) => {
+                const count =
+                  f === "all"
+                    ? stakes.length
+                    : stakes.filter((s) => s.status === f).length;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => {
+                      setStakesFilter(f);
+                      setStakesPage(1);
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold border transition",
+                      stakesFilter === f
+                        ? "bg-foreground text-background border-foreground"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Summary row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Total Amount
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-[#07955F]">
+                  {fmtGD(
+                    filteredStakes.reduce(
+                      (sum, s) => sum + (parseFloat(s.amount_gd) || 0),
+                      0
+                    )
+                  )}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Won
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-emerald-600">
+                  {stakes.filter((s) => s.status === "won").length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Lost
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-red-600">
+                  {stakes.filter((s) => s.status === "lost").length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Open
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-blue-600">
+                  {stakes.filter((s) => s.status === "open").length}
+                </p>
+              </div>
+            </div>
+
+            {/* Table */}
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+              </div>
+            ) : filteredStakes.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">No stakes found.</p>
+            ) : (
+              <>
+                <div className="overflow-hidden rounded-2xl border border-border">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2">#</th>
+                          <th className="px-3 py-2">User</th>
+                          <th className="px-3 py-2">Market</th>
+                          <th className="px-3 py-2">Range</th>
+                          <th className="px-3 py-2">Amount</th>
+                          <th className="px-3 py-2">Status</th>
+                          <th className="px-3 py-2 text-right">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedStakes.map((s, i) => (
+                          <tr key={s.id} className="border-t border-border bg-card">
+                            <td className="px-3 py-2.5 font-mono text-muted-foreground">
+                              {(stakesPage - 1) * STAKES_PER_PAGE + i + 1}
+                            </td>
+                            <td className="px-3 py-2.5 font-mono text-muted-foreground">
+                              {s.wallet_address.slice(0, 6)}…{s.wallet_address.slice(-4)}
+                            </td>
+                            <td className="px-3 py-2.5 max-w-[150px] truncate">
+                              {s.market?.title ?? s.market_id.slice(0, 8)}
+                            </td>
+                            <td className="px-3 py-2.5 text-muted-foreground">
+                              {s.range_label}
+                            </td>
+                            <td className="px-3 py-2.5 font-semibold text-[#07955F]">
+                              {fmtGD(s.amount_gd)}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <StatusBadge status={s.status} />
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-muted-foreground">
+                              {timeAgo(s.created_at)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {stakesTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                    <button
+                      type="button"
+                      disabled={stakesPage === 1}
+                      onClick={() => setStakesPage((p) => p - 1)}
+                      className="px-3 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition"
+                    >
+                      ← Prev
+                    </button>
+                    <span className="font-medium">
+                      Page {stakesPage} of {stakesTotalPages} ({filteredStakes.length} stakes)
+                    </span>
+                    <button
+                      type="button"
+                      disabled={stakesPage === stakesTotalPages}
+                      onClick={() => setStakesPage((p) => p + 1)}
+                      className="px-3 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* ── CREATE MARKET ── */}
         {tab === "create" && (
           <form onSubmit={handleCreate} className="space-y-4">
             <Field label="Title">
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="BTC move in 24h" required className={inputCls} />
+              <input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="BTC move in 24h"
+                required
+                className={inputCls}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Category">
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
-                  {["Crypto", "Sports", "Local", "Weather", "Stocks", "Social Media"].map((c) => <option key={c}>{c}</option>)}
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className={inputCls}
+                >
+                  {[
+                    "Crypto",
+                    "Sports",
+                    "Local",
+                    "Weather",
+                    "Stocks",
+                    "Social Media",
+                  ].map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
                 </select>
               </Field>
               <Field label="Volume label">
-                <input value={form.volume_label} onChange={(e) => setForm({ ...form, volume_label: e.target.value })} placeholder="$0 staked" className={inputCls} />
+                <input
+                  value={form.volume_label}
+                  onChange={(e) => setForm({ ...form, volume_label: e.target.value })}
+                  placeholder="$0 staked"
+                  className={inputCls}
+                />
               </Field>
             </div>
             <Field label="Deadline">
-              <input type="datetime-local" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} required className={inputCls} />
+              <input
+                type="datetime-local"
+                value={form.deadline}
+                onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+                required
+                className={inputCls}
+              />
             </Field>
 
             <Field label="Contract address (optional)">
@@ -588,12 +1265,17 @@ export default function AdminPage() {
                 placeholder="0x… — leave blank if not yet deployed"
                 className={inputCls}
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">The deployed RangeFrenzyMarket proxy for this market. Enables on-chain staking and resolution.</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                The deployed RangeFrenzyMarket proxy for this market. Enables on-chain staking
+                and resolution.
+              </p>
             </Field>
 
             {/* Bonding curve params */}
             <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bonding curve</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Bonding curve
+              </p>
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Initial price (G$)">
                   <input
@@ -629,7 +1311,10 @@ export default function AdminPage() {
                   />
                 </Field>
               </div>
-              <p className="text-[11px] text-muted-foreground">Price per share = initialPrice + multiplier × totalStaked / 1e18. Price cap of 0 means no ceiling.</p>
+              <p className="text-[11px] text-muted-foreground">
+                Price per share = initialPrice + multiplier × totalStaked / 1e18. Price cap
+                of 0 means no ceiling.
+              </p>
             </div>
 
             {/* Image upload */}
@@ -639,7 +1324,11 @@ export default function AdminPage() {
                 onClick={() => fileRef.current?.click()}
               >
                 {imagePreview ? (
-                  <img src={imagePreview} alt="preview" className="h-32 w-full rounded-lg object-cover" />
+                  <img
+                    src={imagePreview}
+                    alt="preview"
+                    className="h-32 w-full rounded-lg object-cover"
+                  />
                 ) : (
                   <>
                     <ImageUploadIcon className="h-8 w-8 text-muted-foreground" />
@@ -665,13 +1354,19 @@ export default function AdminPage() {
 
             {/* Ranges */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">Ranges</label>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                Ranges
+              </label>
               <div className="space-y-2">
                 {ranges.map((r, i) => (
                   <div key={i} className="flex gap-2">
                     <input
                       value={r.label}
-                      onChange={(e) => { const next = [...ranges]; next[i] = { ...next[i], label: e.target.value }; setRanges(next); }}
+                      onChange={(e) => {
+                        const next = [...ranges];
+                        next[i] = { ...next[i], label: e.target.value };
+                        setRanges(next);
+                      }}
                       placeholder="Label"
                       className={cn(inputCls, "w-24")}
                     />
@@ -683,7 +1378,8 @@ export default function AdminPage() {
                         const max = next[i].max;
                         const prev = ranges[i];
                         const prevLabel = rangeLabel(prev.min, prev.max, i);
-                        const label = prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
+                        const label =
+                          prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
                         next[i] = { ...next[i], min, label };
                         setRanges(next);
                       }}
@@ -700,7 +1396,8 @@ export default function AdminPage() {
                         const min = next[i].min;
                         const prev = ranges[i];
                         const prevLabel = rangeLabel(prev.min, prev.max, i);
-                        const label = prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
+                        const label =
+                          prev.label === prevLabel ? rangeLabel(min, max, i) : prev.label;
                         next[i] = { ...next[i], max, label };
                         setRanges(next);
                       }}
@@ -710,7 +1407,13 @@ export default function AdminPage() {
                       className={cn(inputCls, "w-20")}
                     />
                     {ranges.length > 2 && (
-                      <button type="button" onClick={() => setRanges(ranges.filter((_, j) => j !== i))} className="px-2 text-destructive hover:text-destructive/80 text-lg">×</button>
+                      <button
+                        type="button"
+                        onClick={() => setRanges(ranges.filter((_, j) => j !== i))}
+                        className="px-2 text-destructive hover:text-destructive/80 text-lg"
+                      >
+                        ×
+                      </button>
                     )}
                   </div>
                 ))}
@@ -725,12 +1428,21 @@ export default function AdminPage() {
             </div>
 
             {createMsg && (
-              <p className={cn("text-sm font-medium", createMsg.startsWith("✓") ? "text-emerald-600" : "text-destructive")}>
+              <p
+                className={cn(
+                  "text-sm font-medium",
+                  createMsg.startsWith("✓") ? "text-emerald-600" : "text-destructive"
+                )}
+              >
                 {createMsg}
               </p>
             )}
 
-            <Button type="submit" className="w-full h-12 text-base cursor-pointer font-semibold" disabled={createLoading}>
+            <Button
+              type="submit"
+              className="w-full h-12 text-base cursor-pointer font-semibold"
+              disabled={createLoading}
+            >
               {createLoading ? "Creating…" : "Create market"}
             </Button>
           </form>
@@ -738,15 +1450,32 @@ export default function AdminPage() {
 
         {/* ── USERS TABLE ── */}
         {tab === "users" && (
-          <div>
+          <div className="space-y-4">
+            {/* Search */}
+            <div>
+              <input
+                value={userSearch}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setUsersPage(1);
+                }}
+                placeholder="Search by username or wallet address…"
+                className={inputCls}
+              />
+            </div>
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
               </div>
-            ) : profiles.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No users yet.</p>
+            ) : filteredProfiles.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">No users found.</p>
             ) : (
               <>
+                <p className="text-xs text-muted-foreground">
+                  {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
+                  {userSearch && " matching"}
+                </p>
                 <div className="overflow-hidden rounded-2xl border border-border">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -760,24 +1489,34 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {pagedProfiles.map((p, i) => (
-                        <tr key={p.wallet_address} className="border-t border-border bg-card">
+                        <tr
+                          key={p.wallet_address}
+                          className="border-t border-border bg-card"
+                        >
                           <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                             {(usersPage - 1) * USERS_PER_PAGE + i + 1}
                           </td>
                           <td className="px-3 py-3">
                             <div>
                               <p className="font-medium">@{p.username}</p>
-                              {p.email && <p className="text-[11px] text-muted-foreground">{p.email}</p>}
+                              {p.email && (
+                                <p className="text-[11px] text-muted-foreground">{p.email}</p>
+                              )}
                             </div>
                           </td>
                           <td className="px-3 py-3">
                             <WalletAddress address={p.wallet_address} />
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <span className={cn(
-                              "inline-block h-2 w-2 rounded-full",
-                              p.is_whitelisted_gd ? "bg-green-500" : "bg-muted-foreground/30"
-                            )} title={p.is_whitelisted_gd ? "GD Verified" : "Not verified"} />
+                            <span
+                              className={cn(
+                                "inline-block h-2 w-2 rounded-full",
+                                p.is_whitelisted_gd
+                                  ? "bg-green-500"
+                                  : "bg-muted-foreground/30"
+                              )}
+                              title={p.is_whitelisted_gd ? "GD Verified" : "Not verified"}
+                            />
                           </td>
                           <td className="px-3 py-3 text-right text-xs text-muted-foreground">
                             {new Date(p.created_at).toLocaleDateString()}
@@ -789,7 +1528,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {totalUsersPages > 1 && (
                   <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                     <button
                       type="button"
@@ -800,11 +1539,11 @@ export default function AdminPage() {
                       ← Prev
                     </button>
                     <span className="font-medium">
-                      Page {usersPage} of {totalPages}
+                      Page {usersPage} of {totalUsersPages}
                     </span>
                     <button
                       type="button"
-                      disabled={usersPage === totalPages}
+                      disabled={usersPage === totalUsersPages}
                       onClick={() => setUsersPage((p) => p + 1)}
                       className="px-3 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition"
                     >
@@ -830,10 +1569,15 @@ export default function AdminPage() {
             <form onSubmit={handleReFix} className="mt-4 space-y-4">
               {reFixMarket.ranges?.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranges</p>
+                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Ranges
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {reFixMarket.ranges.map((r, i) => (
-                      <span key={i} className="rounded-lg border border-border bg-muted/40 px-2 py-1 text-[11px]">
+                      <span
+                        key={i}
+                        className="rounded-lg border border-border bg-muted/40 px-2 py-1 text-[11px]"
+                      >
                         <span className="font-mono text-muted-foreground mr-1">[{i}]</span>
                         {r.label} ({(r as any).min ?? "–"} – {(r as any).max ?? "∞"})
                       </span>
@@ -852,11 +1596,24 @@ export default function AdminPage() {
                   className={inputCls}
                   autoFocus
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">This will re-mark all open/won/lost stakes for this market.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  This will re-mark all open/won/lost stakes for this market.
+                </p>
               </Field>
-              {reFixMsg && <p className="text-sm font-medium text-emerald-600">{reFixMsg}</p>}
+              {reFixMsg && (
+                <p className="text-sm font-medium text-emerald-600">{reFixMsg}</p>
+              )}
               <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => { setReFixMarket(null); setReFixValue(""); setReFixMsg(null); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setReFixMarket(null);
+                    setReFixValue("");
+                    setReFixMsg(null);
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1">
@@ -877,10 +1634,15 @@ export default function AdminPage() {
             <form onSubmit={handleResolve} className="mt-4 space-y-4">
               {resolving.ranges?.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranges</p>
+                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Ranges
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {resolving.ranges.map((r, i) => (
-                      <span key={i} className="rounded-lg border border-border bg-muted/40 px-2 py-1 text-[11px]">
+                      <span
+                        key={i}
+                        className="rounded-lg border border-border bg-muted/40 px-2 py-1 text-[11px]"
+                      >
                         <span className="font-mono text-muted-foreground mr-1">[{i}]</span>
                         {r.label} ({r.min ?? "–"} – {r.max ?? "∞"})
                       </span>
@@ -899,10 +1661,21 @@ export default function AdminPage() {
                   className={inputCls}
                   autoFocus
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">Enter the actual outcome (not the bracket index). The system will match it to the correct range.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Enter the actual outcome (not the bracket index). The system will match it
+                  to the correct range.
+                </p>
               </Field>
               <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => { setResolving(null); setResolveValue(""); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setResolving(null);
+                    setResolveValue("");
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1" disabled={resolveLoading}>
@@ -917,64 +1690,191 @@ export default function AdminPage() {
   );
 }
 
-// ── Market list sub-component ────────────────────────────────────────────────
+// ── Overview card ─────────────────────────────────────────────────────────────
+function OverviewCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: "green" | "blue" | "purple" | "amber" | "default";
+}) {
+  const colorMap = {
+    green: "bg-emerald-50 border-emerald-100 text-emerald-700",
+    blue: "bg-blue-50 border-blue-100 text-blue-700",
+    purple: "bg-purple-50 border-purple-100 text-purple-700",
+    amber: "bg-amber-50 border-amber-200 text-amber-700",
+    default: "bg-card border-border text-muted-foreground",
+  };
+  const iconColor = {
+    green: "text-emerald-600",
+    blue: "text-blue-600",
+    purple: "text-purple-600",
+    amber: "text-amber-600",
+    default: "text-muted-foreground",
+  };
+  return (
+    <div className={cn("rounded-2xl border p-4", colorMap[color])}>
+      <div className={cn("flex items-center gap-1.5 mb-2", iconColor[color])}>
+        {icon}
+        <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
+      </div>
+      <p className="font-display text-xl font-bold tabular-nums text-foreground">{value}</p>
+    </div>
+  );
+}
+
+// ── Market list sub-component ─────────────────────────────────────────────────
 function MarketList({
   markets,
+  stakes,
   loading,
   onResolve,
   onUploadImage,
 }: {
   markets: Market[];
+  stakes: Stake[];
   loading: boolean;
   onResolve: (m: Market) => void;
   onUploadImage: (id: string) => void;
 }) {
-  if (loading) return <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" /></div>;
-  if (markets.length === 0) return <p className="py-12 text-center text-sm text-muted-foreground">No active markets. Create one!</p>;
+  if (loading)
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  if (markets.length === 0)
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        No markets to show.
+      </p>
+    );
 
   return (
     <div className="space-y-3">
-      {markets.map((m) => (
-        <div key={m.id} className="rounded-2xl border border-border bg-card p-4">
-          {m.image_url && (
-            <img src={m.image_url} alt={m.title} className="mb-3 h-28 w-full rounded-xl object-cover" />
-          )}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  active
-                </span>
-                <span className="text-xs text-muted-foreground">{m.category} · {m.asset}</span>
+      {markets.map((m) => {
+        const mStakes = stakes.filter((s) => s.market_id === m.id);
+        const poolGD = mStakes.reduce((sum, s) => sum + (parseFloat(s.amount_gd) || 0), 0);
+        const stakerCount = new Set(mStakes.map((s) => s.wallet_address)).size;
+        const isExpired =
+          m.status !== "resolved" && new Date(m.deadline) < new Date();
+        const deadlineDiff = new Date(m.deadline).getTime() - Date.now();
+        const daysLeft = Math.floor(deadlineDiff / 86_400_000);
+        const hoursLeft = Math.floor((deadlineDiff % 86_400_000) / 3_600_000);
+        const countdown =
+          deadlineDiff <= 0
+            ? "Expired"
+            : daysLeft > 0
+            ? `${daysLeft}d ${hoursLeft}h left`
+            : `${hoursLeft}h left`;
+
+        return (
+          <div
+            key={m.id}
+            className={cn(
+              "rounded-2xl border bg-card p-4",
+              isExpired ? "border-amber-200" : "border-border"
+            )}
+          >
+            {m.image_url && (
+              <img
+                src={m.image_url}
+                alt={m.title}
+                className="mb-3 h-28 w-full rounded-xl object-cover"
+              />
+            )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <StatusBadge
+                    status={
+                      m.status === "resolved"
+                        ? "resolved"
+                        : isExpired
+                        ? "expired"
+                        : "active"
+                    }
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {m.category}
+                    {m.asset ? ` · ${m.asset}` : ""}
+                  </span>
+                </div>
+                <p className="font-display font-semibold">{m.title}</p>
+                {m.status === "resolved" && m.winning_outcome && (
+                  <p className="mt-0.5 text-xs text-purple-600 font-medium">
+                    Resolved: {m.winning_outcome}
+                  </p>
+                )}
+                {/* Stats row */}
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <DollarSquareIcon className="h-3.5 w-3.5" />
+                    {fmtGD(poolGD)} pool
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <User02Icon className="h-3.5 w-3.5" />
+                    {stakerCount} staker{stakerCount !== 1 ? "s" : ""}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1",
+                      deadlineDiff <= 0 ? "text-amber-600" : ""
+                    )}
+                  >
+                    <Clock01Icon className="h-3.5 w-3.5" />
+                    {countdown}
+                  </span>
+                </div>
               </div>
-              <p className="mt-1 font-display font-semibold">{m.title}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Deadline: {new Date(m.deadline).toLocaleString()}
-              </p>
+              <div className="flex shrink-0 flex-col gap-2">
+                {m.status !== "resolved" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/30 text-primary hover:bg-primary/5"
+                    onClick={() => onResolve(m)}
+                  >
+                    Resolve
+                  </Button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onUploadImage(m.id)}
+                  className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition"
+                  title="Upload image"
+                >
+                  <ImageUploadIcon className="h-3.5 w-3.5" /> Image
+                </button>
+              </div>
             </div>
-            <div className="flex shrink-0 flex-col gap-2">
-              <Button type="button" size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5" onClick={() => onResolve(m)}>
-                Resolve
-              </Button>
-              <button
-                type="button"
-                onClick={() => onUploadImage(m.id)}
-                className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition"
-                title="Upload image"
-              >
-                <ImageUploadIcon className="h-3.5 w-3.5" /> Image
-              </button>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {m.ranges.map((r) => (
+                <span
+                  key={r.id}
+                  className={cn(
+                    "rounded-lg border px-2 py-0.5 text-[11px]",
+                    m.status === "resolved" &&
+                      m.winning_value !== null &&
+                      m.winning_value !== undefined &&
+                      (r as any).min <= m.winning_value &&
+                      ((r as any).max === null || m.winning_value <= (r as any).max)
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold"
+                      : "border-border text-muted-foreground"
+                  )}
+                >
+                  {r.label}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {m.ranges.map((r) => (
-              <span key={r.id} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                {r.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -993,8 +1893,10 @@ function NotifySection() {
     setSending(true);
     setMsg(null);
     try {
-
-      const usernames = username.split(",").map((u) => u.trim()).filter(Boolean);
+      const usernames = username
+        .split(",")
+        .map((u) => u.trim())
+        .filter(Boolean);
       for (const u of usernames) {
         await sendNotification(u, title, body || undefined);
       }
@@ -1010,34 +1912,97 @@ function NotifySection() {
   return (
     <form onSubmit={handleSend} className="space-y-4">
       <Field label="Username(s)">
-        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="sammajayi, ekenepaul" className={inputCls} />
-        <p className="mt-1 text-[11px] text-muted-foreground">Separate multiple usernames with commas</p>
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="sammajayi, ekenepaul"
+          className={inputCls}
+        />
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Separate multiple usernames with commas
+        </p>
       </Field>
       <Field label="Title">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Notification title" className={inputCls} required />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Notification title"
+          className={inputCls}
+          required
+        />
       </Field>
       <Field label="Body (optional)">
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Notification body text" rows={3} className={inputCls + " resize-none pt-2"} />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Notification body text"
+          rows={3}
+          className={inputCls + " resize-none pt-2"}
+        />
       </Field>
-      {msg && <p className={cn("text-sm font-medium", msg.startsWith("Sent") ? "text-emerald-600" : "text-destructive")}>{msg}</p>}
-      <Button type="submit" className="w-full h-12 cursor-pointer font-semibold" disabled={sending}>
+      {msg && (
+        <p
+          className={cn(
+            "text-sm font-medium",
+            msg.startsWith("Sent") ? "text-emerald-600" : "text-destructive"
+          )}
+        >
+          {msg}
+        </p>
+      )}
+      <Button
+        type="submit"
+        className="w-full h-12 cursor-pointer font-semibold"
+        disabled={sending}
+      >
         {sending ? "Sending…" : "Send notification"}
       </Button>
     </form>
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function StatChip({ label, value, icon, accent }: { label: string; value: number; icon: React.ReactNode; accent?: boolean }) {
+// ── Shared sub-helpers ────────────────────────────────────────────────────────
+function StatChip({
+  label,
+  value,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  accent?: boolean;
+}) {
   return (
-    <div className={cn("rounded-2xl border bg-card px-3 py-3", accent && value > 0 ? "border-amber-300 bg-amber-50/50" : "border-border")}>
-      <div className="flex items-center gap-1.5 text-muted-foreground">{icon}<p className="text-[10px] font-semibold uppercase tracking-wider">{label}</p></div>
-      <p className={cn("mt-1 font-display text-2xl font-bold tabular-nums", accent && value > 0 ? "text-amber-700" : "")}>{value}</p>
+    <div
+      className={cn(
+        "rounded-2xl border bg-card px-3 py-3",
+        accent && value > 0 ? "border-amber-300 bg-amber-50/50" : "border-border"
+      )}
+    >
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        {icon}
+        <p className="text-[10px] font-semibold uppercase tracking-wider">{label}</p>
+      </div>
+      <p
+        className={cn(
+          "mt-1 font-display text-2xl font-bold tabular-nums",
+          accent && value > 0 ? "text-amber-700" : ""
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium text-muted-foreground">{label}</label>
@@ -1046,4 +2011,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const inputCls = "h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30";
+// ── Icons used inline in MarketList ──────────────────────────────────────────
+function DollarSquareIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <rect x="2" y="2" width="20" height="20" rx="4" />
+      <path d="M12 6v12M9 9a3 3 0 0 1 6 0c0 1.5-1 2.5-3 3-2 .5-3 1.5-3 3a3 3 0 0 0 6 0" />
+    </svg>
+  );
+}
+
+const inputCls =
+  "h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30";
