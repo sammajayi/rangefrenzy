@@ -210,7 +210,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 rounded-2xl border border-border bg-card divide-x divide-border">
         {[
           { label: "Staked", value: `${totalStaked.toFixed(2)} G$` },
           { label: "Won", value: String(won) },
@@ -221,9 +221,9 @@ export function MyBets({ address, onClaimMarket }: Props) {
             className: realizedPnl > 0 ? "text-emerald-600" : realizedPnl < 0 ? "text-red-600" : undefined,
           },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card px-2 py-2.5 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-            <p className={cn("font-display text-sm font-bold mt-0.5 tabular-nums", s.className)}>{s.value}</p>
+          <div key={s.label} className="px-1.5 py-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+            <p className={cn("font-display text-xs font-bold mt-0.5 tabular-nums", s.className)}>{s.value}</p>
           </div>
         ))}
       </div>

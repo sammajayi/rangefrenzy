@@ -186,16 +186,16 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
         </div>
 
         {/* Stats */}
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-4 rounded-2xl border border-border bg-card divide-x divide-border shadow-sm">
           {stats.map((s) => {
             const Icon = s.icon;
             return (
-              <div key={s.label} className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
-                <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", s.tint)}>
-                  <Icon className="h-4 w-4" />
+              <div key={s.label} className="flex flex-col items-center gap-1 px-1.5 py-2.5 text-center">
+                <div className={cn("flex h-5 w-5 items-center justify-center rounded-md", s.tint)}>
+                  <Icon className="h-3 w-3" />
                 </div>
-                <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                <p className={cn("mt-0.5 font-display text-base font-bold tabular-nums", s.valueClass)}>{s.value}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                <p className={cn("font-display text-xs font-bold tabular-nums", s.valueClass)}>{s.value}</p>
               </div>
             );
           })}

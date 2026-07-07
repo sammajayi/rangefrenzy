@@ -33,13 +33,13 @@ function SettingsRow({
   action: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{label}</p>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        <p className="text-[13px] font-semibold">{label}</p>
+        {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
       </div>
       {action}
     </div>
@@ -167,14 +167,14 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div className="container mx-auto max-w-lg px-4 py-6 space-y-6">
+      <div className="container mx-auto max-w-lg px-5 py-8 space-y-8">
         {/* Wallet */}
         <section>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             Wallet
           </p>
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
-            <code className="truncate text-sm font-mono">{displayAddress}</code>
+          <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3.5">
+            <code className="truncate text-[13px] font-mono">{displayAddress}</code>
             <button
               type="button"
               onClick={handleCopy}
@@ -191,7 +191,7 @@ export default function SettingsPage() {
 
         {/* Account */}
         <section>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             Account
           </p>
           <div className="divide-y divide-border rounded-2xl border border-border bg-card">
@@ -237,7 +237,7 @@ export default function SettingsPage() {
               description={isVerified ? "Verified" : "Verify to unlock daily G$ UBI claiming"}
               action={
                 isVerified ? (
-                  <span className="text-xs font-semibold text-brand">Verified</span>
+                  <span className="text-[11px] font-semibold text-brand">Verified</span>
                 ) : (
                   <Button type="button" size="sm" onClick={() => setShowVerification(true)}>
                     Verify
@@ -246,7 +246,7 @@ export default function SettingsPage() {
               }
             />
           </div>
-          {pushError && <p className="mt-2 px-1 text-[11px] text-destructive">{pushError}</p>}
+          {pushError && <p className="mt-2 px-1 text-[10px] text-destructive">{pushError}</p>}
         </section>
 
         {/* Sign out */}
@@ -254,7 +254,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-[13px] font-semibold text-destructive transition hover:bg-destructive/10"
           >
             <Logout01Icon className="h-4 w-4" />
             Sign out
@@ -272,8 +272,8 @@ export default function SettingsPage() {
         <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowUsernameEdit(false)} />
           <div className="relative z-10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-card p-6 shadow-xl">
-            <h3 className="font-display text-lg font-bold mb-1">Change username</h3>
-            <p className="text-sm text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
+            <h3 className="font-display text-base font-bold mb-1">Change username</h3>
+            <p className="text-[13px] text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
             <input
               type="text"
               value={newUsername}
@@ -281,9 +281,9 @@ export default function SettingsPage() {
               placeholder="new_username"
               maxLength={30}
               autoFocus
-              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-[13px] font-medium outline-none focus:ring-2 focus:ring-primary/50"
             />
-            {usernameError && <p className="mt-2 text-xs text-destructive">{usernameError}</p>}
+            {usernameError && <p className="mt-2 text-[11px] text-destructive">{usernameError}</p>}
             <div className="mt-4 flex gap-2">
               <Button
                 type="button"

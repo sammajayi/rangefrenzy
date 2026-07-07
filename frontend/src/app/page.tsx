@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useCallback, useState } from "react";
+import { Suspense, useEffect, useCallback, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthPage } from "@/components/auth-page";
@@ -14,6 +14,12 @@ import { Copy01Icon, Setting07Icon, Logout01Icon, Upload01Icon } from "hugeicons
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
+
+const SPLASH_SESSION_KEY = "rf-splash-shown";
+
+function hasSplashPlayed() {
+  return typeof window !== "undefined" && sessionStorage.getItem(SPLASH_SESSION_KEY) === "1";
+}
 
 function HomeInner() {
   const phase = useAppStore((s) => s.phase);
@@ -67,13 +73,25 @@ function HomeInner() {
   }, [isGdCallback, address, isVerified, setPhase, setPendingTab, syncVerification]);
 
   const [splashDone, setSplashDone] = useState(false);
+  // Splash is a once-per-tab brand moment, not a once-per-navigation one — SPA
+  // navigation to routes like /settings and back would otherwise remount
+  // HomeInner and replay it every time. `getServerSnapshot` always returns
+  // false so prerendered HTML is unaffected; the client reconciles after hydration.
+  const splashAlreadyPlayed = useSyncExternalStore(
+    () => () => {},
+    hasSplashPlayed,
+    () => false
+  );
 
-  const handleSplashFinish = () => setSplashDone(true);
+  const handleSplashFinish = () => {
+    sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
+    setSplashDone(true);
+  };
 
   // Route after splash AND after Privy is ready to avoid race condition where
   // Privy hasn't initialized yet, making `ready` false and forcing a sign-out.
   useEffect(() => {
-    if (!splashDone || !ready) return;
+    if ((!splashDone && !splashAlreadyPlayed) || !ready) return;
     // `authenticated` intentionally omitted — Privy never auto-reconnects external
     // wallets on refresh. Stored address + profile are sufficient.
     const route = async () => {
@@ -85,7 +103,7 @@ function HomeInner() {
       }
     };
     void route();
-  }, [splashDone, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [splashDone, splashAlreadyPlayed, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSignOut = async () => {
     try {
@@ -165,7 +183,9 @@ function HomeInner() {
 
   return (
     <>
-      {phase === "splash" && !isGdCallback && <SplashScreen onFinish={handleSplashFinish} />}
+      {phase === "splash" && !isGdCallback && !splashAlreadyPlayed && (
+        <SplashScreen onFinish={handleSplashFinish} />
+      )}
       {phase === "auth" && <AuthPage onAuthenticated={handleAuthenticated} />}
       {phase === "verify" && (
         <div className="fixed inset-0 z-90 flex items-center justify-center bg-background p-6">
