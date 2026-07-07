@@ -148,6 +148,13 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       }
 
       if (data) {
+        // Fire-and-forget — don't block the auth flow on this.
+        supabase
+          .from("profiles")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("wallet_address", data.wallet_address)
+          .then(() => {});
+
         if (foundByEmail && data.wallet_address !== addr.toLowerCase()) {
           const { error: updateErr } = await supabase
             .from("profiles")
@@ -317,6 +324,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         is_whitelisted_gd: false,
         has_seen_onboarding: false,
         role: "user",
+        last_seen: new Date().toISOString(),
       };
 
       const { error } = await supabase.from("profiles").insert(profile);

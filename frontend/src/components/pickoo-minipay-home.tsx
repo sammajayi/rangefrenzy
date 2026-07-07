@@ -38,7 +38,6 @@ type BoardSub = "leaderboard" | "weekly";
 interface Props {
   address: string;
   profile: Profile | null;
-  onSignOut: () => void;
 }
 
 const CATEGORY_CHIP: Record<string, string> = {
@@ -58,7 +57,7 @@ const CATEGORY_GRADIENT: Record<string, string> = {
   "social media": "from-pink-50 to-pink-100",
 };
 
-export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
+export function RangeFrenzyHome({ address, profile }: Props) {
   const pendingTab = useAppStore((s) => s.pendingTab);
   const setPendingTab = useAppStore((s) => s.setPendingTab);
   const claimBadgeActive = useAppStore((s) => s.claimBadgeActive);
@@ -287,7 +286,7 @@ export function RangeFrenzyHome({ address, profile, onSignOut }: Props) {
 
         {/* ── PROFILE TAB ── */}
         {tab === "profile" && (
-          <ProfileView address={address} profile={profile} onSignOut={onSignOut} onClaimMarket={handleClaimMarket} />
+          <ProfileView address={address} profile={profile} onClaimMarket={handleClaimMarket} />
         )}
       </div>
 

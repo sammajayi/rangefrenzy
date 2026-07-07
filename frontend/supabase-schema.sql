@@ -155,3 +155,10 @@ alter table public.push_subscriptions enable row level security;
 
 create policy "Service role only for push subscriptions" on public.push_subscriptions
   for all using (false);
+
+-- ─── 12. Last seen — updated on every successful login (see auth-page.tsx) ────
+alter table public.profiles
+  add column if not exists last_seen timestamptz;
+
+create index if not exists idx_profiles_last_seen
+  on public.profiles (last_seen desc nulls last);

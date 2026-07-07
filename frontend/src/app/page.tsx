@@ -273,7 +273,6 @@ function HomeInner() {
         <RangeFrenzyHome
           address={address}
           profile={profile}
-          onSignOut={handleSignOut}
         />
       )}
     </>

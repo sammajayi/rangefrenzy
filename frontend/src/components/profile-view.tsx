@@ -1,20 +1,17 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useWallets } from "@privy-io/react-auth";
 import {
   Copy01Icon,
-  Logout01Icon,
   Setting07Icon,
   Upload01Icon,
   CheckmarkCircle01Icon,
-  UserCheck01Icon,
   ChartUpIcon,
   Clock01Icon,
   Target01Icon,
   Wallet01Icon,
-  PencilEdit01Icon,
-  Notification03Icon,
 } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,10 +20,8 @@ import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { MyBets } from "@/components/MyBets";
-import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { useUserStakes } from "@/lib/hooks/use-user-stakes";
 import { computeStakeStats } from "@/lib/stake-stats";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useBalance, useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
@@ -34,24 +29,17 @@ import { G_TOKEN_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 interface Props {
   address: string;
   profile: Profile | null;
-  onSignOut: () => void;
   onClaimMarket?: (marketAddress: string) => void;
 }
 
-export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Props) {
+export function ProfileView({ address, profile, onClaimMarket }: Props) {
+  const router = useRouter();
   const { wallets } = useWallets();
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
   const displayAddress = embeddedWallet?.address ?? address;
 
   const [copied, setCopied] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [isVerified, setIsVerified] = useState(!!profile?.is_whitelisted_gd);
-  const [showUsernameEdit, setShowUsernameEdit] = useState(false);
-  const [newUsername, setNewUsername] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [usernameSaving, setUsernameSaving] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
 
@@ -70,16 +58,6 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
   const { data: bets } = useUserStakes(address);
   const { open, closed, winRate, realizedPnl } = computeStakeStats(bets ?? []);
   const stakeStats = { pnl: realizedPnl, open, closed, winRate };
-
-  const {
-    supported: pushSupported,
-    permission: pushPermission,
-    subscribed: pushSubscribed,
-    loading: pushLoading,
-    error: pushError,
-    subscribe: subscribePush,
-    unsubscribe: unsubscribePush,
-  } = usePushNotifications(address, profile?.username);
 
   const short = `${displayAddress.slice(0, 6)}…${displayAddress.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
@@ -102,42 +80,6 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
       console.error("Avatar upload error:", err);
     } finally {
       setAvatarUploading(false);
-    }
-  };
-
-  const openUsernameEdit = () => {
-    setNewUsername(profile?.username ?? "");
-    setUsernameError("");
-    setShowSettings(false);
-    setShowUsernameEdit(true);
-  };
-
-  const saveUsername = async () => {
-    const trimmed = newUsername.trim().toLowerCase().replace(/\s+/g, "_");
-    if (trimmed.length < 3 || trimmed.length > 30) {
-      setUsernameError("Username must be 3–30 characters.");
-      return;
-    }
-    if (!/^[a-z0-9_]+$/.test(trimmed)) {
-      setUsernameError("Only letters, numbers, and underscores allowed.");
-      return;
-    }
-    setUsernameSaving(true);
-    setUsernameError("");
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ username: trimmed })
-        .eq("wallet_address", address.toLowerCase());
-      if (error) {
-        if (error.code === "23505") setUsernameError("That username is already taken.");
-        else setUsernameError("Failed to update username. Please try again.");
-        return;
-      }
-      if (profile) setProfile({ ...profile, username: trimmed });
-      setShowUsernameEdit(false);
-    } finally {
-      setUsernameSaving(false);
     }
   };
 
@@ -231,92 +173,16 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
           </div>
 
           {/* Settings */}
-          <div className="relative">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-full border-border bg-white shadow-sm"
-              onClick={() => setShowSettings((v) => !v)}
-              aria-label="Profile settings"
-            >
-              <Setting07Icon className="h-4 w-4" />
-            </Button>
-
-            {showSettings && (
-              <>
-                <div className="fixed inset-0 z-[80]" onClick={() => setShowSettings(false)} />
-                <div className="absolute right-0 top-11 z-[90] min-w-[180px] rounded-2xl border border-border bg-card p-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => { setShowSettings(false); avatarInputRef.current?.click(); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                  >
-                    <Upload01Icon className="h-4 w-4" />
-                    Change avatar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={openUsernameEdit}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                  >
-                    <PencilEdit01Icon className="h-4 w-4" />
-                    Change username
-                  </button>
-
-                  {/* Push notifications toggle */}
-                  {pushSupported && pushPermission !== "denied" && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={pushLoading}
-                        onClick={() => {
-                          if (pushSubscribed) unsubscribePush();
-                          else subscribePush();
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition disabled:opacity-50"
-                      >
-                        <Notification03Icon className="h-4 w-4" />
-                        {pushLoading ? "Please wait…" : pushSubscribed ? "Notifications on" : "Enable notifications"}
-                      </button>
-                      {pushError && (
-                        <p className="px-3 text-[11px] text-destructive">{pushError}</p>
-                      )}
-                    </>
-                  )}
-
-                  {/* GoodDollar verification — show if not yet verified */}
-                  {isVerified ? (
-                    <div className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand">
-                      <CheckmarkCircle01Icon className="h-4 w-4" />
-                      GD Verified
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setShowSettings(false); setShowVerification(true); }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
-                    >
-                      <UserCheck01Icon className="h-4 w-4" />
-                      Verify with GoodDollar
-                    </button>
-                  )}
-
-                  <div className="my-1 h-px bg-border" />
-
-                  <button
-                    type="button"
-                    onClick={() => { setShowSettings(false); onSignOut(); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition"
-                  >
-                    <Logout01Icon className="h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-full border-border bg-white shadow-sm"
+            onClick={() => router.push("/settings")}
+            aria-label="Settings"
+          >
+            <Setting07Icon className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Stats */}
@@ -361,54 +227,6 @@ export function ProfileView({ address, profile, onSignOut, onClaimMarket }: Prop
           <MyBets address={address} onClaimMarket={onClaimMarket} />
         </section>
       </div>
-      {/* GoodDollar verification overlay */}
-      {showVerification && (
-        <VerificationGate
-          onVerified={() => {
-            setIsVerified(true);
-            setShowVerification(false);
-          }}
-        />
-      )}
-
-      {/* Username edit modal */}
-      {showUsernameEdit && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUsernameEdit(false)} />
-          <div className="relative z-10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-xl">
-            <h3 className="font-display text-lg font-bold mb-1">Change username</h3>
-            <p className="text-sm text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
-            <input
-              type="text"
-              value={newUsername}
-              onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
-              placeholder="new_username"
-              maxLength={30}
-              autoFocus
-              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            {usernameError && <p className="mt-2 text-xs text-destructive">{usernameError}</p>}
-            <div className="mt-4 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowUsernameEdit(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className="flex-1"
-                onClick={saveUsername}
-                disabled={usernameSaving}
-              >
-                {usernameSaving ? "Updating…" : "Update"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

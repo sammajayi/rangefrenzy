@@ -242,6 +242,9 @@ export default function AdminPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [stakes, setStakes] = useState<Stake[]>([]);
+  const [walletActivity, setWalletActivity] = useState<
+    Pick<Stake, "wallet_address" | "amount_gd" | "created_at">[]
+  >([]);
   const [loading, setLoading] = useState(false);
 
   // Pagination
@@ -253,6 +256,7 @@ export default function AdminPage() {
   const [marketsFilter, setMarketsFilter] = useState<"all" | "active" | "resolved">("all");
   const [userSearch, setUserSearch] = useState("");
   const [usersFilter, setUsersFilter] = useState<"all" | "verified" | "unverified">("all");
+  const [usersSort, setUsersSort] = useState<"active" | "volume" | "joined">("active");
 
   // Create form
   const [form, setForm] = useState({
@@ -309,6 +313,14 @@ export default function AdminPage() {
       .order("created_at", { ascending: false })
       .limit(200);
     if (sData) setStakes(sData as Stake[]);
+
+    // Full (uncapped) ledger, used to compute per-user volume/last-activity —
+    // the 200-row cap above is fine for the recent-stakes list but would
+    // undercount whales and miss older activity.
+    const { data: waData } = await supabase
+      .from("stakes")
+      .select("wallet_address, amount_gd, created_at");
+    if (waData) setWalletActivity(waData as Pick<Stake, "wallet_address" | "amount_gd" | "created_at">[]);
 
     setLoading(false);
   }
@@ -371,17 +383,58 @@ export default function AdminPage() {
     stakesPage * STAKES_PER_PAGE
   );
 
-  // ── Filtered users ────────────────────────────────────────────────────────
-  const verifiedCount = profiles.filter((p) => p.is_whitelisted_gd).length;
-  const filteredProfiles = profiles.filter((p) => {
-    if (usersFilter === "verified" && !p.is_whitelisted_gd) return false;
-    if (usersFilter === "unverified" && p.is_whitelisted_gd) return false;
-    if (!userSearch.trim()) return true;
-    const q = userSearch.toLowerCase();
-    return (
-      p.username?.toLowerCase().includes(q) || p.wallet_address?.toLowerCase().includes(q)
+  // ── Per-wallet volume + last-activity ─────────────────────────────────────
+  const walletVolume = new Map<string, number>();
+  const walletLastStake = new Map<string, string>();
+  for (const s of walletActivity) {
+    const addr = s.wallet_address.toLowerCase();
+    walletVolume.set(addr, (walletVolume.get(addr) ?? 0) + (parseFloat(s.amount_gd) || 0));
+    const prev = walletLastStake.get(addr);
+    if (!prev || new Date(s.created_at) > new Date(prev)) walletLastStake.set(addr, s.created_at);
+  }
+  // "Last seen" = most recent of an explicit login ping and their last stake tx.
+  function lastActiveAt(p: Profile): string | null {
+    const addr = p.wallet_address.toLowerCase();
+    const candidates = [p.last_seen, walletLastStake.get(addr) ?? null].filter(
+      (d): d is string => !!d
     );
-  });
+    if (!candidates.length) return null;
+    return candidates.reduce((a, b) => (new Date(a) > new Date(b) ? a : b));
+  }
+  const totalUsersVolume = Array.from(walletVolume.values()).reduce((s, v) => s + v, 0);
+  const activeLast7d = profiles.filter((p) => {
+    const t = lastActiveAt(p);
+    return t && Date.now() - new Date(t).getTime() < 7 * 24 * 3_600_000;
+  }).length;
+
+  // ── Filtered + sorted users ────────────────────────────────────────────────
+  const verifiedCount = profiles.filter((p) => p.is_whitelisted_gd).length;
+  const filteredProfiles = profiles
+    .filter((p) => {
+      if (usersFilter === "verified" && !p.is_whitelisted_gd) return false;
+      if (usersFilter === "unverified" && p.is_whitelisted_gd) return false;
+      if (!userSearch.trim()) return true;
+      const q = userSearch.toLowerCase();
+      return (
+        p.username?.toLowerCase().includes(q) || p.wallet_address?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (usersSort === "volume") {
+        const va = walletVolume.get(a.wallet_address.toLowerCase()) ?? 0;
+        const vb = walletVolume.get(b.wallet_address.toLowerCase()) ?? 0;
+        return vb - va;
+      }
+      if (usersSort === "joined") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      const ta = lastActiveAt(a);
+      const tb = lastActiveAt(b);
+      if (!ta && !tb) return 0;
+      if (!ta) return 1;
+      if (!tb) return -1;
+      return new Date(tb).getTime() - new Date(ta).getTime();
+    });
   const totalUsersPages = Math.max(1, Math.ceil(filteredProfiles.length / USERS_PER_PAGE));
   const pagedProfiles = filteredProfiles.slice(
     (usersPage - 1) * USERS_PER_PAGE,
@@ -1467,55 +1520,74 @@ export default function AdminPage() {
         {/* ── USERS TABLE ── */}
         {tab === "users" && (
           <div className="space-y-4">
-            {/* GD Verification summary cards */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-border bg-card px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total users</p>
-                <p className="mt-1 font-display text-2xl font-bold tabular-nums">{profiles.length}</p>
-              </div>
-              <div className="rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand">GD Verified</p>
-                <p className="mt-1 font-display text-2xl font-bold tabular-nums text-brand">{verifiedCount}</p>
-                <p className="text-[11px] text-brand/70">
-                  {profiles.length ? Math.round((verifiedCount / profiles.length) * 100) : 0}% of users
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-card px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Unverified</p>
-                <p className="mt-1 font-display text-2xl font-bold tabular-nums">{profiles.length - verifiedCount}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {profiles.length ? Math.round(((profiles.length - verifiedCount) / profiles.length) * 100) : 0}% of users
-                </p>
-              </div>
-            </div>
-
-            {/* Search + filter row */}
-            <div className="flex gap-2">
-              <input
-                value={userSearch}
-                onChange={(e) => { setUserSearch(e.target.value); setUsersPage(1); }}
-                placeholder="Search by username or wallet…"
-                className={cn(inputCls, "flex-1")}
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <OverviewCard
+                label="Total users"
+                value={String(profiles.length)}
+                icon={<User02Icon className="h-5 w-5" />}
+                color="default"
+              />
+              <OverviewCard
+                label="GD Verified"
+                value={String(verifiedCount)}
+                subtext={`${profiles.length ? Math.round((verifiedCount / profiles.length) * 100) : 0}% of users`}
+                icon={<Tick01Icon className="h-5 w-5" />}
+                color="green"
+              />
+              <OverviewCard
+                label="Total volume"
+                value={fmtGD(totalUsersVolume)}
+                icon={<DollarSquareIcon className="h-5 w-5" />}
+                color="purple"
+              />
+              <OverviewCard
+                label="Active (7d)"
+                value={String(activeLast7d)}
+                subtext={`${profiles.length ? Math.round((activeLast7d / profiles.length) * 100) : 0}% of users`}
+                icon={<Activity01Icon className="h-5 w-5" />}
+                color="blue"
               />
             </div>
-            <div className="flex gap-2">
-              {(["all", "verified", "unverified"] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => { setUsersFilter(f); setUsersPage(1); }}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-semibold transition border",
-                    usersFilter === f
-                      ? f === "verified"
-                        ? "bg-brand text-white border-brand"
-                        : "bg-foreground text-background border-foreground"
-                      : "border-border text-muted-foreground hover:border-foreground/40"
-                  )}
-                >
-                  {f === "all" ? `All (${profiles.length})` : f === "verified" ? `GD Verified (${verifiedCount})` : `Unverified (${profiles.length - verifiedCount})`}
-                </button>
-              ))}
+
+            {/* Search */}
+            <input
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setUsersPage(1); }}
+              placeholder="Search by username or wallet…"
+              className={cn(inputCls, "w-full")}
+            />
+
+            {/* Filter + sort row */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-2">
+                {(["all", "verified", "unverified"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => { setUsersFilter(f); setUsersPage(1); }}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold transition border",
+                      usersFilter === f
+                        ? f === "verified"
+                          ? "bg-brand text-white border-brand"
+                          : "bg-foreground text-background border-foreground"
+                        : "border-border text-muted-foreground hover:border-foreground/40"
+                    )}
+                  >
+                    {f === "all" ? `All (${profiles.length})` : f === "verified" ? `GD Verified (${verifiedCount})` : `Unverified (${profiles.length - verifiedCount})`}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={usersSort}
+                onChange={(e) => setUsersSort(e.target.value as typeof usersSort)}
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:border-foreground/40 transition cursor-pointer"
+              >
+                <option value="active">Sort: Recently active</option>
+                <option value="volume">Sort: Highest volume</option>
+                <option value="joined">Sort: Newest joined</option>
+              </select>
             </div>
 
             {loading ? (
@@ -1529,61 +1601,83 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground">
                   Showing {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
                 </p>
-                <div className="overflow-hidden rounded-2xl border border-border">
-                  <table className="w-full text-left text-sm">
+                <div className="overflow-x-auto rounded-2xl border border-border">
+                  <table className="w-full min-w-[720px] text-left text-sm">
                     <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <tr>
-                        <th className="px-3 py-2">#</th>
-                        <th className="px-3 py-2">Username</th>
+                        <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Wallet</th>
                         <th className="px-3 py-2">GD Status</th>
+                        <th className="px-3 py-2 text-right">Volume</th>
+                        <th className="px-3 py-2 text-right">Last seen</th>
                         <th className="px-3 py-2 text-right">Joined</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pagedProfiles.map((p, i) => (
-                        <tr
-                          key={p.wallet_address}
-                          className={cn(
-                            "border-t border-border",
-                            p.is_whitelisted_gd ? "bg-brand/3" : "bg-card"
-                          )}
-                        >
-                          <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
-                            {(usersPage - 1) * USERS_PER_PAGE + i + 1}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold uppercase">
-                                {(p.username ?? "?").slice(0, 2)}
-                              </div>
-                              <div>
-                                <p className="font-medium">@{p.username}</p>
-                                {p.email && <p className="text-[11px] text-muted-foreground">{p.email}</p>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <WalletAddress address={p.wallet_address} />
-                          </td>
-                          <td className="px-3 py-3">
-                            {p.is_whitelisted_gd ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
-                                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                                GD Verified
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                                Unverified
-                              </span>
+                      {pagedProfiles.map((p) => {
+                        const volume = walletVolume.get(p.wallet_address.toLowerCase()) ?? 0;
+                        const lastActive = lastActiveAt(p);
+                        const isRecentlyActive =
+                          !!lastActive && Date.now() - new Date(lastActive).getTime() < 24 * 3_600_000;
+                        return (
+                          <tr
+                            key={p.wallet_address}
+                            className={cn(
+                              "border-t border-border",
+                              p.is_whitelisted_gd ? "bg-brand/3" : "bg-card"
                             )}
-                          </td>
-                          <td className="px-3 py-3 text-right text-xs text-muted-foreground">
-                            {new Date(p.created_at).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
+                          >
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold uppercase">
+                                  {(p.username ?? "?").slice(0, 2)}
+                                </div>
+                                <div>
+                                  <p className="font-medium">@{p.username}</p>
+                                  {p.email && <p className="text-[11px] text-muted-foreground">{p.email}</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <WalletAddress address={p.wallet_address} />
+                            </td>
+                            <td className="px-3 py-3">
+                              {p.is_whitelisted_gd ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                                  GD Verified
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                                  Unverified
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono text-xs font-semibold tabular-nums">
+                              {volume > 0 ? fmtGD(volume) : <span className="text-muted-foreground/50">—</span>}
+                            </td>
+                            <td className="px-3 py-3 text-right text-xs">
+                              {lastActive ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1",
+                                    isRecentlyActive ? "text-brand font-semibold" : "text-muted-foreground"
+                                  )}
+                                >
+                                  {isRecentlyActive && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                                  {timeAgo(lastActive)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/50">Never</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-right text-xs text-muted-foreground">
+                              {new Date(p.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1722,10 +1816,6 @@ export default function AdminPage() {
                   className={inputCls}
                   autoFocus
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Enter the actual outcome (not the bracket index). The system will match it
-                  to the correct range.
-                </p>
               </Field>
               <div className="flex gap-3">
                 <Button
@@ -1755,11 +1845,13 @@ export default function AdminPage() {
 function OverviewCard({
   label,
   value,
+  subtext,
   icon,
   color,
 }: {
   label: string;
   value: string;
+  subtext?: string;
   icon: React.ReactNode;
   color: "green" | "blue" | "purple" | "amber" | "default";
 }) {
@@ -1784,6 +1876,7 @@ function OverviewCard({
         <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
       </div>
       <p className="font-display text-xl font-bold tabular-nums text-foreground">{value}</p>
+      {subtext && <p className={cn("mt-0.5 text-[11px]", iconColor[color])}>{subtext}</p>}
     </div>
   );
 }

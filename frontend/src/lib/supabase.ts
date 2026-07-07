@@ -46,6 +46,7 @@ export type Profile = {
   is_whitelisted_gd: boolean;
   has_seen_onboarding: boolean;
   role: "user" | "admin";
+  last_seen: string | null;
 };
 
 export type Market = {
