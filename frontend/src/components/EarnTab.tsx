@@ -55,8 +55,6 @@ export function EarnTab({ address }: Props) {
   const [lastActiveDate, setLastActiveDate] = useState<string | null>(null);
   const [referredBy, setReferredBy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [streakLoading, setStreakLoading] = useState(false);
-  const [streakMsg, setStreakMsg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
@@ -102,40 +100,6 @@ export function EarnTab({ address }: Props) {
 
   const handleSocialConfirm = (platform: Platform) =>
     doAction("social_twitter", "/api/earn/social-follow", { platform });
-
-  const handleDailyCheckIn = async () => {
-    setStreakLoading(true);
-    setStreakMsg(null);
-    try {
-      const res = await fetch("/api/earn/streak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet_address: address.toLowerCase() }),
-      });
-      const data = await res.json();
-      if (data.error) {
-        setStreakMsg("Something went wrong");
-      } else {
-        setStreak(data.streak);
-        setLastActiveDate(todayStr);
-        if (data.bonuses_credited?.length) {
-          setStreakMsg(`+${data.bonuses_credited.length} bonus${data.bonuses_credited.length > 1 ? "es" : ""} earned!`);
-        } else {
-          setStreakMsg(data.streak > 1 ? `${data.streak}-day streak!` : "Day 1 — let's go!");
-        }
-        // Refresh bonus data but keep streak from API response
-        const [bonusRes] = await Promise.all([
-          supabase.from("bonus_earnings").select("*").eq("wallet_address", address.toLowerCase()),
-        ]);
-        if (bonusRes.data) setBonuses(bonusRes.data as BonusEarning[]);
-      }
-    } catch {
-      setStreakMsg("Something went wrong");
-    } finally {
-      setStreakLoading(false);
-      setTimeout(() => setStreakMsg(null), 3000);
-    }
-  };
 
   const tasks: TaskState[] = [
     {
@@ -258,40 +222,14 @@ export function EarnTab({ address }: Props) {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">days</p>
           </div>
         </div>
-        <div className="relative mt-3 h-2.5 rounded-full bg-amber-100/80">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all"
-            style={{ width: `${Math.min((streak / 30) * 100, 100)}%` }}
-          />
-        </div>
+
+        {/* Weekly strip */}
+        <WeekStreak streak={streak} checkedInToday={checkedInToday} />
+
         <div className="relative mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
-          <span>Day 1</span>
-          <span className={cn(streak >= 7 && "text-amber-600 font-semibold")}>7 days — 25 G$</span>
-          <span className={cn(streak >= 30 && "text-amber-600 font-semibold")}>30 days — 100 G$</span>
+          <span className={cn(streak >= 7 && "text-amber-600 font-semibold")}>7 days (25 G$)</span>
+          <span className={cn(streak >= 30 && "text-amber-600 font-semibold")}>30 days (100 G$)</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDailyCheckIn}
-          disabled={checkedInToday || streakLoading}
-          className="relative mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-500/30 transition hover:shadow-lg hover:brightness-105 active:scale-[0.99] disabled:opacity-60 disabled:hover:brightness-100"
-        >
-          {streakLoading ? (
-            <span className="flex items-center gap-2">
-              <Loading03Icon className="h-4 w-4 animate-spin" />
-              Checking in…
-            </span>
-          ) : checkedInToday ? (
-            <span className="flex items-center gap-2">
-              <CheckmarkCircle01Icon className="h-4 w-4" />
-              Checked In
-            </span>
-          ) : (
-            "Check In"
-          )}
-        </button>
-        {streakMsg && (
-          <p className="relative mt-2 text-center text-xs font-medium text-amber-700">{streakMsg}</p>
-        )}
       </div>
 
       {/* Task list */}
@@ -414,6 +352,73 @@ function TaskCard({ task }: { task: TaskState }) {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+// UTC-safe date helpers — mirror the streak API, which stores last_active_date
+// as a UTC calendar date (new Date().toISOString().slice(0,10)).
+function addDaysUTC(iso: string, delta: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + delta * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Weekly streak strip: Su–Sa labels with a gradient progress bar whose fire
+ * marker sits on today. Days within the active streak window glow orange.
+ */
+function WeekStreak({ streak, checkedInToday }: { streak: number; checkedInToday: boolean }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayIdx = new Date(`${todayStr}T00:00:00Z`).getUTCDay(); // 0 = Sun
+  const weekStart = addDaysUTC(todayStr, -todayIdx);
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDaysUTC(weekStart, i));
+
+  // The streak covers `streak` consecutive days ending on the last active day
+  // (today if already counted, otherwise yesterday).
+  const lastActive = checkedInToday ? todayStr : addDaysUTC(todayStr, -1);
+  const active = new Set<string>();
+  for (let k = 0; k < streak; k++) active.add(addDaysUTC(lastActive, -k));
+
+  // Fire marker sits at the centre of today's cell.
+  const markerPct = ((todayIdx + 0.5) / 7) * 100;
+  const fillPct = checkedInToday ? markerPct : ((todayIdx + 0.5) / 7) * 100;
+
+  return (
+    <div className="relative mt-4">
+      {/* Day labels */}
+      <div className="grid grid-cols-7 text-center">
+        {DOW.map((d, i) => (
+          <span
+            key={d}
+            className={cn(
+              "text-xs font-bold tabular-nums transition-colors",
+              active.has(weekDates[i])
+                ? "text-orange-500"
+                : i === todayIdx
+                  ? "text-amber-600"
+                  : "text-muted-foreground/60"
+            )}
+          >
+            {d}
+          </span>
+        ))}
+      </div>
+
+      {/* Progress bar with fire marker */}
+      <div className="relative mt-3 h-3 rounded-full bg-amber-100/80">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-red-500 via-orange-500 to-orange-400 transition-all"
+          style={{ width: `${fillPct}%` }}
+        />
+        <div
+          className="absolute top-1/2 z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 shadow-lg shadow-orange-500/40 ring-2 ring-white"
+          style={{ left: `${markerPct}%` }}
+        >
+          <FireIcon className="h-4 w-4 text-white" />
+        </div>
+      </div>
     </div>
   );
 }

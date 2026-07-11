@@ -148,6 +148,14 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
       const sdks = await buildWriteSDKs();
       if (!sdks) throw new Error("Wallet not connected. Please reconnect your wallet.");
       await sdks.claimSDK.claim();
+      // Claiming daily G$ is an action that extends the daily streak.
+      if (address) {
+        fetch("/api/earn/streak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet_address: address.toLowerCase() }),
+        }).catch(() => {});
+      }
       await fetchStatus();
       setState((prev) => ({ ...prev, claiming: false }));
       confetti({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@privy-io/react-auth";
 import {
@@ -12,6 +12,7 @@ import {
   Clock01Icon,
   Target01Icon,
   Wallet01Icon,
+  FireIcon,
 } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,8 +41,25 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
 
   const [copied, setCopied] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [streak, setStreak] = useState<number>(0);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
+
+  // Daily streak — extended by claiming G$ or placing a bet (see streak API).
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("current_streak")
+      .eq("wallet_address", address.toLowerCase())
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setStreak((data as { current_streak?: number }).current_streak ?? 0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
 
   // Live on-chain balances
   const addr = address as `0x${string}`;
@@ -172,17 +190,28 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
             </div>
           </div>
 
-          {/* Settings */}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-full border-border bg-white shadow-sm"
-            onClick={() => router.push("/settings")}
-            aria-label="Settings"
-          >
-            <Setting07Icon className="h-4 w-4" />
-          </Button>
+          {/* Streak + Settings */}
+          <div className="flex shrink-0 items-center gap-2">
+            {streak > 0 && (
+              <div
+                className="flex items-center gap-1 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-2.5 py-1.5 shadow-sm shadow-amber-500/30"
+                title={`${streak}-day streak`}
+              >
+                <FireIcon className="h-4 w-4 text-white" strokeWidth={1} />
+                <span className="font-display text-sm font-bold tabular-nums text-white">{streak}</span>
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full border-border bg-white shadow-sm"
+              onClick={() => router.push("/settings")}
+              aria-label="Settings"
+            >
+              <Setting07Icon className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
