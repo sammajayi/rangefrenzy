@@ -6,26 +6,55 @@ import RegisterSW from "@/components/register-sw";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 export const metadata: Metadata = {
-  title: "RangeFrenzy",
+  metadataBase: new URL("https://app.rangefrenzy.xyz"),
+  title: {
+    default: "RangeFrenzy — Range-based prediction markets on Celo",
+    template: "%s · RangeFrenzy",
+  },
   description:
     "A range-based prediction market on Celo. Stake G$ on outcome ranges for crypto, sports, and local events.",
+  applicationName: "RangeFrenzy",
+  keywords: [
+    "prediction market",
+    "range prediction",
+    "Celo",
+    "GoodDollar",
+    "G$",
+    "crypto betting",
+    "onchain",
+  ],
   manifest: "/manifest.json",
+  alternates: {
+    canonical: "/",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "RangeFrenzy",
   },
   openGraph: {
-    title: "RangeFrenzy",
-    description: "Predict outcome ranges. Stake G$. Win big.",
-    images: [{ url: "/og-image.svg", width: 1200, height: 630, alt: "RangeFrenzy" }],
     type: "website",
+    siteName: "RangeFrenzy",
+    url: "https://app.rangefrenzy.xyz",
+    title: "RangeFrenzy — Predict outcome ranges. Stake G$. Win big.",
+    description:
+      "Stake G$ on outcome ranges for crypto, sports, and local events. A range-based prediction market on Celo.",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RangeFrenzy",
-    description: "Predict outcome ranges. Stake G$. Win big.",
-    images: ["/og-image.svg"],
+    title: "RangeFrenzy — Predict outcome ranges. Stake G$. Win big.",
+    description:
+      "Stake G$ on outcome ranges for crypto, sports, and local events. A range-based prediction market on Celo.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+    },
   },
 };
 
