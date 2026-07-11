@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/navbar";
 import { ProfileView } from "@/components/profile-view";
 import { Leaderboard } from "@/components/Leaderboard";
+import { ShareBetCard } from "@/components/ShareBetCard";
 import { MiniPriceChart } from "@/components/MiniPriceChart";
 import { useFactoryMarkets, formatRangeLabel, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
 import { useMarketContract } from "@/lib/hooks/use-market-contract";
@@ -858,6 +859,15 @@ function StakeModal({
                 <p className="font-semibold text-green-700">Stake confirmed!</p>
                 <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
               </div>
+            )}
+
+            {stakeStep === "success" && (
+              <ShareBetCard
+                marketAddress={market.address.toLowerCase()}
+                rangeIndex={selectedRange.index}
+                rangeLabel={selectedRange.label || formatRangeLabel(selectedRange)}
+                question={market.question}
+              />
             )}
           </>
         )}
