@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/navbar";
 import { ProfileView } from "@/components/profile-view";
 import { Leaderboard } from "@/components/Leaderboard";
-import { ShareBetCard } from "@/components/ShareBetCard";
+import { ShareBetModal } from "@/components/ShareBetModal";
 import { MiniPriceChart } from "@/components/MiniPriceChart";
 import { useFactoryMarkets, formatRangeLabel, type OnChainMarket, type OnChainRange } from "@/lib/hooks/use-factory-markets";
 import { useMarketContract } from "@/lib/hooks/use-market-contract";
@@ -455,6 +455,7 @@ function StakeModal({
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
+  const [showShare, setShowShare] = useState(false);
 
   const { address: wagmiAddress } = useAccount();
   const walletReady = !!wagmiAddress;
@@ -538,6 +539,12 @@ function StakeModal({
       }).catch(() => {});
     }
   }, [stakeStep, userAddress]);
+
+  // Pop the share modal once the bet confirms.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reacting to the async stake step transition
+    if (stakeStep === "success") setShowShare(true);
+  }, [stakeStep]);
 
   // Write stake record to Supabase after on-chain confirm
   useEffect(() => {
@@ -865,15 +872,6 @@ function StakeModal({
                 <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
               </div>
             )}
-
-            {stakeStep === "success" && (
-              <ShareBetCard
-                marketAddress={market.address.toLowerCase()}
-                rangeIndex={selectedRange.index}
-                rangeLabel={selectedRange.label || formatRangeLabel(selectedRange)}
-                question={market.question}
-              />
-            )}
           </>
         )}
 
@@ -908,6 +906,16 @@ function StakeModal({
           )}
         </div>
       </div>
+
+      {showShare && stakeStep === "success" && (
+        <ShareBetModal
+          marketAddress={market.address.toLowerCase()}
+          rangeIndex={selectedRange.index}
+          rangeLabel={selectedRange.label || formatRangeLabel(selectedRange)}
+          question={market.question}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }

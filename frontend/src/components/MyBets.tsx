@@ -8,6 +8,7 @@ import {
   SaleTag02Icon,
   Undo02Icon,
   Award01Icon,
+  Target01Icon,
 } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 import { useUserStakes } from "@/lib/hooks/use-user-stakes";
@@ -28,7 +29,7 @@ type FilterKey = "ALL" | "CLAIMABLE" | StakeStatus;
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "ALL", label: "All" },
-  { key: "CLAIMABLE", label: "🏆 Claimable" },
+  { key: "CLAIMABLE", label: "Claimable" },
   { key: "OPEN", label: "Open" },
   { key: "WON", label: "Won" },
   { key: "LOST", label: "Lost" },
@@ -181,7 +182,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
   if (!bets?.length) {
     return (
       <div className="py-16 text-center">
-        <p className="text-3xl mb-2">🎯</p>
+        <Target01Icon className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
         <p className="font-display text-base font-semibold">No bets yet</p>
         <p className="text-sm text-muted-foreground mt-1">Stake G$ on a market to get started.</p>
       </div>
@@ -199,7 +200,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
           onClick={() => setFilter("CLAIMABLE")}
           className="w-full flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left transition hover:bg-amber-100"
         >
-          <span className="text-2xl">🏆</span>
+          <Award01Icon className="h-6 w-6 shrink-0 text-amber-600" />
           <div>
             <p className="text-sm font-bold text-amber-800">
               {claimableCount} unclaimed {claimableCount === 1 ? "win" : "wins"}

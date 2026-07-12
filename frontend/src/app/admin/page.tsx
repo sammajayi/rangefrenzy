@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { SquareLock01Icon, CancelCircleIcon } from "hugeicons-react";
 import { DEPLOYER_ADDRESS } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
 
@@ -48,7 +49,7 @@ export default function AdminPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
-          <span className="text-2xl">🔒</span>
+          <SquareLock01Icon className="h-7 w-7 text-destructive" />
         </div>
         <h1 className="font-display text-xl font-bold">Admin access</h1>
         <p className="text-sm text-muted-foreground">
@@ -69,7 +70,7 @@ export default function AdminPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
-          <span className="text-2xl">🚫</span>
+          <CancelCircleIcon className="h-7 w-7 text-destructive" />
         </div>
         <h1 className="font-display text-xl font-bold">Not authorized</h1>
         <p className="text-sm text-muted-foreground">

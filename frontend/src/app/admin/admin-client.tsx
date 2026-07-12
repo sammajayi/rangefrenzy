@@ -16,6 +16,7 @@ import {
   ChartIncreaseIcon,
   UserGroupIcon,
   Activity01Icon,
+  Alert01Icon,
 } from "hugeicons-react";
 import { Link } from "wouter";
 import { useWallets } from "@privy-io/react-auth";
@@ -272,6 +273,7 @@ export default function AdminPage() {
   const [ranges, setRanges] = useState<RangeInput[]>(defaultRanges);
   const [createLoading, setCreateLoading] = useState(false);
   const [createMsg, setCreateMsg] = useState("");
+  const [createOk, setCreateOk] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -469,6 +471,7 @@ export default function AdminPage() {
     e.preventDefault();
     setCreateLoading(true);
     setCreateMsg("");
+    setCreateOk(false);
     try {
       const parsedRanges = ranges.map((r, i) => ({
         id: `r${i}`,
@@ -584,8 +587,9 @@ export default function AdminPage() {
         }).catch((e) => console.error("notify-new failed:", e));
       }
 
+      setCreateOk(true);
       setCreateMsg(
-        contractAddress ? "✓ Market created on-chain!" : "✓ Market created (off-chain)"
+        contractAddress ? "Market created on-chain!" : "Market created (off-chain)"
       );
       setForm({
         title: "",
@@ -602,6 +606,7 @@ export default function AdminPage() {
       setImagePreview(null);
       fetchData();
     } catch (err: unknown) {
+      setCreateOk(false);
       setCreateMsg(`Error: ${(err as Error).message}`);
     } finally {
       setCreateLoading(false);
@@ -687,7 +692,7 @@ export default function AdminPage() {
                 `Range ${stake.range_index}`;
               await sendNotification(
                 stake.username,
-                won ? "You won! 🎉" : "Market resolved",
+                won ? "You won!" : "Market resolved",
                 won
                   ? `Your prediction "${rangeLabel}" was correct in "${resolving.title}". Winnings credited!`
                   : `Your prediction "${rangeLabel}" didn't win in "${resolving.title}".`,
@@ -1499,10 +1504,15 @@ export default function AdminPage() {
             {createMsg && (
               <p
                 className={cn(
-                  "text-sm font-medium",
-                  createMsg.startsWith("✓") ? "text-emerald-600" : "text-destructive"
+                  "flex items-center gap-1.5 text-sm font-medium",
+                  createOk ? "text-emerald-600" : "text-destructive"
                 )}
               >
+                {createOk ? (
+                  <Tick01Icon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <Alert01Icon className="h-4 w-4 shrink-0" />
+                )}
                 {createMsg}
               </p>
             )}

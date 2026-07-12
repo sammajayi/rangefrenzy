@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PartyIcon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -52,7 +53,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
         <div className="text-center mb-6">
           <div className="mb-3 flex justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-              <span className="font-display text-2xl font-black text-primary">🎉</span>
+              <PartyIcon className="h-7 w-7 text-primary" />
             </div>
           </div>
           <h2 className="font-display text-xl font-bold">Welcome to RangeFrenzy!</h2>
