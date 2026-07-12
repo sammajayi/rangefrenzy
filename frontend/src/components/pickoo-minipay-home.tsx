@@ -114,8 +114,10 @@ export function RangeFrenzyHome({ address, profile }: Props) {
 
   const categories = [...new Set(markets.map((m) => m.categoryLabel))];
 
+  const nowSec = BigInt(Math.floor(Date.now() / 1000));
   const filteredMarkets = markets.filter((m) => {
     if (!m.isActive) return false;
+    if (m.deadline <= nowSec) return false;
     if (filterSearch.trim()) {
       const q = filterSearch.toLowerCase();
       if (!m.question.toLowerCase().includes(q) && !m.categoryLabel.toLowerCase().includes(q)) return false;
@@ -495,7 +497,7 @@ function StakeModal({
   const tokenSymbol = symbol ?? "G$";
   const minStake = summary ? parseFloat(formatUnits((summary as any).minStakeAmount ?? 1000000000000000000n, tokenDecimals)) : 1;
 
-  const isOpen = market.status === MarketStatus.OPEN;
+  const isOpen = market.status === MarketStatus.OPEN && market.deadline > BigInt(Math.floor(Date.now() / 1000));
   const isResolved = market.status === MarketStatus.RESOLVED;
   const isCancelled = market.status === MarketStatus.CANCELLED;
 
