@@ -101,10 +101,15 @@ export function RangeFrenzyHome({ address, profile }: Props) {
   }, [searchParams, markets]);
 
   const handleShareMarket = (market: OnChainMarket) => {
-    const url = `${window.location.origin}${window.location.pathname}?market=${market.address}`;
-    void navigator.clipboard.writeText(url);
-    setCopiedShare(true);
-    setTimeout(() => setCopiedShare(false), 2000);
+    // Per-market share URL so the link preview shows this market's metadata.
+    const url = `${window.location.origin}/m/${market.address.toLowerCase()}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      void navigator.share({ title: market.question, url }).catch(() => {});
+    } else {
+      void navigator.clipboard.writeText(url);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    }
   };
 
   const categories = [...new Set(markets.map((m) => m.categoryLabel))];
