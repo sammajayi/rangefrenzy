@@ -125,6 +125,7 @@ export function handlePositionSold(event: PositionSoldEvent): void {
 
   let stakeIds = market.stakeIds
   let matched = false
+  let costBasis = BigDecimal.zero()
   for (let i = 0; i < stakeIds.length; i++) {
     let stake = Stake.load(stakeIds[i])
     if (stake && stake.user == userId && stake.status == "OPEN") {
@@ -132,6 +133,7 @@ export function handlePositionSold(event: PositionSoldEvent): void {
       stake.proceeds = proceedsDecimal
       stake.soldAt = event.block.timestamp
       stake.save()
+      costBasis = stake.amount
       matched = true
       break
     }
@@ -143,7 +145,8 @@ export function handlePositionSold(event: PositionSoldEvent): void {
   market.pool = normalizeAmount(event.params.newTotalPool)
   market.save()
 
-  user.realizedPnl = user.realizedPnl.plus(proceedsDecimal)
+  // Net realized P&L for a sale: proceeds received minus the amount originally staked.
+  user.realizedPnl = user.realizedPnl.plus(proceedsDecimal).minus(costBasis)
   user.updatedAt = event.block.timestamp
   user.save()
 
@@ -211,6 +214,9 @@ export function handleMarketResolved(event: MarketResolvedEvent): void {
       stake.status = "LOST"
       let user = getOrCreateUser(stake.user, event.block.timestamp)
       user.losses = user.losses + 1
+      // A losing stake is forfeited in full — realize the loss now, since
+      // losers never emit a WinningsClaimed event to net against later.
+      user.realizedPnl = user.realizedPnl.minus(stake.amount)
       user.updatedAt = event.block.timestamp
       user.save()
     }
@@ -238,19 +244,22 @@ export function handleWinningsClaimed(event: WinningsClaimedEvent): void {
   }
 
   let stakeIds = market.stakeIds
+  let costBasis = BigDecimal.zero()
   for (let i = 0; i < stakeIds.length; i++) {
     let stake = Stake.load(stakeIds[i])
-    if (stake && stake.user == userId && !stake.claimed) {
+    if (stake && stake.user == userId && stake.status == "WON" && !stake.claimed) {
       stake.claimed = true
       stake.payout = payoutDecimal
       stake.claimedAt = event.block.timestamp
       stake.save()
+      costBasis = stake.amount
       break
     }
   }
 
   user.totalPayout = user.totalPayout.plus(payoutDecimal)
-  user.realizedPnl = user.realizedPnl.plus(payoutDecimal)
+  // Net realized P&L for a win: payout received minus the amount originally staked.
+  user.realizedPnl = user.realizedPnl.plus(payoutDecimal).minus(costBasis)
   user.updatedAt = event.block.timestamp
   user.save()
 
@@ -291,7 +300,8 @@ export function handleStakeRefunded(event: StakeRefundedEvent): void {
     }
   }
 
-  user.realizedPnl = user.realizedPnl.plus(amountDecimal)
+  // A refund returns exactly the original stake, so it is cost-neutral:
+  // +refund − cost = 0. realizedPnl is intentionally left unchanged.
   user.updatedAt = event.block.timestamp
   user.save()
 
