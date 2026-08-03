@@ -36,7 +36,7 @@ export function ShareBetModal({ marketAddress, rangeIndex, rangeLabel, question,
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = `${origin}/share/${marketAddress}/${rangeIndex}`;
   const imageSrc = `/share/${marketAddress}/${rangeIndex}/opengraph-image`;
-  const caption = `I'm predicting ${rangeLabel} on "${question}" — think I'm wrong? Take the other side on RangeFrenzy.`;
+  const caption = `I'm predicting ${rangeLabel} on "${question}". Think I'm wrong? Take the other side on RangeFrenzy.`;
 
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedText = encodeURIComponent(caption);

@@ -3,7 +3,7 @@ import { gql } from "graphql-request";
 export const LEADERBOARD_QUERY = gql`
   query Leaderboard {
     users(
-      first: 50
+      first: 20
       orderBy: totalStaked
       orderDirection: desc
       where: { totalBets_gt: 0 }

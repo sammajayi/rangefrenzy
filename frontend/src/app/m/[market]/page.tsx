@@ -20,7 +20,7 @@ export async function generateMetadata({
   }
 
   const description = data.rangeLabels.length
-    ? `Pick your range — ${data.rangeLabels.slice(0, 4).join(", ")} — and stake G$ on RangeFrenzy.`
+    ? `Pick your range, ${data.rangeLabels.slice(0, 4).join(", ")}, and stake G$ on RangeFrenzy.`
     : "Predict the outcome range and stake G$ on RangeFrenzy.";
   const url = `/m/${market}`;
 

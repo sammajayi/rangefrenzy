@@ -109,7 +109,7 @@ export function EarnTab({ address }: Props) {
       description: hasBonus("first_bet")
         ? "Thanks for placing your first bet!"
         : betCount > 0
-          ? "Your first bet is placed — bonus pending"
+          ? "Your first bet is placed, bonus pending"
           : "Place your first bet to earn 10 G$ instantly",
       reward: BONUS_AMOUNTS.first_bet,
       status: hasBonus("first_bet") ? "completed" : betCount > 0 ? "pending" : "available",
@@ -122,7 +122,7 @@ export function EarnTab({ address }: Props) {
       label: "Streak Rewards",
       description: streak === 0
         ? "Place a bet or claim G$ daily to build your streak"
-        : `${streak} day${streak === 1 ? "" : "s"} — next milestone: ${streak < 7 ? "7 days" : "30 days"}`,
+        : `${streak} day${streak === 1 ? "" : "s"}, next milestone: ${streak < 7 ? "7 days" : "30 days"}`,
       reward: 0,
       status: "available",
       icon: FireIcon,

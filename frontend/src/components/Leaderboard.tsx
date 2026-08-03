@@ -98,7 +98,7 @@ export function Leaderboard({ address }: Props) {
     return (
       <div className="py-16 text-center">
         <p className="font-display text-xl font-bold">Leaderboard</p>
-        <p className="text-sm text-muted-foreground mt-2">No bets yet — be the first to stake!</p>
+        <p className="text-sm text-muted-foreground mt-2">No bets yet, be the first to stake!</p>
       </div>
     );
   }

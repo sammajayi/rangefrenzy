@@ -1085,7 +1085,7 @@ function WeeklyCampaignSection() {
   if (!rows.length) return (
     <div className="py-16 text-center">
       <p className="font-display text-xl font-bold">Weekly Campaign</p>
-      <p className="text-sm text-muted-foreground mt-2">No stakes this week yet — be first!</p>
+      <p className="text-sm text-muted-foreground mt-2">No stakes this week yet, be first!</p>
     </div>
   );
 

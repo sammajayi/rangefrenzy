@@ -114,7 +114,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
         </Button>
 
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          You can skip this — rewards are distributed within 24 hours.
+          You can skip this, rewards are distributed within 24 hours.
         </p>
       </div>
     </div>

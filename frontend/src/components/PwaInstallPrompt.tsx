@@ -97,7 +97,7 @@ export function PwaInstallPrompt() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground mb-5">
-            Add RangeFrenzy to your home screen for a faster, full-screen experience — no app store needed.
+            Add RangeFrenzy to your home screen for a faster, full-screen experience, no app store needed.
           </p>
         )}
 

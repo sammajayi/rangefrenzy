@@ -20,7 +20,7 @@ export async function generateMetadata({
   }
 
   const title = `My prediction: ${data.rangeLabel}`;
-  const description = `${data.question} — I'm predicting ${data.rangeLabel}. Think I'm wrong? Take the other side on RangeFrenzy.`;
+  const description = `${data.question}. I'm predicting ${data.rangeLabel}. Think I'm wrong? Take the other side on RangeFrenzy.`;
   const url = `/share/${market}/${range}`;
 
   return {

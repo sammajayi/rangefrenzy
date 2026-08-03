@@ -3,13 +3,13 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/Users/apple/.nvm/versions/node/v24.11.1/bin/npm",
       "runtimeArgs": ["run", "dev", "--workspace=frontend"],
       "port": 3000
     },
     {
       "name": "hardhat-node",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "/Users/apple/.nvm/versions/node/v24.11.1/bin/npx",
       "runtimeArgs": ["hardhat", "node", "--config", "contracts/hardhat.config.ts"],
       "port": 8545
     }
