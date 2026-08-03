@@ -21,7 +21,47 @@ import {
   Menu01Icon,
   CancelCircleIcon,
 } from "hugeicons-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
+/* Scroll-reveal hook */
+function useReveal(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+function RevealSection({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const { ref, visible } = useReveal();
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
 
 /* tiny helpers */
 function GlowBtn({
@@ -206,45 +246,48 @@ function HowItWorks() {
   return (
     <section id="how-it-works" className="relative py-24 px-6">
       <div className="mx-auto max-w-6xl">
-        <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-          How It Works
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-          Three simple steps to start predicting and winning.
-        </p>
+        <RevealSection>
+          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+            How It Works
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
+            Three simple steps to start predicting and winning.
+          </p>
+        </RevealSection>
 
         <div className="relative mt-16 grid gap-8 md:grid-cols-3">
           {/* Connector line (desktop) */}
           <div className="pointer-events-none absolute top-16 left-[20%] right-[20%] hidden h-px bg-gradient-to-r from-[#22C55E]/40 via-[#22C55E]/20 to-[#22C55E]/40 md:block" />
 
-          {steps.map((s) => (
-            <div
-              key={s.num}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-[#12102A] transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-            >
-              {/* image */}
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={s.img}
-                  alt={s.title}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#12102A] via-[#12102A]/60 to-transparent" />
-                {/* number badge */}
-                <span className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#22C55E] text-sm font-bold text-white shadow-[0_0_16px_rgba(34,197,94,0.4)]">
-                  {s.num}
-                </span>
-              </div>
+          {steps.map((s, i) => (
+            <RevealSection key={s.num} delay={i * 150}>
+              <div
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-[#12102A] transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
+              >
+                {/* image */}
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={s.img}
+                    alt={s.title}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12102A] via-[#12102A]/60 to-transparent" />
+                  {/* number badge */}
+                  <span className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#22C55E] text-sm font-bold text-white shadow-[0_0_16px_rgba(34,197,94,0.4)]">
+                    {s.num}
+                  </span>
+                </div>
 
-              {/* content */}
-              <div className="flex flex-1 flex-col p-6">
-                <h3 className="text-xl font-bold text-white">{s.title}</h3>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-white/50">
-                  {s.desc}
-                </p>
+                {/* content */}
+                <div className="flex flex-1 flex-col p-6">
+                  <h3 className="text-xl font-bold text-white">{s.title}</h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-white/50">
+                    {s.desc}
+                  </p>
+                </div>
               </div>
-            </div>
+            </RevealSection>
           ))}
         </div>
       </div>
@@ -284,25 +327,27 @@ function LiveMarkets() {
   return (
     <section id="markets" className="relative py-24 px-6">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-center gap-3">
-          <h2 className="font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            Live Markets
-          </h2>
-          <span className="relative flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-[#22C55E]" />
-          </span>
-        </div>
-        <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-          Active markets happening right now. Jump in before they close.
-        </p>
+        <RevealSection>
+          <div className="flex items-center justify-center gap-3">
+            <h2 className="font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+              Live Markets
+            </h2>
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-[#22C55E]" />
+            </span>
+          </div>
+          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
+            Active markets happening right now. Jump in before they close.
+          </p>
+        </RevealSection>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {markets.map((m) => (
-            <div
-              key={m.question}
-              className="group flex flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-            >
+          {markets.map((m, i) => (
+            <RevealSection key={m.question} delay={i * 120}>
+              <div
+                className="group flex flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
+              >
               {/* category pill */}
               <span className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
                 {m.categoryIcon}
@@ -347,6 +392,7 @@ function LiveMarkets() {
                 <ArrowRight01Icon className="h-4 w-4" />
               </a>
             </div>
+            </RevealSection>
           ))}
         </div>
 
@@ -402,27 +448,30 @@ function Features() {
   return (
     <section id="features" className="relative py-24 px-6">
       <div className="mx-auto max-w-6xl">
-        <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-          Why RangeFrenzy
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-          Built for the future of decentralized prediction markets.
-        </p>
+        <RevealSection>
+          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+            Why RangeFrenzy
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
+            Built for the future of decentralized prediction markets.
+          </p>
+        </RevealSection>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="group rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-            >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#22C55E]/10 text-[#22C55E] transition-colors duration-300 group-hover:bg-[#22C55E]/20">
-                {f.icon}
+          {features.map((f, i) => (
+            <RevealSection key={f.title} delay={i * 100}>
+              <div
+                className="group rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
+              >
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#22C55E]/10 text-[#22C55E] transition-colors duration-300 group-hover:bg-[#22C55E]/20">
+                  {f.icon}
+                </div>
+                <h3 className="text-lg font-bold text-white">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/50">
+                  {f.desc}
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-white">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/50">
-                {f.desc}
-              </p>
-            </div>
+            </RevealSection>
           ))}
         </div>
       </div>
@@ -435,13 +484,14 @@ function CTASection() {
   return (
     <section className="relative py-24 px-6">
       <div className="mx-auto max-w-4xl">
-        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#12102A] px-8 py-16 text-center sm:px-16">
-          {/* glow behind */}
-          <div className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[500px] -translate-x-1/2 rounded-full bg-[#22C55E]/10 blur-[100px]" />
+        <RevealSection>
+          <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#12102A] px-8 py-16 text-center sm:px-16">
+            {/* glow behind */}
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[500px] -translate-x-1/2 rounded-full bg-[#22C55E]/10 blur-[100px]" />
 
-          <h2 className="relative z-10 font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            Ready to put your G$ to work?
-          </h2>
+            <h2 className="relative z-10 font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+              Ready to put your G$ to work?
+            </h2>
           <p className="relative z-10 mx-auto mt-4 max-w-lg text-white/50">
             Join thousands of GoodDollar users across Africa predicting, staking,
             and winning daily.
@@ -469,7 +519,8 @@ function CTASection() {
               MiniPay Compatible
             </span>
           </div>
-        </div>
+          </div>
+        </RevealSection>
       </div>
     </section>
   );
