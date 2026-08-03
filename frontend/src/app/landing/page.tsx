@@ -20,6 +20,7 @@ import {
   SendToMobileIcon,
   Menu01Icon,
   CancelCircleIcon,
+  UserMultipleIcon,
 } from "hugeicons-react";
 import { useState, useEffect, useRef } from "react";
 
@@ -304,6 +305,7 @@ const markets = [
     ranges: ["0–9", "10–19", "20–29", "30+"],
     prize: "12,500",
     countdown: "42d 22h",
+    participants: 342,
   },
   {
     category: "Crypto",
@@ -312,6 +314,7 @@ const markets = [
     ranges: ["$1.5k–2k", "$2k–2.5k", "$2.5k–3k", "$3k+"],
     prize: "8,200",
     countdown: "18d 6h",
+    participants: 518,
   },
   {
     category: "Local",
@@ -320,6 +323,7 @@ const markets = [
     ranges: ["0–500", "500–1k", "1k–2k", "2k+"],
     prize: "3,400",
     countdown: "5d 14h",
+    participants: 127,
   },
 ];
 
@@ -377,9 +381,15 @@ function LiveMarkets() {
                   <Coins01Icon className="h-4 w-4" />
                   G$ {m.prize}
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-white/40">
-                  <Clock01Icon className="h-3.5 w-3.5" />
-                  Resolves in {m.countdown}
+                <span className="flex items-center gap-3 text-xs text-white/40">
+                  <span className="flex items-center gap-1">
+                    <UserMultipleIcon className="h-3.5 w-3.5" />
+                    {m.participants}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock01Icon className="h-3.5 w-3.5" />
+                    {m.countdown}
+                  </span>
                 </span>
               </div>
 
