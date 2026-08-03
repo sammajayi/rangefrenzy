@@ -38,6 +38,15 @@
   --color-resolved: #a855f7;
 
   --radius: 0.5rem;
+
+  /* Astra dark design system */
+  --color-astra-bg: #0A0A0F;
+  --color-astra-surface: #12102A;
+  --color-astra-surface-raised: #1A1535;
+  --color-astra-brand: #22C55E;
+  --color-astra-brand-glow: rgba(34, 197, 94, 0.3);
+  --color-astra-text: #FFFFFF;
+  --color-astra-text-muted: #9CA3AF;
 }
 
 * {
@@ -62,6 +71,10 @@ select {
 .font-display {
   font-family: var(--font-display), var(--font-body), ui-sans-serif, system-ui,
     sans-serif;
+}
+
+.font-body {
+  font-family: "Inter", var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
 @keyframes splash-bounce {
