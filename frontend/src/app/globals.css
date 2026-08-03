@@ -181,6 +181,26 @@ select {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+/* Landing page floating animations */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+@keyframes float-medium {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25px, 20px) scale(1.08); }
+  66% { transform: translate(20px, -15px) scale(0.92); }
+}
+@keyframes float-fast {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(15px, -25px) scale(1.1); }
+}
+
+.animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
+.animate-float-medium { animation: float-medium 9s ease-in-out infinite; }
+.animate-float-fast { animation: float-fast 7s ease-in-out infinite; }
+
 @layer utilities {
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {

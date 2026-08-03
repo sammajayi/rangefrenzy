@@ -131,7 +131,7 @@ function Hero() {
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-20">
       {/* Background image overlay */}
       <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15"
         style={{
           backgroundImage:
             "url('https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1920&q=80')",
@@ -140,6 +140,11 @@ function Hero() {
       {/* gradient overlays */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A0A0F] via-[#0A0A0F]/80 to-[#0A0A0F]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,197,94,0.08)_0%,transparent_70%)]" />
+
+      {/* Animated floating orbs */}
+      <div className="pointer-events-none absolute top-1/4 left-1/4 h-72 w-72 animate-float-slow rounded-full bg-[#22C55E]/5 blur-[120px]" />
+      <div className="pointer-events-none absolute right-1/4 bottom-1/3 h-64 w-64 animate-float-medium rounded-full bg-[#7C3AED]/8 blur-[100px]" />
+      <div className="pointer-events-none absolute top-1/3 right-1/3 h-48 w-48 animate-float-fast rounded-full bg-[#22C55E]/4 blur-[80px]" />
 
       {/* Floating stat pills — top */}
       <div className="relative z-10 mb-8 flex flex-wrap items-center justify-center gap-3">
