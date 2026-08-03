@@ -194,7 +194,7 @@ function Hero() {
       </div>
 
       {/* Headline */}
-      <h1 className="relative z-10 text-center font-display text-5xl font-bold leading-tight tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl">
+      <h1 className="relative z-10 text-center font-display text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
         Predict. Stake. Win.
       </h1>
 
@@ -342,11 +342,11 @@ function LiveMarkets() {
           </p>
         </RevealSection>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
           {markets.map((m, i) => (
             <RevealSection key={m.question} delay={i * 120}>
               <div
-                className="group flex flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
+                className="group flex min-w-[280px] snap-start flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)] sm:min-w-0"
               >
               {/* category pill */}
               <span className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
