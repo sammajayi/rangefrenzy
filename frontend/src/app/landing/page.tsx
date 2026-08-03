@@ -495,7 +495,7 @@ function CTASection() {
     <section className="relative py-24 px-6">
       <div className="mx-auto max-w-4xl">
         <RevealSection>
-          <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#12102A] px-8 py-16 text-center sm:px-16">
+          <div className="animate-gradient-border relative overflow-hidden rounded-3xl bg-[#12102A] px-8 py-16 text-center sm:px-16">
             {/* glow behind */}
             <div className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[500px] -translate-x-1/2 rounded-full bg-[#22C55E]/10 blur-[100px]" />
 
