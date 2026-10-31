@@ -37,20 +37,16 @@
 
   --radius: 0.5rem;
 
-  /* Astra dark design system */
-  --color-astra-bg: #0A0A0F;
-  --color-astra-surface: #12102A;
-  --color-astra-surface-raised: #1A1535;
-  --color-astra-brand: #22C55E;
-  --color-astra-brand-glow: rgba(34, 197, 94, 0.3);
-  --color-astra-text: #FFFFFF;
-  --color-astra-text-muted: #9CA3AF;
-}
-
-/* next/font exposes the loaded families as --font-archivo and --font-dm-sans on <html>. */
-@theme inline {
-  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Landing (dark) surfaces: one green-tinted neutral family, one accent */
+  --color-astra-bg: #0b0f0d;
+  --color-astra-surface: #121814;
+  --color-astra-surface-raised: #19211b;
+  --color-astra-line: rgb(255 255 255 / 0.08);
+  --color-astra-brand: #22c55e;
+  --color-astra-on-brand: #04210f;
+  --color-astra-text: #f4f7f5;
+  --color-astra-muted: #a3ada6;
+  --color-astra-subtle: #7e8881;
 }
 
 /* Base layer, so border-* colour utilities (border-white/5, border-brand, ...) can override it. */
@@ -188,31 +184,7 @@ select {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
-/* Landing page floating animations */
-@keyframes float-slow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -20px) scale(1.05); }
-  66% { transform: translate(-20px, 15px) scale(0.95); }
-}
-@keyframes float-medium {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(-25px, 20px) scale(1.08); }
-  66% { transform: translate(20px, -15px) scale(0.92); }
-}
-@keyframes float-fast {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(15px, -25px) scale(1.1); }
-}
-
-.animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
-.animate-float-medium { animation: float-medium 9s ease-in-out infinite; }
-.animate-float-fast { animation: float-fast 7s ease-in-out infinite; }
-
 @media (prefers-reduced-motion: reduce) {
-  .animate-float-slow,
-  .animate-float-medium,
-  .animate-float-fast,
-  .animate-gradient-border::before,
   .animate-splash-bounce,
   .animate-splash-dot,
   .animate-splash-glow {
@@ -222,35 +194,6 @@ select {
   * {
     scroll-behavior: auto !important;
   }
-}
-
-/* Animated gradient border */
-@keyframes gradient-rotate {
-  0% { --angle: 0deg; }
-  100% { --angle: 360deg; }
-}
-
-@property --angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.animate-gradient-border {
-  position: relative;
-}
-.animate-gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(from var(--angle), #22C55E, #7C3AED, #22C55E);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: gradient-rotate 6s linear infinite;
-  pointer-events: none;
 }
 
 @layer utilities {

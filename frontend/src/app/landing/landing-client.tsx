@@ -2,8 +2,6 @@
 
 import {
   StarAward01Icon,
-  Coins01Icon,
-  GlobeIcon,
   Target01Icon,
   ChartIncreaseIcon,
   CoinsSwapIcon,
@@ -11,8 +9,6 @@ import {
   Fire03Icon,
   ShieldUserIcon,
   MapPinIcon,
-  CheckmarkBadge04Icon,
-  SmartPhone01Icon,
   BitcoinCircleIcon,
   ArrowRight01Icon,
   GithubIcon,
@@ -21,6 +17,9 @@ import {
   CancelCircleIcon,
 } from "hugeicons-react";
 import { useState, useEffect, useRef } from "react";
+import { Logo } from "@/components/logo";
+
+const APP_URL = "https://app.rangefrenzy.xyz";
 
 /* Scroll-reveal hook */
 function useReveal(threshold = 0.15) {
@@ -30,7 +29,12 @@ function useReveal(threshold = 0.15) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
       { threshold }
     );
     obs.observe(el);
@@ -39,7 +43,7 @@ function useReveal(threshold = 0.15) {
   return { ref, visible };
 }
 
-function RevealSection({
+function Reveal({
   children,
   className = "",
   delay = 0,
@@ -52,8 +56,8 @@ function RevealSection({
   return (
     <div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${
+        visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
       } ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
@@ -62,161 +66,240 @@ function RevealSection({
   );
 }
 
-/* tiny helpers */
-function GlowBtn({
+/* Buttons and links */
+function PrimaryLink({
   children,
+  href = APP_URL,
   className = "",
-  href = "#",
 }: {
   children: React.ReactNode;
-  className?: string;
   href?: string;
+  className?: string;
 }) {
   return (
     <a
       href={href}
-      className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#22C55E] px-8 py-4 text-base font-semibold text-white shadow-[0_0_24px_rgba(34,197,94,0.35)] transition-all duration-300 hover:shadow-[0_0_32px_rgba(34,197,94,0.5)] hover:scale-105 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-astra-brand px-6 py-3.5 text-base font-semibold text-astra-on-brand transition-[filter,transform] duration-200 hover:brightness-110 active:scale-[0.98] ${className}`}
     >
       {children}
     </a>
   );
 }
 
-function StatPill({
-  icon,
-  label,
+function SectionHeading({
+  title,
+  intro,
 }: {
-  icon: React.ReactNode;
-  label: string;
+  title: string;
+  intro: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 backdrop-blur-sm">
-      {icon}
-      {label}
-    </span>
-  );
-}
-
-function SectionDivider() {
-  return (
-    <div className="mx-auto h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+    <>
+      <h2 className="font-display text-3xl font-bold tracking-tight text-balance text-astra-text sm:text-4xl md:text-5xl">
+        {title}
+      </h2>
+      <p className="mt-4 max-w-md text-pretty text-astra-muted">{intro}</p>
+    </>
   );
 }
 
 /* NAVBAR */
+const navLinks = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Markets", href: "#markets" },
+  { label: "Why RangeFrenzy", href: "#features" },
+];
+
 function Navbar() {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0A0A0F]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <a href="#" className="flex items-center gap-2.5">
-          <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="10" fill="#12102A" />
-            <rect x="13" y="17" width="22" height="14" rx="2.5" fill="#22C55E" opacity="0.15" />
-            <line x1="14" y1="16" x2="14" y2="32" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" />
-            <line x1="14" y1="16" x2="18" y2="16" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-            <line x1="14" y1="32" x2="18" y2="32" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-            <line x1="34" y1="16" x2="34" y2="32" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" />
-            <line x1="34" y1="16" x2="30" y2="16" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-            <line x1="34" y1="32" x2="30" y2="32" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-            <polyline points="15,31 19,27.5 24,24 29,21.5 33,20" stroke="#22C55E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            <circle cx="24" cy="24" r="4" fill="#22C55E" />
-            <circle cx="24" cy="24" r="1.8" fill="white" opacity="0.92" />
-          </svg>
-          <span className="text-lg font-bold text-white">RangeFrenzy</span>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-astra-line bg-astra-bg/85 backdrop-blur-xl">
+      <nav
+        aria-label="Main"
+        className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4"
+      >
+        <a href="#top" className="flex items-center gap-2.5">
+          <Logo size={32} />
+          <span className="font-display text-lg font-bold tracking-tight text-astra-text">
+            RangeFrenzy
+          </span>
         </a>
 
-        {/* desktop links */}
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#how-it-works" className="text-sm text-white/60 transition hover:text-white">How it works</a>
-          <a href="#markets" className="text-sm text-white/60 transition hover:text-white">Markets</a>
-          <a href="#features" className="text-sm text-white/60 transition hover:text-white">Features</a>
-          <GlowBtn href="https://app.rangefrenzy.xyz" className="!px-5 !py-2.5 !text-sm">
-            Launch app
-          </GlowBtn>
+          {navLinks.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="text-sm text-astra-muted transition-colors hover:text-astra-text"
+            >
+              {l.label}
+            </a>
+          ))}
+          <PrimaryLink className="!px-4 !py-2 !text-sm">Launch app</PrimaryLink>
         </div>
 
-        {/* mobile toggle */}
         <button
           type="button"
-          className="text-white md:hidden"
+          className="flex h-11 w-11 items-center justify-center text-astra-text md:hidden"
           onClick={() => setOpen(!open)}
           aria-label="Menu"
           aria-expanded={open}
           aria-controls="mobile-menu"
         >
-          {open ? <CancelCircleIcon className="h-6 w-6" /> : <Menu01Icon className="h-6 w-6" />}
+          {open ? (
+            <CancelCircleIcon className="h-6 w-6" />
+          ) : (
+            <Menu01Icon className="h-6 w-6" />
+          )}
         </button>
-      </div>
+      </nav>
 
-      {/* mobile menu */}
       {open && (
-        <div id="mobile-menu" className="border-t border-white/5 bg-[#0A0A0F]/95 px-6 py-6 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-4">
-            <a href="#how-it-works" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">How it works</a>
-            <a href="#markets" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">Markets</a>
-            <a href="#features" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">Features</a>
-            <GlowBtn href="https://app.rangefrenzy.xyz" className="!text-sm">
-              Launch app
-            </GlowBtn>
+        <div
+          id="mobile-menu"
+          className="border-t border-astra-line bg-astra-bg px-6 py-6 md:hidden"
+        >
+          <div className="flex flex-col gap-5">
+            {navLinks.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="text-base text-astra-muted transition-colors hover:text-astra-text"
+              >
+                {l.label}
+              </a>
+            ))}
+            <PrimaryLink>Launch app</PrimaryLink>
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
 
 /* HERO */
-function Hero() {
+const ladder = [
+  { label: "$1.5k–2k", share: 14 },
+  { label: "$2k–2.5k", share: 31 },
+  { label: "$2.5k–3k", share: 44, picked: true },
+  { label: "$3k+", share: 11 },
+];
+
+const maxShare = Math.max(...ladder.map((r) => r.share));
+
+function RangeLadder() {
+  const { ref, visible } = useReveal(0.3);
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-20">
-      {/* Background image overlay */}
-      <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1920&q=80')",
-        }}
-      />
-      {/* gradient overlays */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A0A0F] via-[#0A0A0F]/80 to-[#0A0A0F]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,197,94,0.08)_0%,transparent_70%)]" />
-
-      {/* Animated floating orbs */}
-      <div className="pointer-events-none absolute top-1/4 left-1/4 h-72 w-72 animate-float-slow rounded-full bg-[#22C55E]/5 blur-[120px]" />
-      <div className="pointer-events-none absolute right-1/4 bottom-1/3 h-64 w-64 animate-float-medium rounded-full bg-[#7C3AED]/8 blur-[100px]" />
-      <div className="pointer-events-none absolute top-1/3 right-1/3 h-48 w-48 animate-float-fast rounded-full bg-[#22C55E]/4 blur-[80px]" />
-
-      {/* Floating stat pills — top */}
-      <div className="relative z-10 mb-8 flex flex-wrap items-center justify-center gap-3">
-        <StatPill icon={<StarAward01Icon className="h-4 w-4 text-[#22C55E]" />} label="500+ Predictions Made" />
-        <StatPill icon={<Coins01Icon className="h-4 w-4 text-[#22C55E]" />} label="G$ Distributed" />
-        <StatPill icon={<GlobeIcon className="h-4 w-4 text-[#22C55E]" />} label="Built for Africa" />
-      </div>
-
-      {/* Headline */}
-      <h1 className="relative z-10 text-center font-display text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
-        Predict. Stake. Win.
-      </h1>
-
-      {/* Subheadline */}
-      <p className="relative z-10 mt-6 max-w-2xl text-center text-base text-white/60 sm:text-lg md:text-xl">
-        The range-based prediction market built for GoodDollar users across
-        Africa. Stake G$ on crypto, sports and local events. Pick the right
-        range and win a share of the pool.
+    <div
+      ref={ref}
+      role="img"
+      aria-label="Example market with four price ranges. The $2.5k to $3k range is selected and holds the largest share of the pool."
+      className="w-full max-w-md rounded-2xl border border-astra-line bg-astra-surface p-6"
+    >
+      <p aria-hidden className="text-xs font-medium text-astra-subtle">
+        Example market
+      </p>
+      <p
+        aria-hidden
+        className="mt-1 font-display text-lg font-semibold leading-snug text-astra-text"
+      >
+        What will the ETH price be on 31 December?
       </p>
 
-      {/* CTA */}
-      <div className="relative z-10 mt-10">
-        <GlowBtn href="https://app.rangefrenzy.xyz">
-          Launch app
-          <ArrowRight01Icon className="h-5 w-5" />
-        </GlowBtn>
-      </div>
+      <ul aria-hidden className="mt-6 space-y-3">
+        {ladder.map((r, i) => (
+          <li key={r.label} className="flex items-center gap-3">
+            <span
+              className={`w-20 shrink-0 text-sm tabular-nums ${
+                r.picked ? "font-semibold text-astra-text" : "text-astra-muted"
+              }`}
+            >
+              {r.label}
+            </span>
+            <span className="relative h-7 flex-1 overflow-hidden rounded-md bg-astra-surface-raised">
+              <span
+                className={`absolute inset-y-0 left-0 origin-left rounded-md transition-transform duration-700 ease-out motion-reduce:transition-none ${
+                  r.picked ? "bg-astra-brand" : "bg-white/15"
+                } ${visible ? "scale-x-100" : "scale-x-0 motion-reduce:scale-x-100"}`}
+                style={{
+                  width: `${(r.share / maxShare) * 100}%`,
+                  transitionDelay: `${200 + i * 120}ms`,
+                }}
+              />
+            </span>
+            <span
+              className={`w-10 shrink-0 text-right text-sm tabular-nums ${
+                r.picked ? "font-semibold text-astra-brand" : "text-astra-subtle"
+              }`}
+            >
+              {r.share}%
+            </span>
+          </li>
+        ))}
+      </ul>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 animate-bounce">
-        <ArrowRight01Icon className="h-6 w-6 rotate-90 text-white/30" />
+      <p
+        aria-hidden
+        className="mt-6 border-t border-astra-line pt-4 text-xs text-astra-subtle"
+      >
+        Your range wins a share of the pool if the price lands inside it.
+        Illustration only.
+      </p>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <section
+      id="top"
+      className="relative flex min-h-dvh items-center overflow-hidden px-6 pb-20 pt-28"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgba(34,197,94,0.10),transparent_70%)]" />
+
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
+        <div>
+          <h1 className="font-display text-5xl font-extrabold leading-[0.95] tracking-tighter text-balance text-astra-text sm:text-6xl lg:text-7xl xl:text-8xl">
+            Predict. Stake. Win.
+          </h1>
+          <p className="mt-6 max-w-xl text-pretty text-lg text-astra-muted md:text-xl">
+            The range-based prediction market built for GoodDollar users across
+            Africa. Stake G$ on crypto, sports and local events. Pick the right
+            range and win a share of the pool.
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <PrimaryLink>
+              Launch app
+              <ArrowRight01Icon className="h-5 w-5" />
+            </PrimaryLink>
+            <a
+              href="#how-it-works"
+              className="text-sm font-medium text-astra-muted underline-offset-4 transition-colors hover:text-astra-text hover:underline"
+            >
+              See how it works
+            </a>
+          </div>
+
+          <p className="mt-10 text-sm text-astra-subtle">
+            Live on Celo mainnet · Powered by GoodDollar · Works in MiniPay
+          </p>
+        </div>
+
+        <div className="lg:justify-self-end">
+          <RangeLadder />
+        </div>
       </div>
     </section>
   );
@@ -225,73 +308,54 @@ function Hero() {
 /* HOW IT WORKS */
 const steps = [
   {
-    num: "1",
-    title: "Verify & Claim",
-    desc: "Verify your identity with GoodDollar and claim your free daily G$ UBI directly inside the app.",
-    img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=80",
+    num: "01",
+    title: "Verify and claim",
+    desc: "Verify with GoodDollar, then claim your free daily G$ inside the app.",
   },
   {
-    num: "2",
-    title: "Pick Your Range",
-    desc: "Browse active markets across crypto, sports, and local African events. Pick a range and stake your G$.",
-    img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80",
+    num: "02",
+    title: "Pick a range",
+    desc: "Browse markets across crypto, sports and local African events. Pick a range and stake your G$.",
   },
   {
-    num: "3",
-    title: "Win & Earn",
+    num: "03",
+    title: "Win a share of the pool",
     desc: "If the outcome lands in your range, you win a share of the prize pool. Earlier stakes cost less per share, so they can return more.",
-    img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&q=80",
   },
 ];
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative py-24 px-6">
-      <div className="mx-auto max-w-6xl">
-        <RevealSection>
-          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            How it works
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Verify once, claim your daily G$, then stake it on a range.
-          </p>
-        </RevealSection>
+    <section id="how-it-works" className="px-6 py-24 md:py-32">
+      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
+        <Reveal>
+          <SectionHeading
+            title="How it works"
+            intro="Verify once, claim your daily G$, then stake it on a range."
+          />
+        </Reveal>
 
-        <div className="relative mt-16 grid gap-8 md:grid-cols-3">
-          {/* Connector line (desktop) */}
-          <div className="pointer-events-none absolute top-16 left-[20%] right-[20%] hidden h-px bg-gradient-to-r from-[#22C55E]/40 via-[#22C55E]/20 to-[#22C55E]/40 md:block" />
-
+        <ol>
           {steps.map((s, i) => (
-            <RevealSection key={s.num} delay={i * 150}>
-              <div
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-[#12102A] transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-              >
-                {/* image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={s.img}
-                    alt={s.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#12102A] via-[#12102A]/60 to-transparent" />
-                  {/* number badge */}
-                  <span className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#22C55E] text-sm font-bold text-white shadow-[0_0_16px_rgba(34,197,94,0.4)]">
+            <li key={s.num}>
+              <Reveal delay={i * 120}>
+                <div className="grid grid-cols-[3.5rem_1fr] gap-4 border-t border-astra-line py-8 first:border-t-0 first:pt-0">
+                  <span className="font-display text-2xl font-bold tabular-nums text-astra-brand">
                     {s.num}
                   </span>
+                  <div>
+                    <h3 className="font-display text-xl font-bold text-astra-text">
+                      {s.title}
+                    </h3>
+                    <p className="mt-2 max-w-lg text-pretty text-astra-muted">
+                      {s.desc}
+                    </p>
+                  </div>
                 </div>
-
-                {/* content */}
-                <div className="flex flex-1 flex-col p-6">
-                  <h3 className="text-xl font-bold text-white">{s.title}</h3>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-white/50">
-                    {s.desc}
-                  </p>
-                </div>
-              </div>
-            </RevealSection>
+              </Reveal>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );
@@ -319,56 +383,60 @@ const markets = [
   },
 ];
 
-function LiveMarkets() {
+function ExampleMarkets() {
   return (
-    <section id="markets" className="relative py-24 px-6">
+    <section
+      id="markets"
+      className="border-t border-astra-line px-6 py-24 md:py-32"
+    >
       <div className="mx-auto max-w-6xl">
-        <RevealSection>
-          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            Example markets
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Every market splits an outcome into ranges. Open the app to see
-            what is live today.
-          </p>
-        </RevealSection>
+        <Reveal>
+          <SectionHeading
+            title="Example markets"
+            intro="Every market splits an outcome into ranges. Open the app to see what is live today."
+          />
+        </Reveal>
 
-        <div className="mt-14 flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
+        <div className="mt-14 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
           {markets.map((m, i) => (
-            <RevealSection key={m.question} delay={i * 120}>
-              <div className="group flex h-full min-w-[280px] snap-start flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-colors duration-300 hover:border-[#22C55E]/30 sm:min-w-0">
-                <span className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
+            <Reveal
+              key={m.question}
+              delay={i * 100}
+              className="min-w-[280px] snap-start sm:min-w-0"
+            >
+              <div className="flex h-full flex-col rounded-xl bg-astra-surface p-6 transition-colors duration-200 hover:bg-astra-surface-raised">
+                <span className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-astra-brand">
                   {m.categoryIcon}
                   {m.category}
                 </span>
 
-                <h3 className="text-base font-bold leading-snug text-white">
+                <h3 className="mt-4 font-display text-lg font-semibold leading-snug text-astra-text">
                   {m.question}
                 </h3>
 
-                <div className="mt-4 flex flex-1 flex-wrap content-start gap-2">
+                <div className="mt-5 flex flex-1 flex-wrap content-start gap-2">
                   {m.ranges.map((r) => (
                     <span
                       key={r}
-                      className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/60"
+                      className="rounded-md border border-astra-line px-2.5 py-1 text-xs tabular-nums text-astra-muted"
                     >
                       {r}
                     </span>
                   ))}
                 </div>
 
-                <p className="mt-5 border-t border-white/5 pt-4 text-xs text-white/40">
+                <p className="mt-6 text-xs text-astra-subtle">
                   Example only. Not a live market.
                 </p>
               </div>
-            </RevealSection>
+            </Reveal>
           ))}
         </div>
 
-        <div className="mt-12 flex justify-center">
+        <div className="mt-10">
           <a
-            href="https://app.rangefrenzy.xyz"
-            className="inline-flex items-center gap-2 rounded-full border border-[#22C55E]/30 px-6 py-3 text-sm font-semibold text-[#22C55E] transition-colors duration-300 hover:bg-[#22C55E]/10"
+            href={APP_URL}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-astra-brand underline-offset-4 hover:underline"
           >
             See live markets
             <ArrowRight01Icon className="h-4 w-4" />
@@ -382,67 +450,68 @@ function LiveMarkets() {
 /* FEATURES */
 const features = [
   {
-    icon: <Target01Icon className="h-7 w-7" />,
-    title: "Range Betting",
-    desc: "Not just yes or no. Pick a range and win a share of the pool if the outcome lands inside it.",
+    icon: <Target01Icon className="h-6 w-6" />,
+    title: "Stake on ranges",
+    desc: "Pick a range and win a share of the pool if the outcome lands inside it.",
   },
   {
-    icon: <ChartIncreaseIcon className="h-7 w-7" />,
+    icon: <ChartIncreaseIcon className="h-6 w-6" />,
     title: "Earlier stakes cost less",
     desc: "A range gets more expensive as more people stake on it, so early stakers get more shares for the same G$.",
   },
   {
-    icon: <CoinsSwapIcon className="h-7 w-7" />,
-    title: "Open Positions",
+    icon: <CoinsSwapIcon className="h-6 w-6" />,
+    title: "Open positions",
     desc: "Changed your mind? Sell your position and switch to a different range before the market closes.",
   },
   {
-    icon: <GiftIcon className="h-7 w-7" />,
-    title: "Daily G$ Rewards",
+    icon: <GiftIcon className="h-6 w-6" />,
+    title: "Daily G$ rewards",
     desc: "Claim your free GoodDollar UBI daily and put it straight to work on live markets.",
   },
   {
-    icon: <Fire03Icon className="h-7 w-7" />,
-    title: "Streak & Referral Rewards",
+    icon: <Fire03Icon className="h-6 w-6" />,
+    title: "Streak and referral rewards",
     desc: "Build daily streaks and refer friends to earn bonus G$ on top of your winnings.",
   },
   {
-    icon: <ShieldUserIcon className="h-7 w-7" />,
-    title: "Verified Humans Only",
+    icon: <ShieldUserIcon className="h-6 w-6" />,
+    title: "Verified humans only",
     desc: "GoodDollar verifies that each account belongs to a real person, so bots can't claim or stake.",
   },
 ];
 
 function Features() {
   return (
-    <section id="features" className="relative py-24 px-6">
+    <section
+      id="features"
+      className="border-t border-astra-line px-6 py-24 md:py-32"
+    >
       <div className="mx-auto max-w-6xl">
-        <RevealSection>
-          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            Why RangeFrenzy
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Stake on a range of outcomes, not just yes or no.
-          </p>
-        </RevealSection>
+        <Reveal>
+          <SectionHeading
+            title="Why RangeFrenzy"
+            intro="Stake on a range of outcomes, not just yes or no."
+          />
+        </Reveal>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-14 grid gap-x-16 md:grid-cols-2">
           {features.map((f, i) => (
-            <RevealSection key={f.title} delay={i * 100}>
-              <div
-                className="group rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-              >
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#22C55E]/10 text-[#22C55E] transition-colors duration-300 group-hover:bg-[#22C55E]/20">
-                  {f.icon}
+            <li key={f.title}>
+              <Reveal delay={(i % 2) * 100}>
+                <div className="flex gap-5 border-t border-astra-line py-8">
+                  <span className="mt-0.5 shrink-0 text-astra-brand">{f.icon}</span>
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-astra-text">
+                      {f.title}
+                    </h3>
+                    <p className="mt-2 text-pretty text-astra-muted">{f.desc}</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-white">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/50">
-                  {f.desc}
-                </p>
-              </div>
-            </RevealSection>
+              </Reveal>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );
@@ -451,144 +520,128 @@ function Features() {
 /* CTA */
 function CTASection() {
   return (
-    <section className="relative py-24 px-6">
-      <div className="mx-auto max-w-4xl">
-        <RevealSection>
-          <div className="animate-gradient-border relative overflow-hidden rounded-3xl bg-[#12102A] px-8 py-16 text-center sm:px-16">
-            {/* glow behind */}
-            <div className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[500px] -translate-x-1/2 rounded-full bg-[#22C55E]/10 blur-[100px]" />
-
-            <h2 className="relative z-10 font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+    <section className="px-6 pb-24 md:pb-32">
+      <div className="mx-auto max-w-6xl">
+        <Reveal>
+          <div className="rounded-2xl border border-astra-brand/25 bg-astra-surface px-8 py-14 sm:px-14">
+            <h2 className="max-w-xl font-display text-3xl font-bold tracking-tight text-balance text-astra-text sm:text-4xl md:text-5xl">
               Ready to put your G$ to work?
             </h2>
-          <p className="relative z-10 mx-auto mt-4 max-w-lg text-white/50">
-            Claim your daily G$, pick a range and stake it on a live market.
-          </p>
-
-          <div className="relative z-10 mt-8">
-            <GlowBtn href="https://app.rangefrenzy.xyz">
-              Launch app
-              <ArrowRight01Icon className="h-5 w-5" />
-            </GlowBtn>
+            <p className="mt-4 max-w-lg text-pretty text-astra-muted">
+              Claim your daily G$, pick a range and stake it on a live market.
+            </p>
+            <div className="mt-8">
+              <PrimaryLink>
+                Launch app
+                <ArrowRight01Icon className="h-5 w-5" />
+              </PrimaryLink>
+            </div>
           </div>
-
-          {/* trust badges */}
-          <div className="relative z-10 mt-10 flex flex-wrap items-center justify-center gap-6 text-xs text-white/40">
-            <span className="flex items-center gap-1.5">
-              <CheckmarkBadge04Icon className="h-4 w-4 text-[#22C55E]" />
-              Live on Celo Mainnet
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Coins01Icon className="h-4 w-4 text-[#22C55E]" />
-              Powered by GoodDollar
-            </span>
-            <span className="flex items-center gap-1.5">
-              <SmartPhone01Icon className="h-4 w-4 text-[#22C55E]" />
-              MiniPay Compatible
-            </span>
-          </div>
-          </div>
-        </RevealSection>
+        </Reveal>
       </div>
     </section>
   );
 }
 
 /* FOOTER */
+const footerLinks = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Example markets", href: "#markets" },
+  { label: "Why RangeFrenzy", href: "#features" },
+  { label: "Launch app", href: APP_URL },
+];
+
+const socials = [
+  {
+    label: "X",
+    href: "https://x.com/rangefrenzy",
+    icon: (
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M4 4l11.733 16h4.267l-11.733 -16z" />
+        <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
+      </svg>
+    ),
+  },
+  {
+    label: "Telegram",
+    href: "https://t.me/rangefrenzy",
+    icon: <SendToMobileIcon className="h-4 w-4" />,
+  },
+  {
+    label: "GitHub",
+    href: "https://github.com/rangefrenzy",
+    icon: <GithubIcon className="h-4 w-4" />,
+  },
+];
+
 function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-[#0A0A0F] px-6 py-16">
+    <footer className="border-t border-astra-line px-6 py-16">
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-12 md:grid-cols-3">
-          {/* brand */}
+        <div className="grid gap-12 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2.5">
-              <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
-                <rect width="48" height="48" rx="10" fill="#12102A" />
-                <rect x="13" y="17" width="22" height="14" rx="2.5" fill="#22C55E" opacity="0.15" />
-                <line x1="14" y1="16" x2="14" y2="32" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" />
-                <line x1="14" y1="16" x2="18" y2="16" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-                <line x1="14" y1="32" x2="18" y2="32" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-                <line x1="34" y1="16" x2="34" y2="32" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" />
-                <line x1="34" y1="16" x2="30" y2="16" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-                <line x1="34" y1="32" x2="30" y2="32" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
-                <circle cx="24" cy="24" r="4" fill="#22C55E" />
-                <circle cx="24" cy="24" r="1.8" fill="white" opacity="0.92" />
-              </svg>
-              <span className="text-lg font-bold text-white">RangeFrenzy</span>
+              <Logo size={28} />
+              <span className="font-display text-lg font-bold tracking-tight text-astra-text">
+                RangeFrenzy
+              </span>
             </div>
-            <p className="mt-3 max-w-xs text-sm text-white/40">
-              The range-based prediction market built for GoodDollar users across
-              Africa.
+            <p className="mt-3 max-w-xs text-sm text-astra-muted">
+              The range-based prediction market built for GoodDollar users
+              across Africa.
             </p>
-            <p className="mt-2 text-xs text-white/30">
+            <p className="mt-2 text-xs text-astra-subtle">
               Powered by GoodDollar · Built on Celo
             </p>
           </div>
 
-          {/* links */}
-          <div>
-            <h4 className="mb-4 text-sm font-semibold text-white">Explore</h4>
+          <nav aria-label="Footer">
+            <h2 className="mb-4 text-sm font-semibold text-astra-text">Explore</h2>
             <ul className="flex flex-col gap-3">
-              {[
-                { label: "How it works", href: "#how-it-works" },
-                { label: "Example markets", href: "#markets" },
-                { label: "Why RangeFrenzy", href: "#features" },
-                { label: "Launch app", href: "https://app.rangefrenzy.xyz" },
-              ].map((l) => (
+              {footerLinks.map((l) => (
                 <li key={l.label}>
                   <a
                     href={l.href}
-                    className="text-sm text-white/40 transition hover:text-[#22C55E]"
+                    className="text-sm text-astra-muted transition-colors hover:text-astra-brand"
                   >
                     {l.label}
                   </a>
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
 
-          {/* social */}
           <div>
-            <h4 className="mb-4 text-sm font-semibold text-white">Community</h4>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://x.com/rangefrenzy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/40 transition hover:bg-[#22C55E]/10 hover:text-[#22C55E]"
-                aria-label="X (Twitter)"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4l11.733 16h4.267l-11.733 -16z" />
-                  <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
-                </svg>
-              </a>
-              <a
-                href="https://t.me/rangefrenzy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/40 transition hover:bg-[#22C55E]/10 hover:text-[#22C55E]"
-                aria-label="Telegram"
-              >
-                <SendToMobileIcon className="h-4 w-4" />
-              </a>
-              <a
-                href="https://github.com/rangefrenzy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/40 transition hover:bg-[#22C55E]/10 hover:text-[#22C55E]"
-                aria-label="GitHub"
-              >
-                <GithubIcon className="h-4 w-4" />
-              </a>
+            <h2 className="mb-4 text-sm font-semibold text-astra-text">Community</h2>
+            <div className="flex items-center gap-3">
+              {socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="flex h-11 w-11 items-center justify-center rounded-lg bg-astra-surface text-astra-muted transition-colors hover:bg-astra-surface-raised hover:text-astra-brand"
+                >
+                  {s.icon}
+                </a>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* bottom bar */}
-        <div className="mt-12 border-t border-white/5 pt-6 text-center text-xs text-white/40">
-          <p className="mx-auto max-w-xl text-pretty">
+        <div className="mt-12 border-t border-astra-line pt-6 text-xs text-astra-subtle">
+          <p className="max-w-xl text-pretty">
             Staking carries risk. You can lose the G$ you stake, so only stake
             what you can afford to lose.
           </p>
@@ -602,17 +655,21 @@ function Footer() {
 /* PAGE */
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] font-body text-white">
+    <div className="min-h-dvh bg-astra-bg font-body text-astra-text [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-astra-brand [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-astra-brand">
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-astra-brand focus:px-4 focus:py-2 focus:text-astra-on-brand"
+      >
+        Skip to content
+      </a>
       <Navbar />
-      <Hero />
-      <SectionDivider />
-      <HowItWorks />
-      <SectionDivider />
-      <LiveMarkets />
-      <SectionDivider />
-      <Features />
-      <SectionDivider />
-      <CTASection />
+      <div id="content">
+        <Hero />
+        <HowItWorks />
+        <ExampleMarkets />
+        <Features />
+        <CTASection />
+      </div>
       <Footer />
     </div>
   );
