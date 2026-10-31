@@ -209,7 +209,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="mb-1.5 flex items-center gap-1.5">
-                              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
+                              <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
                                 {market.categoryLabel}
                               </span>
                               <span className="text-[11px] text-muted-foreground">·</span>
@@ -318,7 +318,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                     <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive" />
                   )}
                   {item.id === "profile" && claimableCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold leading-none text-white">
                       {claimableCount}
                     </span>
                   )}
@@ -630,7 +630,7 @@ function StakeModal({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-primary">{market.categoryLabel}</span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", statusColor)}>{statusLabel}</span>
+              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", statusColor)}>{statusLabel}</span>
             </div>
             <h3 className="font-display text-lg font-bold leading-snug">{market.question}</h3>
             <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
@@ -825,7 +825,7 @@ function StakeModal({
                     )}
                   >
                     <p className="font-semibold">{formatRangeLabel(r)}</p>
-                    {rangePool > 0 && <p className="text-[10px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
+                    {rangePool > 0 && <p className="text-[11px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
                   </button>
                 );
               })}
@@ -969,7 +969,7 @@ function MarketDetailModal({
         <div className="p-6">
           <div className="mb-1 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
+              <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
                 {market.categoryLabel}
               </span>
               <span className="text-xs text-muted-foreground">G$</span>
@@ -1102,7 +1102,7 @@ function WeeklyCampaignSection() {
       </div>
       <div className="overflow-hidden rounded-2xl border border-border">
         <table className="w-full text-left text-sm">
-          <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">User</th>

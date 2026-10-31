@@ -11,8 +11,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(onFinish, 600);
-    }, 3200);
+      setTimeout(onFinish, 400);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [onFinish]);
 
@@ -133,7 +133,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
       </div>
 
       {/* Version / powered-by hint */}
-      <p className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tracking-widest text-white/20 uppercase">
+      <p className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium tracking-widest text-white/20 uppercase">
         Powered by GoodDollar
       </p>
     </div>

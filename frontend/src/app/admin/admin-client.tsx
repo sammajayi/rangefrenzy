@@ -17,6 +17,7 @@ import {
   UserGroupIcon,
   Activity01Icon,
   Alert01Icon,
+  DollarSquareIcon,
 } from "hugeicons-react";
 import { Link } from "wouter";
 import { useWallets } from "@privy-io/react-auth";
@@ -40,6 +41,36 @@ const defaultRanges: RangeInput[] = [
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Indexes of the ranges that contain `outcome`. A null max means open-ended. */
+function winningRangeIndexes(ranges: unknown[], outcome: number): number[] {
+  return ranges
+    .map((r, i) => {
+      const range = r as { min?: number; max?: number | null; minPct?: number; maxPct?: number | null };
+      const min = range.min ?? range.minPct;
+      const max = range.max ?? range.maxPct;
+      return { i, hit: outcome >= (min as number) && (max === null || outcome <= (max as number)) };
+    })
+    .filter((x) => x.hit)
+    .map((x) => x.i);
+}
+
+/** Marks stakes won or lost in two queries instead of one per stake, and throws on failure. */
+async function setStakeStatuses(
+  stakes: { id: string | number; range_index: number | string }[],
+  winning: number[]
+) {
+  const won = stakes.filter((s) => winning.includes(Number(s.range_index))).map((s) => s.id);
+  const lost = stakes.filter((s) => !winning.includes(Number(s.range_index))).map((s) => s.id);
+  if (won.length) {
+    const { error } = await supabase.from("stakes").update({ status: "won" }).in("id", won);
+    if (error) throw error;
+  }
+  if (lost.length) {
+    const { error } = await supabase.from("stakes").update({ status: "lost" }).in("id", lost);
+    if (error) throw error;
+  }
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -100,7 +131,7 @@ function AreaChart({ data }: { data: { label: string; value: number }[] }) {
         {data
           .filter((_, i) => i % Math.max(1, Math.floor(data.length / 5)) === 0)
           .map((d, i) => (
-            <span key={i} className="text-[10px] text-muted-foreground">
+            <span key={i} className="text-[11px] text-muted-foreground">
               {d.label}
             </span>
           ))}
@@ -218,7 +249,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+        "rounded-full px-2 py-0.5 text-[11px] font-bold uppercase",
         map[status] ?? "bg-muted text-muted-foreground"
       )}
     >
@@ -590,7 +621,7 @@ export default function AdminPage() {
 
       setCreateOk(true);
       setCreateMsg(
-        contractAddress ? "Market created on-chain!" : "Market created (off-chain)"
+        contractAddress ? "Market created on-chain" : "Market created (off-chain)"
       );
       setForm({
         title: "",
@@ -666,14 +697,7 @@ export default function AdminPage() {
       if (error) throw error;
 
       if (resolving.ranges?.length) {
-        const winningRanges = resolving.ranges
-          .map((r, i) => ({ r, i }))
-          .filter(({ r }) => {
-            const min = (r as any).min ?? (r as any).minPct;
-            const max = (r as any).max ?? (r as any).maxPct;
-            return outcomeNum >= min && (max === null || outcomeNum <= max);
-          })
-          .map(({ i }) => i);
+        const winningRanges = winningRangeIndexes(resolving.ranges, outcomeNum);
 
         const { data: openStakes } = await supabase
           .from("stakes")
@@ -682,25 +706,24 @@ export default function AdminPage() {
           .eq("status", "open");
 
         if (openStakes?.length) {
-          for (const stake of openStakes) {
-            const won = winningRanges.includes(Number(stake.range_index));
-            await supabase
-              .from("stakes")
-              .update({ status: won ? "won" : "lost" })
-              .eq("id", stake.id);
-            if (stake.username) {
-              const rangeLabel =
-                resolving.ranges?.[Number(stake.range_index)]?.label ??
-                `Range ${stake.range_index}`;
-              await sendNotification(
-                stake.username,
-                won ? "You won!" : "Market resolved",
-                won
-                  ? `Your prediction "${rangeLabel}" was correct in "${resolving.title}". Winnings credited!`
-                  : `Your prediction "${rangeLabel}" didn't win in "${resolving.title}".`,
-              );
-            }
-          }
+          await setStakeStatuses(openStakes, winningRanges);
+          await Promise.allSettled(
+            openStakes
+              .filter((stake) => stake.username)
+              .map((stake) => {
+                const won = winningRanges.includes(Number(stake.range_index));
+                const rangeLabel =
+                  resolving.ranges?.[Number(stake.range_index)]?.label ??
+                  `Range ${stake.range_index}`;
+                return sendNotification(
+                  stake.username,
+                  won ? "You won" : "Market resolved",
+                  won
+                    ? `Your range "${rangeLabel}" won in "${resolving.title}". Claim your winnings in the app.`
+                    : `Your range "${rangeLabel}" didn't win in "${resolving.title}".`,
+                );
+              }),
+          );
         }
       }
 
@@ -735,37 +758,31 @@ export default function AdminPage() {
       return;
     }
 
-    const winningRanges = market.ranges
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => {
-        const min = (r as any).min ?? (r as any).minPct;
-        const max = (r as any).max ?? (r as any).maxPct;
-        return outcomeNum >= min && (max === null || outcomeNum <= max);
-      })
-      .map(({ i }) => i);
+    try {
+      const winningRanges = winningRangeIndexes(market.ranges, outcomeNum);
 
-    const { data: stakeData } = await supabase
-      .from("stakes")
-      .select("id, range_index")
-      .eq("market_id", market.id)
-      .in("status", ["open", "won", "lost"]);
-
-    if (!stakeData?.length) {
-      setReFixMsg("No stakes found for this market.");
-      return;
-    }
-    for (const stake of stakeData) {
-      const won = winningRanges.includes(Number(stake.range_index));
-      await supabase
+      const { data: stakeData } = await supabase
         .from("stakes")
-        .update({ status: won ? "won" : "lost" })
-        .eq("id", stake.id);
+        .select("id, range_index")
+        .eq("market_id", market.id)
+        .in("status", ["open", "won", "lost"]);
+
+      if (!stakeData?.length) {
+        setReFixMsg("No stakes found for this market.");
+        return;
+      }
+      await setStakeStatuses(stakeData, winningRanges);
+      setReFixMsg(
+        `Fixed ${stakeData.length} stake(s). Winning ranges: [${winningRanges.join(", ")}]`
+      );
+      setReFixMarket(null);
+      setReFixValue("");
+    } catch (err) {
+      console.error("Re-fix error:", err);
+      setReFixMsg(
+        `Couldn't update stakes: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
     }
-    setReFixMsg(
-      `Fixed ${stakeData.length} stake(s). Winning ranges: [${winningRanges.join(", ")}]`
-    );
-    setReFixMarket(null);
-    setReFixValue("");
   }
 
   async function handleMarketImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -897,8 +914,8 @@ export default function AdminPage() {
 
             {/* Volume chart */}
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                Stakes Volume — Last 14 Days
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                Stakes volume, last 14 days
               </p>
               <AreaChart data={volumeChartData} />
             </div>
@@ -907,7 +924,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Category bars */}
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
                   Category Breakdown
                 </p>
                 {categoryBreakdown.length === 0 ? (
@@ -937,7 +954,7 @@ export default function AdminPage() {
 
               {/* Donut */}
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
                   Market Status
                 </p>
                 <DonutChart
@@ -953,7 +970,7 @@ export default function AdminPage() {
             {/* Recent activity */}
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="px-4 pt-4 pb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Recent Activity
                 </p>
               </div>
@@ -962,7 +979,7 @@ export default function AdminPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Market</th>
@@ -1094,7 +1111,7 @@ export default function AdminPage() {
             {/* Re-fix resolved markets */}
             {resolvedMarkets.length > 0 && (
               <div className="mt-6">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
                   Re-apply resolution to stakes
                 </p>
                 {resolvedMarkets.map((m) => (
@@ -1106,7 +1123,7 @@ export default function AdminPage() {
                       <div className="min-w-0">
                         <p className="font-semibold text-sm">{m.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          Stored value: {m.winning_outcome ?? m.winning_value ?? "—"}
+                          Stored value: {m.winning_outcome ?? m.winning_value ?? "n/a"}
                         </p>
                       </div>
                       <Button
@@ -1165,7 +1182,7 @@ export default function AdminPage() {
             {/* Summary row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Total Amount
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-brand">
@@ -1178,7 +1195,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Won
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-emerald-600">
@@ -1186,7 +1203,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Lost
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-red-600">
@@ -1194,7 +1211,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Open
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-blue-600">
@@ -1215,7 +1232,7 @@ export default function AdminPage() {
                 <div className="overflow-hidden rounded-2xl border border-border">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                         <tr>
                           <th className="px-3 py-2">#</th>
                           <th className="px-3 py-2">User</th>
@@ -1340,7 +1357,7 @@ export default function AdminPage() {
                 type="text"
                 value={form.contract_address}
                 onChange={(e) => setForm({ ...form, contract_address: e.target.value })}
-                placeholder="0x… — leave blank if not yet deployed"
+                placeholder="0x… (leave blank if not yet deployed)"
                 className={inputCls}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -1617,7 +1634,7 @@ export default function AdminPage() {
                 </p>
                 <div className="overflow-x-auto rounded-2xl border border-border">
                   <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Wallet</th>
@@ -1643,7 +1660,7 @@ export default function AdminPage() {
                           >
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold uppercase">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold uppercase">
                                   {(p.username ?? "?").slice(0, 2)}
                                 </div>
                                 <div>
@@ -1657,19 +1674,19 @@ export default function AdminPage() {
                             </td>
                             <td className="px-3 py-3">
                               {p.is_whitelisted_gd ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-bold text-brand">
                                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                                   GD Verified
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
                                   Unverified
                                 </span>
                               )}
                             </td>
                             <td className="px-3 py-3 text-right font-mono text-xs font-semibold tabular-nums">
-                              {volume > 0 ? fmtGD(volume) : <span className="text-muted-foreground/50">—</span>}
+                              {volume > 0 ? fmtGD(volume) : <span className="text-muted-foreground/50">n/a</span>}
                             </td>
                             <td className="px-3 py-3 text-right text-xs">
                               {lastActive ? (
@@ -1893,7 +1910,7 @@ function OverviewCard({
     <div className={cn("rounded-2xl border p-4", colorMap[color])}>
       <div className={cn("flex items-center gap-1.5 mb-2", iconColor[color])}>
         {icon}
-        <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider">{label}</p>
       </div>
       <p className="font-display text-xl font-bold tabular-nums text-foreground">{value}</p>
       {subtext && <p className={cn("mt-0.5 text-[11px]", iconColor[color])}>{subtext}</p>}
@@ -2156,7 +2173,7 @@ function StatChip({
     >
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-        <p className="text-[10px] font-semibold uppercase tracking-wider">{label}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider">{label}</p>
       </div>
       <p
         className={cn(
@@ -2182,25 +2199,6 @@ function Field({
       <label className="mb-1.5 block text-sm font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
-  );
-}
-
-// ── Icons used inline in MarketList ──────────────────────────────────────────
-function DollarSquareIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <rect x="2" y="2" width="20" height="20" rx="4" />
-      <path d="M12 6v12M9 9a3 3 0 0 1 6 0c0 1.5-1 2.5-3 3-2 .5-3 1.5-3 3a3 3 0 0 0 6 0" />
-    </svg>
   );
 }
 

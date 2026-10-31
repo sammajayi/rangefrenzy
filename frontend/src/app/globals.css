@@ -168,7 +168,7 @@ select {
 }
 
 .animate-splash-progress {
-  animation: splash-progress-fill 3.2s linear both;
+  animation: splash-progress-fill 1.2s linear both;
 }
 
 .animate-splash-glow {
@@ -182,6 +182,21 @@ select {
 
 .pb-safe {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.3s ease-out both;
 }
 
 @keyframes rise {
@@ -200,6 +215,7 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-toast-in,
   .animate-rise,
   .animate-splash-bounce,
   .animate-splash-dot,

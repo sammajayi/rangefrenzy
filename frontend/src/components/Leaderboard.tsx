@@ -29,7 +29,7 @@ function winRateOf(entry: LeaderboardEntry): number {
 interface Props { address?: string }
 
 function Avatar({ entry, size }: { entry: LeaderboardEntry; size: "sm" | "md" }) {
-  const dim = size === "sm" ? "h-6 w-6 text-[10px]" : "h-9 w-9 text-sm";
+  const dim = size === "sm" ? "h-6 w-6 text-[11px]" : "h-9 w-9 text-sm";
   const initial = entry.username.charAt(0).toUpperCase();
   if (entry.avatar_url) {
     return <img src={entry.avatar_url} alt={entry.username} className={`${dim} shrink-0 rounded-full object-cover`} />;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 const STORAGE_KEY = "pwa-install-dismissed";
 const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -79,14 +80,13 @@ export function PwaInstallPrompt() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/50" onClick={dismiss} />
-      <div className="relative z-10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl mx-4 mb-0 sm:mb-0">
+    <Modal title="Install RangeFrenzy" onClose={dismiss} z="z-[200]" sheet overlayClassName="bg-black/50" className="max-w-sm">
+      <div className="w-full rounded-t-3xl sm:rounded-3xl bg-card p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
-          <img src="/icons/icon-192.svg" alt="RangeFrenzy" className="h-12 w-12 rounded-2xl shadow-sm" />
+          <img src="/icons/icon-192.svg" alt="" className="h-12 w-12 rounded-2xl shadow-sm" />
           <div>
             <p className="font-display text-lg font-bold leading-tight">Install RangeFrenzy</p>
-            <p className="text-xs text-muted-foreground">Stake. Predict. Win G$.</p>
+            <p className="text-xs text-muted-foreground">Predict. Stake. Win.</p>
           </div>
         </div>
 
@@ -121,6 +121,6 @@ export function PwaInstallPrompt() {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

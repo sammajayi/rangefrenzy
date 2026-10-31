@@ -247,7 +247,7 @@ export default function SettingsPage() {
               }
             />
           </div>
-          {pushError && <p className="mt-2 px-1 text-[10px] text-destructive">{pushError}</p>}
+          {pushError && <p className="mt-2 px-1 text-[11px] text-destructive">{pushError}</p>}
         </section>
 
         {/* Sign out */}

@@ -79,7 +79,7 @@ export function MiniPriceChart({ marketAddress, ranges }: Props) {
       </svg>
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
         {series.map((s) => (
-          <span key={s.index} className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+          <span key={s.index} className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
             {s.label}
           </span>

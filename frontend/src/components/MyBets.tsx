@@ -248,7 +248,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
           >
             {f.label}
             {f.key === "CLAIMABLE" && claimableCount > 0 && (
-              <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] text-white">
+              <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] text-white">
                 {claimableCount}
               </span>
             )}
