@@ -132,7 +132,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
     },
     {
       label: "Win rate",
-      value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "—",
+      value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "n/a",
       icon: Target01Icon,
       tint: "bg-amber-50 text-amber-600",
       valueClass: "",
@@ -241,12 +241,12 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
             <div className="flex items-center gap-2 shrink-0">
               <img src="/icons/celo.png" alt="CELO" className="h-5 w-5 rounded-full shrink-0" />
               <span className="text-xs font-semibold uppercase text-muted-foreground">CELO</span>
-              <span className="text-sm font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
+              <span className="text-sm font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "…"}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <img src="/icons/goodollar.png" alt="G$" className="h-5 w-5 rounded-full shrink-0" />
               <span className="text-xs font-semibold uppercase text-muted-foreground">G$</span>
-              <span className="text-sm font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>
+              <span className="text-sm font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "…"}</span>
             </div>
           </div>
         </section>

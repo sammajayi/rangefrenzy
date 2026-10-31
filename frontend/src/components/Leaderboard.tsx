@@ -153,7 +153,7 @@ export function Leaderboard({ address }: Props) {
               <div>
                 <p className="text-xs font-bold leading-tight">@{entry.username}</p>
                 <p className="text-sm font-bold tabular-nums">{entry.wins}W</p>
-                <p className="text-xs opacity-70">{winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`} win</p>
+                <p className="text-xs opacity-70">{winRate === 0 ? "n/a" : `${Math.round(winRate * 100)}%`} win</p>
               </div>
             </div>
           );
@@ -187,7 +187,7 @@ export function Leaderboard({ address }: Props) {
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">{num(row.totalStaked).toFixed(0)} G$</td>
                     <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                      {winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`}
+                      {winRate === 0 ? "n/a" : `${Math.round(winRate * 100)}%`}
                     </td>
                     <td className="px-3 py-3 text-right">
                       <PnlBadge value={num(row.realizedPnl)} />
