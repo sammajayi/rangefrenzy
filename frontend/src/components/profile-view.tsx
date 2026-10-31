@@ -100,12 +100,13 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const pnlPositive = stakeStats.pnl >= 0;
+  const pnl = stakeStats.pnl;
+  const pnlTone = pnl > 0 ? "text-emerald-600" : pnl < 0 ? "text-red-600" : "";
   const stats = [
     {
       label: "Total P&L",
-      value: `${pnlPositive ? "+" : ""}${stakeStats.pnl.toFixed(2)} G$`,
-      valueClass: pnlPositive ? "text-emerald-600" : "text-red-600",
+      value: `${pnl > 0 ? "+" : ""}${pnl.toFixed(2)} G$`,
+      valueClass: pnlTone,
     },
     {
       label: "Open",
@@ -125,7 +126,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
   ];
 
   return (
-    <div className="min-h-[calc(100dvh-8rem)] rounded-t-3xl bg-white pb-8 pt-5 text-foreground shadow-sm ring-1 ring-border relative overflow-hidden">
+    <div className="relative min-h-[calc(100dvh-8rem)] pb-8 pt-5 text-foreground">
       <div className="px-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
@@ -155,6 +156,12 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
                 className="hidden"
                 onChange={handleAvatarUpload}
               />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-foreground text-background"
+              >
+                <Upload01Icon className="h-3 w-3" />
+              </span>
               {avatarUploading && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -166,7 +173,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
               <button
                 type="button"
                 onClick={copy}
-                className="mt-1 inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+                className="-ml-1 mt-0.5 inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
               >
                 {short}
                 <Copy01Icon className="h-3 w-3" />
@@ -190,7 +197,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 rounded-full border-border bg-white shadow-sm"
+              className="h-11 w-11 rounded-full border-border bg-card"
               onClick={() => router.push("/settings")}
               aria-label="Settings"
             >

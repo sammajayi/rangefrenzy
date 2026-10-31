@@ -6,10 +6,12 @@ import { parseUnits, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import {
   Activity02Icon, User02Icon, Chart01Icon,
-  GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon,
+  GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon, ArrowDown01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { MarketCard } from "@/components/market-card";
+import { PositionPanel, Notice } from "@/components/position-panel";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -42,36 +44,6 @@ interface Props {
   profile: Profile | null;
 }
 
-// One neutral treatment for every category; colour is reserved for status and the brand accent.
-const CATEGORY_CHIP = "bg-muted text-muted-foreground border-border";
-const CATEGORY_PLACEHOLDER = "bg-muted";
-
-/** Where the pool sits across the ranges. Bars are scaled to the largest range; labels are true shares. */
-function RangeShareBars({ ranges }: { ranges: OnChainRange[] }) {
-  const total = ranges.reduce((sum, r) => sum + r.totalStaked, 0n);
-  const shares = ranges.map((r) => (total > 0n ? Number((r.totalStaked * 1000n) / total) / 10 : 0));
-  const max = Math.max(...shares, 0);
-  return (
-    <ul aria-label="Share of the pool by range" className="mt-4 space-y-2">
-      {ranges.map((r, i) => (
-        <li key={r.index} className="flex items-center gap-3 text-xs">
-          <span className="w-[5.5rem] shrink-0 truncate tabular-nums text-muted-foreground">
-            {formatRangeLabel(r)}
-          </span>
-          <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
-            <span
-              className="absolute inset-y-0 left-0 rounded-full bg-brand"
-              style={{ width: max > 0 ? `${(shares[i] / max) * 100}%` : "0%" }}
-            />
-          </span>
-          <span className="w-9 shrink-0 text-right tabular-nums text-muted-foreground">
-            {total > 0n ? `${Math.round(shares[i])}%` : ""}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export function RangeFrenzyHome({ address, profile }: Props) {
   const pendingTab = useAppStore((s) => s.pendingTab);
@@ -110,6 +82,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
     if (match) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing component state from the URL on mount
       setSelected({ market: match, range: match.ranges[0] });
+      setShowStakeModal(true);
       setTab("play");
     }
     window.history.replaceState({}, "", window.location.pathname);
@@ -143,7 +116,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
 
   const handleSelectMarket = (market: OnChainMarket) => {
     setSelected({ market, range: market.ranges[0] });
-    setShowStakeModal(false);
+    setShowStakeModal(true);
   };
 
   const handleClaimMarket = (marketAddress: string) => {
@@ -221,48 +194,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                 {filteredMarkets.map((market) => {
                   return (
                     <li key={market.address}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectMarket(market)}
-                        className="group w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-brand/40 hover:bg-muted/30"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
-                            {market.imageUrl ? (
-                              <img src={market.imageUrl} alt="" className="h-full w-full object-contain p-1" />
-                            ) : (
-                              <Chart01Icon className="h-5 w-5 text-muted-foreground/60" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground">
-                              <span className="font-semibold text-brand">{market.categoryLabel}</span>
-                              {" · "}
-                              {market.deadlineLabel}
-                            </p>
-                            <p className="mt-0.5 font-display text-base font-semibold leading-snug">{market.question}</p>
-                          </div>
-                        </div>
-
-                        <RangeShareBars ranges={market.ranges} />
-
-                        <p className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>
-                            {market.pool > 0n ? (
-                              <>
-                                <span className="font-semibold tabular-nums text-foreground">{market.poolLabel}</span> in the pool
-                              </>
-                            ) : (
-                              "No stakes yet. Be the first."
-                            )}
-                          </span>
-                          {market.numStakers > 0 && (
-                            <span className="tabular-nums">
-                              {market.numStakers} {market.numStakers === 1 ? "staker" : "stakers"}
-                            </span>
-                          )}
-                        </p>
-                      </button>
+                      <MarketCard market={market} onSelect={handleSelectMarket} />
                     </li>
                   );
                 })}
@@ -433,21 +365,6 @@ export function RangeFrenzyHome({ address, profile }: Props) {
         </Modal>
       )}
 
-      {/* ── MARKET DETAIL MODAL ── */}
-      {selected && !showStakeModal && (
-        <MarketDetailModal
-          market={selected.market}
-          userAddress={address as `0x${string}`}
-          copiedShare={copiedShare}
-          onClose={handleCloseAll}
-          onShareMarket={handleShareMarket}
-          onGoToStake={(range) => {
-            setSelected({ market: selected.market, range });
-            setShowStakeModal(true);
-          }}
-        />
-      )}
-
       {/* ── STAKE MODAL ── */}
       {selected && showStakeModal && (
         <StakeModal
@@ -456,6 +373,8 @@ export function RangeFrenzyHome({ address, profile }: Props) {
           userAddress={address as `0x${string}`}
           onRangeSelect={(r) => setSelected({ ...selected, range: r })}
           onClose={handleCloseAll}
+          copiedShare={copiedShare}
+          onShareMarket={handleShareMarket}
         />
       )}
     </div>
@@ -469,14 +388,19 @@ function StakeModal({
   userAddress,
   onRangeSelect,
   onClose,
+  copiedShare,
+  onShareMarket,
 }: {
   market: OnChainMarket;
   selectedRange: OnChainRange;
   userAddress: `0x${string}`;
   onRangeSelect: (r: OnChainRange) => void;
   onClose: () => void;
+  copiedShare: boolean;
+  onShareMarket: (market: OnChainMarket) => void;
 }) {
   const [amount, setAmount] = useState("");
+  const [rangeChosen, setRangeChosen] = useState(false); // the user picks; we do not pre-select one
   const [showShare, setShowShare] = useState(false);
 
   const { address: wagmiAddress } = useAccount();
@@ -643,302 +567,224 @@ function StakeModal({
     market.status === MarketStatus.CLOSED ? "Closed" :
     market.status === MarketStatus.RESOLVED ? "Resolved" : "Cancelled";
 
-  const statusColor =
-    market.status === MarketStatus.OPEN ? "bg-green-100 text-green-700" :
-    market.status === MarketStatus.RESOLVED ? "bg-blue-100 text-blue-700" :
-    "bg-muted text-muted-foreground";
 
   const anySuccess = stakeStep === "success" || sellStep === "success" || claimStep === "success";
 
+  // Share of the pool per range, so picking a range is an informed choice.
+  const totalStaked = market.ranges.reduce((sum, r) => sum + r.totalStaked, 0n);
+  const shareOf = (r: OnChainRange) =>
+    totalStaked > 0n ? Math.round(Number((r.totalStaked * 1000n) / totalStaked) / 10) : 0;
+
+  // Gain or loss if the position were sold at the current price.
+  const stakedNum = userStake ? parseFloat(formatUnits(userStake.amountStaked, tokenDecimals)) : 0;
+  const exitNum = parseFloat(formatUnits(expectedProceeds, tokenDecimals));
+  const exitDelta = exitNum - stakedNum;
+
+  const amountNum = parseFloat(amount);
+  const amountValid = rangeChosen && amountNum > 0 && amountNum >= minStake && amountNum <= balance;
+  const showStakeForm = !hasActivePosition && isOpen && stakeStep !== "success";
+  const hint =
+    amountNum > 0 && amountNum < minStake
+      ? `Minimum stake is ${minStake} ${tokenSymbol}.`
+      : amountNum > balance
+        ? `You have ${balance.toFixed(2)} ${tokenSymbol} available.`
+        : null;
+
   return (
-    <Modal title={market.question} onClose={handleClose}>
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl max-h-[90dvh] overflow-y-auto">
-
+    <Modal title={market.question} onClose={handleClose} sheet>
+      <div className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-xl sm:rounded-3xl">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">{market.categoryLabel}</span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", statusColor)}>{statusLabel}</span>
-            </div>
-            <h3 className="font-display text-lg font-bold leading-snug">{market.question}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
-          </div>
-          <button type="button" onClick={handleClose} aria-label="Close" className="text-muted-foreground hover:text-foreground transition shrink-0">
-            <Cancel01Icon className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Pool stats */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xs text-muted-foreground">Total pool</p>
-            <p className="font-bold tabular-nums">{market.poolLabel}</p>
-          </div>
-          <div className="flex-1 rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xs text-muted-foreground">Stakers</p>
-            <p className="font-bold tabular-nums">{market.numStakers}</p>
-          </div>
-        </div>
-
-        {/* ── PRICE MOVEMENT ── */}
-        <div className="mb-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Price movement</p>
-          <MiniPriceChart
-            marketAddress={market.address}
-            ranges={market.ranges.map((r) => ({ index: r.index, label: formatRangeLabel(r) }))}
-          />
-        </div>
-
-        {/* ── ACTIVE POSITION CARD ── */}
-        {hasActivePosition && userStake && userStake.amountStaked > 0n && (
-          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Your position</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Range</span>
-                <span className="font-semibold">{positionRangeLabel}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Staked</span>
-                <span className="font-semibold tabular-nums">{formatUnits(userStake.amountStaked, tokenDecimals)} {tokenSymbol}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Shares</span>
-                <span className="font-semibold tabular-nums">{(Number(userStake.shares) / 1e18).toFixed(4)}</span>
-              </div>
-              {canSell && expectedProceeds > 0n && (
-                <div className="flex items-center justify-between text-sm pt-1.5 border-t border-primary/20 mt-1.5">
-                  <span className="text-muted-foreground">Exit value now</span>
-                  <span className="font-semibold tabular-nums">{formatUnits(expectedProceeds, tokenDecimals)} {tokenSymbol}</span>
-                </div>
-              )}
-              {isResolved && (userStake.estimatedPayout ?? 0n) > 0n && (
-                <div className="flex items-center justify-between text-sm pt-1.5 border-t border-primary/20 mt-1.5">
-                  <span className="font-semibold text-brand">Payout</span>
-                  <span className="font-bold text-brand tabular-nums">{formatUnits(userStake.estimatedPayout, tokenDecimals)} {tokenSymbol}</span>
-                </div>
-              )}
-              {isResolved && !canClaim && !userStake.claimed && (
-                <p className="text-xs text-muted-foreground pt-1 border-t border-primary/20 mt-1">Your range did not win this market.</p>
-              )}
-              {userStake.claimed && (
-                <p className="text-xs text-brand pt-1 border-t border-primary/20 mt-1">Claimed.</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── SELL POSITION ── */}
-        {canSell && (
-          <div className="mb-4">
-            {sellStep === "success" ? (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Position sold</p>
-                <p className="text-xs text-green-600 mt-1">Your G$ has been returned to your wallet.</p>
-              </div>
-            ) : (
-              <>
-                {sellStep === "error" && (
-                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-                    {sellError}
-                    <button type="button" onClick={resetSell} className="ml-2 text-xs underline">Retry</button>
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:border-destructive"
-                  disabled={!walletReady || sellStep === "selling"}
-                  onClick={sell}
-                >
-                  {sellStep === "selling" ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-destructive/30 border-t-destructive" />
-                      Selling…
-                    </span>
-                  ) : "Sell position"}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── CLAIM WINNINGS ── */}
-        {canClaim && (
-          <div className="mb-4">
-            {claimStep === "success" ? (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Winnings claimed</p>
-                <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.estimatedPayout, tokenDecimals)} {tokenSymbol} sent to your wallet.</p>
-              </div>
-            ) : (
-              <>
-                {claimStep === "error" && (
-                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-                    {claimError}
-                    <button type="button" onClick={resetClaim} className="ml-2 text-xs underline">Retry</button>
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  className="w-full bg-brand hover:bg-brand-dark text-white"
-                  disabled={claimStep === "claiming"}
-                  onClick={() => executeClaim("claim")}
-                >
-                  {claimStep === "claiming" ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Claiming…
-                    </span>
-                  ) : `Claim ${formatUnits(userStake!.estimatedPayout, tokenDecimals)} ${tokenSymbol}`}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── REFUND (cancelled market) ── */}
-        {canRefund && (
-          <div className="mb-4">
-            {claimStep === "success" ? (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Refund received</p>
-                <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.amountStaked, tokenDecimals)} {tokenSymbol} returned to your wallet.</p>
-              </div>
-            ) : (
-              <>
-                {claimStep === "error" && (
-                  <div className="mb-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-                    {claimError}
-                    <button type="button" onClick={resetClaim} className="ml-2 text-xs underline">Retry</button>
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={claimStep === "claiming"}
-                  onClick={() => executeClaim("refund")}
-                >
-                  {claimStep === "claiming" ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-                      Processing…
-                    </span>
-                  ) : `Refund ${formatUnits(userStake!.amountStaked, tokenDecimals)} ${tokenSymbol}`}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── STAKE INPUT (no active position, market open) ── */}
-        {!hasActivePosition && isOpen && (
-          <>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Pick your range</p>
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {market.ranges.map((r) => {
-                const rangePool = parseFloat(formatUnits(r.totalStaked, tokenDecimals));
-                return (
-                  <button
-                    key={r.index}
-                    type="button"
-                    aria-pressed={selectedRange.index === r.index}
-                    onClick={() => onRangeSelect(r)}
-                    className={cn(
-                      "rounded-xl border px-3 py-3 text-left text-sm font-medium transition cursor-pointer",
-                      selectedRange.index === r.index
-                        ? "border-brand bg-brand/10 text-foreground"
-                        : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40",
-                    )}
-                  >
-                    <p className="font-semibold">{formatRangeLabel(r)}</p>
-                    {rangePool > 0 && <p className="text-[11px] mt-0.5 opacity-70">{rangePool.toFixed(2)} {tokenSymbol}</p>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {stakeStep !== "success" && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount ({tokenSymbol})</p>
-                  <button type="button" onClick={() => setAmount(balance.toString())} className="text-xs text-primary hover:underline">
-                    Max: {balance.toFixed(4)}
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  min={minStake}
-                  step="0.01"
-                  aria-label={`Amount in ${tokenSymbol}`}
-                  placeholder={`Min ${minStake} ${tokenSymbol}`}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none ring-2 ring-transparent focus:ring-primary/30"
-                />
-                {stakePrice && stakePrice > 0n && (
-                  <div className="mt-2 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
-                    <span>Price per share: <span className="font-semibold text-foreground">{(Number(stakePrice) / 1e18).toFixed(4)} {tokenSymbol}</span></span>
-                    {estimatedShares > 0 && (
-                      <span>Est. shares: <span className="font-semibold text-foreground">{estimatedShares.toFixed(4)}</span></span>
-                    )}
-                  </div>
-                )}
-                {stakeError && <p className="mt-1.5 text-xs text-destructive">{stakeError}</p>}
-                {!stakeError && parseFloat(amount) > 0 && parseFloat(amount) < minStake && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">Minimum stake is {minStake} {tokenSymbol}.</p>
-                )}
-                {!stakeError && parseFloat(amount) > balance && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">You have {balance.toFixed(2)} {tokenSymbol} available.</p>
-                )}
-              </div>
-            )}
-
-            {stakeStep === "success" && (
-              <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Stake placed</p>
-                <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── CLOSED / NO POSITION ── */}
-        {!hasActivePosition && !isOpen && (
-          <div className="mb-4 rounded-xl bg-muted/50 p-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              {isResolved ? "This market has been resolved." :
-               isCancelled ? "This market has been cancelled." :
-               "Staking is closed for this market."}
+        <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-5">
+          <div className="min-w-0">
+            <p className="text-xs">
+              <span className="font-semibold uppercase tracking-wide text-brand">{market.categoryLabel}</span>
+              <span className="text-muted-foreground"> · {statusLabel}</span>
+            </p>
+            <h3 className="mt-1 text-balance font-display text-lg font-bold leading-snug">{market.question}</h3>
+            <p className="mt-1 flex flex-wrap gap-x-3 text-sm tabular-nums text-muted-foreground">
+              <span className="whitespace-nowrap">
+                {market.pool > 0n ? market.poolLabel + " pool" : "Empty pool"}
+                {market.numStakers > 0 && ` · ${market.numStakers} ${market.numStakers === 1 ? "staker" : "stakers"}`}
+              </span>
+              <span className="whitespace-nowrap">{market.deadlineLabel}</span>
             </p>
           </div>
-        )}
-
-
-        {!hasActivePosition && isOpen && stakeStep !== "success" && (
-          <p className="mb-3 text-xs text-muted-foreground">
-            You can lose the G$ you stake. Selling early pays the current price,
-            which can be lower than what you paid.
-          </p>
-        )}
-
-        {/* Footer actions */}
-        <div className="flex gap-3">
-          <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
-            {anySuccess ? "Done" : "Close"}
-          </Button>
-          {!hasActivePosition && isOpen && stakeStep !== "success" && (
-            <Button
+          <div className="-mr-2 -mt-1 flex shrink-0">
+            <button
               type="button"
-              className="flex-1 bg-brand hover:bg-brand-dark text-white"
-              disabled={!walletReady || !amount || parseFloat(amount) < minStake || stakeStep === "approving" || stakeStep === "staking"}
-              onClick={handleStake}
+              onClick={() => onShareMarket(market)}
+              aria-label="Share market"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
-              {stakeStep === "approving" ? "Approving…" :
-               stakeStep === "staking" ? "Staking…" :
-               `Stake on ${formatRangeLabel(selectedRange)}`}
+              {copiedShare ? <CheckmarkCircle01Icon className="h-5 w-5 text-brand" /> : <Share01Icon className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Close"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Cancel01Icon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-5">
+          <PositionPanel
+            symbol={tokenSymbol}
+            showCard={!!(hasActivePosition && userStake && userStake.amountStaked > 0n)}
+            rangeLabel={positionRangeLabel}
+            staked={stakedNum}
+            shares={userStake ? Number(userStake.shares) / 1e18 : 0}
+            exitValue={canSell && expectedProceeds > 0n ? exitNum : null}
+            payout={
+              isResolved && userStake && (userStake.estimatedPayout ?? 0n) > 0n
+                ? parseFloat(formatUnits(userStake.estimatedPayout, tokenDecimals))
+                : null
+            }
+            claimed={!!userStake?.claimed}
+            resolved={isResolved}
+            canSell={!!canSell}
+            canClaim={!!canClaim}
+            canRefund={!!canRefund}
+            walletReady={walletReady}
+            sell={{ step: sellStep, error: sellError, onSell: sell, onRetry: resetSell }}
+            claim={{
+              step: claimStep,
+              error: claimError,
+              onClaim: () => executeClaim("claim"),
+              onRefund: () => executeClaim("refund"),
+              onRetry: resetClaim,
+            }}
+          />
+
+          {/* Stake form */}
+          {showStakeForm && (
+            <>
+              <section aria-label="Pick a range">
+                <h4 className="mb-2 text-sm font-semibold">Pick a range</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {market.ranges.map((r) => (
+                    <button
+                      key={r.index}
+                      type="button"
+                      aria-pressed={rangeChosen && selectedRange.index === r.index}
+                      onClick={() => {
+                        setRangeChosen(true);
+                        onRangeSelect(r);
+                      }}
+                      className={cn(
+                        "rounded-xl border px-3 py-2.5 text-left transition",
+                        rangeChosen && selectedRange.index === r.index
+                          ? "border-brand bg-brand/10"
+                          : "border-border hover:border-brand/40"
+                      )}
+                    >
+                      <span className="block text-sm font-semibold tabular-nums">{formatRangeLabel(r)}</span>
+                      <span className="block text-xs tabular-nums text-muted-foreground">
+                        {totalStaked > 0n ? `${shareOf(r)}% of pool` : "No stakes"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section aria-label="Amount">
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="stake-amount" className="text-sm font-semibold">
+                    Amount
+                  </label>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    Balance {balance.toFixed(2)} {tokenSymbol}
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    id="stake-amount"
+                    type="number"
+                    inputMode="decimal"
+                    min={minStake}
+                    step="0.01"
+                    placeholder={`Min ${minStake}`}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-input bg-background pl-4 pr-28 text-base tabular-nums outline-none ring-2 ring-transparent focus:ring-brand/30"
+                  />
+                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{tokenSymbol}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAmount(balance.toString())}
+                      className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-semibold hover:bg-muted/70"
+                    >
+                      Max
+                    </button>
+                  </div>
+                </div>
+                {stakeError ? (
+                  <p role="alert" className="mt-2 text-sm text-destructive">{stakeError}</p>
+                ) : hint ? (
+                  <p className="mt-2 text-sm text-muted-foreground">{hint}</p>
+                ) : rangeChosen && stakePrice && stakePrice > 0n && estimatedShares > 0 ? (
+                  <p className="mt-2 text-sm tabular-nums text-muted-foreground">
+                    You get about {estimatedShares.toFixed(2)} shares at {(Number(stakePrice) / 1e18).toFixed(2)} {tokenSymbol} each.
+                  </p>
+                ) : null}
+              </section>
+            </>
+          )}
+
+          {stakeStep === "success" && <Notice title="Stake placed" body="Your prediction is locked in." />}
+
+          {!hasActivePosition && !isOpen && !canRefund && (
+            <p className="rounded-2xl bg-muted/50 p-4 text-sm text-muted-foreground">
+              {isResolved ? "This market has been resolved." : isCancelled ? "This market has been cancelled." : "Staking is closed for this market."}
+            </p>
+          )}
+
+          {/* Price chart: secondary, collapsed so an empty chart does not push the action down. */}
+          <details className="group rounded-xl border border-border">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium">
+              Price movement
+              <ArrowDown01Icon className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="px-4 pb-4">
+              <MiniPriceChart
+                marketAddress={market.address}
+                ranges={market.ranges.map((r) => ({ index: r.index, label: formatRangeLabel(r) }))}
+              />
+            </div>
+          </details>
+        </div>
+
+        {/* Footer: the primary action is always on screen */}
+        <div className="border-t border-border bg-card px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+          {showStakeForm ? (
+            <>
+              <Button
+                type="button"
+                className="h-12 w-full text-base font-semibold"
+                disabled={!walletReady || !amountValid || stakeStep === "approving" || stakeStep === "staking"}
+                onClick={handleStake}
+              >
+                {stakeStep === "approving"
+                  ? "Approving…"
+                  : stakeStep === "staking"
+                    ? "Staking…"
+                    : !rangeChosen
+                      ? "Pick a range"
+                      : amountValid
+                        ? `Stake ${amount} ${tokenSymbol} on ${formatRangeLabel(selectedRange)}`
+                        : "Enter an amount"}
+              </Button>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                You can lose the G$ you stake. Selling early pays the current price, which can be lower than what you paid.
+              </p>
+            </>
+          ) : (
+            <Button type="button" variant="outline" className="h-12 w-full" onClick={handleClose}>
+              {anySuccess ? "Done" : "Close"}
             </Button>
           )}
         </div>
@@ -953,136 +799,6 @@ function StakeModal({
           onClose={() => setShowShare(false)}
         />
       )}
-    </Modal>
-  );
-}
-
-/* ── Market Detail Modal ── */
-function MarketDetailModal({
-  market,
-  userAddress,
-  copiedShare,
-  onClose,
-  onShareMarket,
-  onGoToStake,
-}: {
-  market: OnChainMarket;
-  userAddress: `0x${string}`;
-  copiedShare: boolean;
-  onClose: () => void;
-  onShareMarket: (market: OnChainMarket) => void;
-  onGoToStake: (range: OnChainRange) => void;
-}) {
-  const [selectedRange, setSelectedRange] = useState(market.ranges[0]);
-  const { hasActivePosition, userStake } = useMarketContract(market.address as `0x${string}`, userAddress);
-
-  const handleCta = () => {
-    if (hasActivePosition && userStake) {
-      const userRange = market.ranges[Number(userStake.rangeIndex)] ?? market.ranges[0];
-      onGoToStake(userRange);
-    } else {
-      onGoToStake(selectedRange);
-    }
-  };
-
-  return (
-    <Modal title={market.question} onClose={onClose}>
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
-        <div className={cn("flex h-36 items-center justify-center overflow-hidden shrink-0", market.imageUrl ? "" : CATEGORY_PLACEHOLDER)}>
-          {market.imageUrl ? (
-            <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
-          )}
-        </div>
-        <div className="p-6">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
-                {market.categoryLabel}
-              </span>
-              <span className="text-xs text-muted-foreground">G$</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onShareMarket(market)}
-              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-brand/40 hover:text-foreground"
-            >
-              {copiedShare ? (
-                <>
-                  <CheckmarkCircle01Icon className="h-3.5 w-3.5 text-brand" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Share01Icon className="h-3.5 w-3.5" />
-                  Share
-                </>
-              )}
-            </button>
-          </div>
-          <h3 className="font-display text-xl font-bold">{market.question}</h3>
-          <div className="mt-1 flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">{market.deadlineLabel}</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand tabular-nums">
-              <Chart01Icon className="h-3.5 w-3.5" />
-              {market.poolLabel === "No stakes yet" ? "0" : market.poolLabel.split(" ")[0]}
-            </span>
-          </div>
-
-          {/* Price chart — always visible */}
-          <div className="mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Price movement</p>
-            <MiniPriceChart
-              marketAddress={market.address}
-              ranges={market.ranges.map((r) => ({ index: r.index, label: formatRangeLabel(r) }))}
-            />
-          </div>
-
-          {/* Active position notice */}
-          {hasActivePosition ? (
-            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-              <p className="text-sm font-semibold text-primary">You have an active position</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Open the position panel to track price or sell.</p>
-            </div>
-          ) : (
-            <>
-              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pick your range</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {market.ranges.map((r) => (
-                  <button
-                    key={r.index}
-                    type="button"
-                    aria-pressed={selectedRange.index === r.index}
-                    onClick={() => setSelectedRange(r)}
-                    className={cn(
-                      "rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",
-                      selectedRange.index === r.index
-                        ? "border-brand bg-brand/8 text-foreground"
-                        : "border-border bg-muted/30 text-muted-foreground hover:border-brand/40",
-                    )}
-                  >
-                    {formatRangeLabel(r)}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>
-              Close
-            </Button>
-            <Button
-              type="button"
-              className="flex-1 rounded-2xl bg-brand hover:bg-brand-dark text-white"
-              onClick={handleCta}
-            >
-              {hasActivePosition ? "Manage position" : "Stake G$"}
-            </Button>
-          </div>
-        </div>
-      </div>
     </Modal>
   );
 }

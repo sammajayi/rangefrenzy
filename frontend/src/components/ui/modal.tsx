@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ export function Modal({
   dismissable = true,
   overlayClassName = "bg-black/60",
 }: ModalProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
   return (
     <Dialog.Root
       open
@@ -40,6 +41,16 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Overlay className={cn("fixed inset-0", overlayClassName, z)} />
         <Dialog.Content
+          ref={contentRef}
+          onOpenAutoFocus={(e) => {
+            // Keep a field that is already focused (autoFocus); otherwise focus the dialog,
+            // so the first button does not show a focus ring the moment it opens.
+            const el = contentRef.current;
+            if (el && !el.contains(document.activeElement)) {
+              e.preventDefault();
+              el.focus();
+            }
+          }}
           aria-describedby={undefined}
           className={cn(
             "fixed left-1/2 w-full max-w-md -translate-x-1/2 outline-none",

@@ -39,8 +39,8 @@ function SettingsRow({
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold">{label}</p>
-        {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
+        <p className="text-sm font-semibold">{label}</p>
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
       {action}
     </div>
@@ -152,49 +152,54 @@ export default function SettingsPage() {
   const isVerified = isVerifiedStore || !!profile?.is_whitelisted_gd;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
         <div className="container mx-auto flex h-14 max-w-lg items-center gap-2 px-4">
           <button
             type="button"
             onClick={goBack}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
+            className="-ml-2 flex h-11 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground transition hover:text-foreground"
           >
             <ArrowLeft01Icon className="h-4 w-4" />
             Back
           </button>
-          <span className="text-muted-foreground/40">/</span>
-          <span className="text-sm font-semibold">Settings</span>
+          <h1 className="ml-2 font-display text-base font-bold">Settings</h1>
         </div>
       </header>
 
       <div className="container mx-auto max-w-lg px-5 py-8 space-y-8">
         {/* Wallet */}
         <section>
-          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Wallet
-          </p>
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3.5">
-            <code className="truncate text-[13px] font-mono">{displayAddress}</code>
+          </h2>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3.5">
+            <div className="min-w-0">
+              <code className="block font-mono text-sm">
+                {displayAddress.slice(0, 6)}…{displayAddress.slice(-4)}
+              </code>
+              <p className="mt-0.5 text-xs text-muted-foreground">Celo network</p>
+            </div>
             <button
               type="button"
               onClick={handleCopy}
+              aria-label="Copy wallet address"
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
+                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition",
                 copied ? "text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-              aria-label="Copy wallet address"
             >
               {copied ? <Tick01Icon className="h-4 w-4" /> : <Copy01Icon className="h-4 w-4" />}
+              {copied ? "Copied" : "Copy"}
             </button>
           </div>
         </section>
 
         {/* Account */}
         <section>
-          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Account
-          </p>
+          </h2>
           <div className="divide-y divide-border rounded-2xl border border-border bg-card">
             <SettingsRow
               icon={<PencilEdit01Icon className="h-4 w-4" />}
@@ -226,6 +231,15 @@ export default function SettingsPage() {
               />
             )}
 
+            {pushSupported && pushPermission === "denied" && (
+              <SettingsRow
+                icon={<Notification03Icon className="h-4 w-4" />}
+                label="Push notifications"
+                description="Blocked in your browser. Allow notifications for this site to turn them on."
+                action={<span className="text-xs font-semibold text-muted-foreground">Blocked</span>}
+              />
+            )}
+
             <SettingsRow
               icon={
                 isVerified ? (
@@ -235,10 +249,10 @@ export default function SettingsPage() {
                 )
               }
               label="GoodDollar verification"
-              description={isVerified ? "Verified" : "Verify to claim your daily G$"}
+              description={isVerified ? "Your daily G$ claim is unlocked" : "Verify to claim your daily G$"}
               action={
                 isVerified ? (
-                  <span className="text-[11px] font-semibold text-brand">Verified</span>
+                  <span className="rounded-md bg-brand/10 px-2 py-1 text-xs font-semibold text-brand">Verified</span>
                 ) : (
                   <Button type="button" size="sm" onClick={() => setShowVerification(true)}>
                     Verify
@@ -247,7 +261,7 @@ export default function SettingsPage() {
               }
             />
           </div>
-          {pushError && <p className="mt-2 px-1 text-[11px] text-destructive">{pushError}</p>}
+          {pushError && <p className="mt-2 px-1 text-xs text-destructive">{pushError}</p>}
         </section>
 
         {/* Sign out */}
@@ -255,7 +269,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-[13px] font-semibold text-destructive transition hover:bg-destructive/10"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
           >
             <Logout01Icon className="h-4 w-4" />
             Sign out
@@ -273,17 +287,18 @@ export default function SettingsPage() {
         <Modal title="Change username" onClose={() => setShowUsernameEdit(false)} z="z-[100]" sheet overlayClassName="bg-black/50" className="max-w-sm">
           <div className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-card p-6 shadow-xl">
             <h3 className="font-display text-base font-bold mb-1">Change username</h3>
-            <p className="text-[13px] text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
+            <p className="mb-4 text-sm text-muted-foreground">3–30 characters: letters, numbers and underscores.</p>
             <input
               type="text"
               value={newUsername}
               onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
               placeholder="new_username"
+              aria-label="New username"
               maxLength={30}
               autoFocus
-              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-[13px] font-medium outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-base font-medium outline-none focus:ring-2 focus:ring-primary/50"
             />
-            {usernameError && <p className="mt-2 text-[11px] text-destructive">{usernameError}</p>}
+            {usernameError && <p role="alert" className="mt-2 text-xs text-destructive">{usernameError}</p>}
             <div className="mt-4 flex gap-2">
               <Button
                 type="button"
