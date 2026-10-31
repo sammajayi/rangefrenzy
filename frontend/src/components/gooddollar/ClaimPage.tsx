@@ -181,6 +181,13 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
 
   const isLoading = state.status === "loading";
   const canClaim = state.status === "can_claim";
+  const claimLabel = canClaim
+    ? `Claim ${state.amount} G$`
+    : state.status === "already_claimed"
+      ? "Claimed for today"
+      : state.status === "not_whitelisted"
+        ? "Verify to claim"
+        : "Claim unavailable";
 
   if (compact) {
     if (isLoading) {
@@ -231,10 +238,8 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               Claiming…
             </span>
-          ) : canClaim ? (
-            `Claim ${state.amount} G$`
           ) : (
-            "Claimed for today"
+            claimLabel
           )}
         </Button>
       </div>
@@ -310,10 +315,8 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               Claiming…
             </span>
-          ) : canClaim ? (
-            `Claim ${state.amount} G$`
           ) : (
-            "Claimed for today"
+            claimLabel
           )}
         </Button>
       </div>

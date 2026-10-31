@@ -7,10 +7,6 @@ import {
   Copy01Icon,
   Setting07Icon,
   Upload01Icon,
-  CheckmarkCircle01Icon,
-  ChartUpIcon,
-  Clock01Icon,
-  Target01Icon,
   Wallet01Icon,
   FireIcon,
 } from "hugeicons-react";
@@ -79,10 +75,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
 
   const short = `${displayAddress.slice(0, 6)}…${displayAddress.slice(-4)}`;
   const initials = (profile?.username ?? "PK").slice(0, 2).toUpperCase();
-  const displayName = profile?.username
-    ? profile.username.charAt(0).toUpperCase() + profile.username.slice(1)
-    : "Player";
-  const handle = profile?.username ? `@${profile.username}` : "@player";
+  const displayName = profile?.username ? `@${profile.username}` : "Player";
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,29 +105,21 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
     {
       label: "Total P&L",
       value: `${pnlPositive ? "+" : ""}${stakeStats.pnl.toFixed(2)} G$`,
-      icon: ChartUpIcon,
-      tint: pnlPositive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600",
       valueClass: pnlPositive ? "text-emerald-600" : "text-red-600",
     },
     {
       label: "Open",
       value: String(stakeStats.open),
-      icon: Clock01Icon,
-      tint: "bg-blue-50 text-blue-600",
       valueClass: "",
     },
     {
       label: "Closed",
       value: String(stakeStats.closed),
-      icon: CheckmarkCircle01Icon,
-      tint: "bg-muted text-muted-foreground",
       valueClass: "",
     },
     {
       label: "Win rate",
       value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "n/a",
-      icon: Target01Icon,
-      tint: "bg-amber-50 text-amber-600",
       valueClass: "",
     },
   ];
@@ -178,7 +163,6 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
             </div>
             <div>
               <h2 className="font-display text-xl font-bold tracking-tight">{displayName}</h2>
-              <p className="text-sm text-muted-foreground">{handle}</p>
               <button
                 type="button"
                 onClick={copy}
@@ -218,12 +202,8 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
         {/* Stats */}
         <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
           {stats.map((s) => {
-            const Icon = s.icon;
             return (
               <div key={s.label} className="flex flex-col items-center gap-1 bg-card px-2 py-3 text-center">
-                <div className={cn("flex h-5 w-5 items-center justify-center rounded-md", s.tint)}>
-                  <Icon className="h-3 w-3" />
-                </div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
                 <p className={cn("font-display text-sm font-bold tabular-nums", s.valueClass)}>{s.value}</p>
               </div>

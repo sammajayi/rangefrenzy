@@ -94,7 +94,15 @@ function HomeInner() {
     if ((!splashDone && !splashAlreadyPlayed) || !ready) return;
     // `authenticated` intentionally omitted — Privy never auto-reconnects external
     // wallets on refresh. Stored address + profile are sufficient.
+    // Dev-only preview: /?preview=home opens the app for a seeded account without a
+    // wallet or on-chain verification. NODE_ENV is inlined, so production builds drop it.
+    const previewHome =
+      process.env.NODE_ENV !== "production" && searchParams.get("preview") === "home";
     const route = async () => {
+      if (previewHome && address && profile) {
+        setPhase("home");
+        return;
+      }
       if (address && profile) {
         const verified = await syncVerification(address);
         setPhase(verified ? "home" : "verify");

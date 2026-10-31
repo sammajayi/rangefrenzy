@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { parseUnits, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import {
-  Activity02Icon, User02Icon, Chart01Icon, ArrowRight01Icon,
+  Activity02Icon, User02Icon, Chart01Icon,
   GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,33 @@ interface Props {
 // One neutral treatment for every category; colour is reserved for status and the brand accent.
 const CATEGORY_CHIP = "bg-muted text-muted-foreground border-border";
 const CATEGORY_PLACEHOLDER = "bg-muted";
+
+/** Where the pool sits across the ranges. Bars are scaled to the largest range; labels are true shares. */
+function RangeShareBars({ ranges }: { ranges: OnChainRange[] }) {
+  const total = ranges.reduce((sum, r) => sum + r.totalStaked, 0n);
+  const shares = ranges.map((r) => (total > 0n ? Number((r.totalStaked * 1000n) / total) / 10 : 0));
+  const max = Math.max(...shares, 0);
+  return (
+    <ul aria-label="Share of the pool by range" className="mt-4 space-y-2">
+      {ranges.map((r, i) => (
+        <li key={r.index} className="flex items-center gap-3 text-xs">
+          <span className="w-[5.5rem] shrink-0 truncate tabular-nums text-muted-foreground">
+            {formatRangeLabel(r)}
+          </span>
+          <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-brand"
+              style={{ width: max > 0 ? `${(shares[i] / max) * 100}%` : "0%" }}
+            />
+          </span>
+          <span className="w-9 shrink-0 text-right tabular-nums text-muted-foreground">
+            {total > 0n ? `${Math.round(shares[i])}%` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function RangeFrenzyHome({ address, profile }: Props) {
   const pendingTab = useAppStore((s) => s.pendingTab);
@@ -197,42 +224,44 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                       <button
                         type="button"
                         onClick={() => handleSelectMarket(market)}
-                        className="group w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-brand/30 hover:shadow-md"
+                        className="group w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-brand/40 hover:bg-muted/30"
                       >
-                        <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : CATEGORY_PLACEHOLDER)}>
-                          {market.imageUrl ? (
-                            <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <Chart01Icon className="h-8 w-8 text-muted-foreground/30" />
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                            {market.imageUrl ? (
+                              <img src={market.imageUrl} alt="" className="h-full w-full object-contain p-1" />
+                            ) : (
+                              <Chart01Icon className="h-5 w-5 text-muted-foreground/60" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-semibold text-brand">{market.categoryLabel}</span>
+                              {" · "}
+                              {market.deadlineLabel}
+                            </p>
+                            <p className="mt-0.5 font-display text-base font-semibold leading-snug">{market.question}</p>
+                          </div>
+                        </div>
+
+                        <RangeShareBars ranges={market.ranges} />
+
+                        <p className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {market.pool > 0n ? (
+                              <>
+                                <span className="font-semibold tabular-nums text-foreground">{market.poolLabel}</span> in the pool
+                              </>
+                            ) : (
+                              "No stakes yet. Be the first."
+                            )}
+                          </span>
+                          {market.numStakers > 0 && (
+                            <span className="tabular-nums">
+                              {market.numStakers} {market.numStakers === 1 ? "staker" : "stakers"}
+                            </span>
                           )}
-                        </div>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="mb-1.5 flex items-center gap-1.5">
-                              <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
-                                {market.categoryLabel}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">·</span>
-                              <span className="text-[11px] font-medium text-muted-foreground">G$</span>
-                            </div>
-                            <p className="font-display text-base font-semibold leading-snug">{market.question}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1.5">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-bold text-brand tabular-nums">
-                              <Chart01Icon className="h-3 w-3" />
-                              {market.poolLabel === "No stakes yet" ? "0" : market.poolLabel.split(" ")[0]}
-                            </span>
-                            <ArrowRight01Icon className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
-                          </div>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {market.ranges.map((r) => (
-                            <span key={r.index} className="rounded-lg border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                              {formatRangeLabel(r)}
-                            </span>
-                          ))}
-                        </div>
+                        </p>
                       </button>
                     </li>
                   );
@@ -369,7 +398,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                     className={cn(
                       "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
                       selectedCategory === c
-                        ? "border-primary bg-primary/10 text-foreground"
+                        ? "border-brand bg-brand/10 text-foreground"
                         : "border-border text-muted-foreground hover:border-primary/40",
                     )}
                   >
@@ -820,7 +849,7 @@ function StakeModal({
                     className={cn(
                       "rounded-xl border px-3 py-3 text-left text-sm font-medium transition cursor-pointer",
                       selectedRange.index === r.index
-                        ? "border-primary bg-primary/10 text-foreground"
+                        ? "border-brand bg-brand/10 text-foreground"
                         : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40",
                     )}
                   >
@@ -1106,7 +1135,7 @@ function WeeklyCampaignSection() {
             <tr>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2 text-right">Staked</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">Staked</th>
               <th className="px-3 py-2 text-right">Picks</th>
             </tr>
           </thead>
@@ -1115,7 +1144,7 @@ function WeeklyCampaignSection() {
               <tr key={row.wallet} className="border-t border-border bg-card">
                 <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{i + 1}</td>
                 <td className="px-3 py-3 font-medium">@{row.username}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{row.totalStaked.toFixed(2)} G$</td>
+                <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{row.totalStaked.toFixed(2)} G$</td>
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{row.picks}</td>
               </tr>
             ))}

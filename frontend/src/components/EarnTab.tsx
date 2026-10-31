@@ -182,29 +182,18 @@ export function EarnTab({ address }: Props) {
       {/* G$ Claim card — most dominant, first thing user sees */}
       <ClaimPage compact />
 
-      {/* Header */}
-      <div className="rounded-3xl border border-border bg-card p-5">
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand">
-            <GiftIcon className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Earn G$</h2>
-            <p className="text-sm text-muted-foreground">Complete tasks to earn bonus rewards</p>
-          </div>
-        </div>
+      <div className="flex items-end justify-between gap-3 px-1">
+        <h2 className="font-display text-xl font-bold">Rewards</h2>
         {totalEarned > 0 && (
-          <div className="relative mt-3 rounded-xl bg-brand/5 px-4 py-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-              Total earned
-            </p>
-            <p className="font-display text-2xl font-bold tabular-nums">{totalEarned} G$</p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Earned so far{" "}
+            <span className="font-display text-base font-bold tabular-nums text-foreground">{totalEarned} G$</span>
+          </p>
         )}
       </div>
 
       {/* Streak progress card */}
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border bg-card p-5">
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500">
@@ -250,18 +239,16 @@ function TaskCard({ task }: { task: TaskState }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border p-4 transition",
-        isDone
-          ? "border-border/60 bg-muted/30 opacity-70"
-          : "border-border bg-card shadow-sm hover:-translate-y-0.5 hover:shadow-md"
+        "rounded-2xl border p-4",
+        isDone ? "border-border/60 bg-muted/30 opacity-70" : "border-border bg-card"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-1 min-w-0 items-start gap-3">
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-              isDone ? "from-muted-foreground/40 to-muted-foreground/40" : task.accent
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+              isDone ? "bg-muted text-muted-foreground" : "bg-brand/10 text-brand"
             )}
           >
             {isDone ? <CheckmarkCircle01Icon className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
@@ -284,8 +271,8 @@ function TaskCard({ task }: { task: TaskState }) {
       {task.source === "streak_7" && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           {[
-            { source: "streak_7" as BonusSource, label: "7-Day Streak", reward: BONUS_AMOUNTS.streak_7, streak: 7 },
-            { source: "streak_30" as BonusSource, label: "30-Day Streak", reward: BONUS_AMOUNTS.streak_30, streak: 30 },
+            { source: "streak_7" as BonusSource, label: "7-day streak", reward: BONUS_AMOUNTS.streak_7, streak: 7 },
+            { source: "streak_30" as BonusSource, label: "30-day streak", reward: BONUS_AMOUNTS.streak_30, streak: 30 },
           ].map((ms) => {
             const done = task.status === "completed" && task.source === ms.source;
             return (
@@ -314,7 +301,7 @@ function TaskCard({ task }: { task: TaskState }) {
       {!isDone && task.comingSoon && (
         <div className="mt-3">
           <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-            Coming Soon
+            Coming soon
           </span>
         </div>
       )}
@@ -364,8 +351,8 @@ function addDaysUTC(iso: string, delta: number): string {
 }
 
 /**
- * Weekly streak strip: Su–Sa labels with a gradient progress bar whose fire
- * marker sits on today. Days within the active streak window glow orange.
+ * Weekly streak strip: one cell per day, Su to Sa. A cell is filled only for days
+ * inside the current streak; today gets a dashed ring until it counts.
  */
 function WeekStreak({ streak, checkedInToday }: { streak: number; checkedInToday: boolean }) {
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -379,44 +366,34 @@ function WeekStreak({ streak, checkedInToday }: { streak: number; checkedInToday
   const active = new Set<string>();
   for (let k = 0; k < streak; k++) active.add(addDaysUTC(lastActive, -k));
 
-  // Fire marker sits at the centre of today's cell.
-  const markerPct = ((todayIdx + 0.5) / 7) * 100;
-  const fillPct = checkedInToday ? markerPct : ((todayIdx + 0.5) / 7) * 100;
-
   return (
-    <div className="relative mt-4">
-      {/* Day labels */}
-      <div className="grid grid-cols-7 text-center">
-        {DOW.map((d, i) => (
-          <span
-            key={d}
-            className={cn(
-              "text-xs font-bold tabular-nums transition-colors",
-              active.has(weekDates[i])
-                ? "text-orange-500"
-                : i === todayIdx
-                  ? "text-amber-600"
-                  : "text-muted-foreground/60"
-            )}
-          >
-            {d}
-          </span>
-        ))}
-      </div>
-
-      {/* Progress bar with fire marker */}
-      <div className="relative mt-3 h-3 rounded-full bg-amber-100/80">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-red-500 via-orange-500 to-orange-400 transition-all"
-          style={{ width: `${fillPct}%` }}
-        />
-        <div
-          className="absolute top-1/2 z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 shadow-lg shadow-orange-500/40 ring-2 ring-white"
-          style={{ left: `${markerPct}%` }}
-        >
-          <FireIcon className="h-4 w-4 text-white" />
-        </div>
-      </div>
-    </div>
+    <ol aria-label="This week" className="relative mt-4 grid grid-cols-7 gap-1.5">
+      {DOW.map((d, i) => {
+        const inStreak = active.has(weekDates[i]);
+        const isToday = i === todayIdx;
+        return (
+          <li key={d} className="flex flex-col items-center gap-1.5">
+            <span className={cn("text-xs font-medium", isToday ? "text-foreground" : "text-muted-foreground")}>
+              {d}
+            </span>
+            <span
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full border",
+                inStreak
+                  ? "border-amber-500 bg-amber-500 text-white"
+                  : isToday
+                    ? "border-dashed border-foreground/40"
+                    : "border-border"
+              )}
+            >
+              {inStreak && <FireIcon className="h-4 w-4" />}
+            </span>
+            <span className="sr-only">
+              {inStreak ? "In your streak" : isToday ? "Today, not counted yet" : "No activity"}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

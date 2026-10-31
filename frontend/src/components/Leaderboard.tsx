@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 import { useLeaderboard, type LeaderboardEntry } from "@/lib/hooks/use-leaderboard";
 
-const PODIUM_COLORS = [
-  "bg-yellow-100 border-yellow-400 text-yellow-800",
-  "bg-gray-100 border-gray-400 text-gray-700",
-  "bg-orange-100 border-orange-400 text-orange-800",
-];
-const PODIUM_ICONS = [MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon];
+/** Usernames that are really wallet addresses (full or already shortened) read as one short line, without "@". */
+function handleOf(username: string): string {
+  const short = /^0x([0-9a-f]{4})[.…]+([0-9a-f]{4})$/i.exec(username);
+  if (short) return `0x${short[1]}…${short[2]}`;
+  if (/^0x[0-9a-f]{8,}$/i.test(username)) return `${username.slice(0, 6)}…${username.slice(-4)}`;
+  return `@${username}`;
+}
 
 const SORTS = [
   { key: "wins", label: "By wins" },
@@ -110,8 +110,10 @@ export function Leaderboard({ address }: Props) {
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <div>
-          <h2 className="font-display text-xl font-bold">Leaderboard</h2>
-          <p className="text-sm text-muted-foreground">Top performers</p>
+          <h2 className="font-display text-xl font-bold">Top performers</h2>
+          <p className="text-sm text-muted-foreground">
+            {sort === "wins" ? "Ranked by wins" : "Ranked by G$ staked"}
+          </p>
         </div>
         <div className="flex gap-1 rounded-full border border-border bg-muted/40 p-1">
           {SORTS.map((s) => (
@@ -134,42 +136,52 @@ export function Leaderboard({ address }: Props) {
       </div>
 
       {/* Podium */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <ol className="mb-4 grid grid-cols-3 gap-2">
         {top3.map((entry, i) => {
-          const Icon = PODIUM_ICONS[i];
           const isYou = address && entry.address.toLowerCase() === address.toLowerCase();
           const winRate = winRateOf(entry);
           return (
-            <div
+            <li
               key={entry.address}
               className={cn(
-                "flex flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center",
-                PODIUM_COLORS[i],
+                "flex min-w-0 flex-col items-center gap-2 rounded-2xl border bg-card p-3 text-center",
+                i === 0 ? "border-brand/50" : "border-border",
                 isYou && "ring-2 ring-brand ring-offset-1"
               )}
             >
-              <Icon className="h-6 w-6" />
+              <span
+                className={cn(
+                  "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                  i === 0 ? "bg-brand text-white" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {i + 1}
+              </span>
               <Avatar entry={entry} size="md" />
-              <div>
-                <p className="text-xs font-bold leading-tight">@{entry.username}</p>
-                <p className="text-sm font-bold tabular-nums">{entry.wins}W</p>
-                <p className="text-xs opacity-70">{winRate === 0 ? "n/a" : `${Math.round(winRate * 100)}%`} win</p>
+              <div className="w-full min-w-0">
+                <p className="truncate text-xs font-semibold">{handleOf(entry.username)}</p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums">
+                  {entry.wins} {entry.wins === 1 ? "win" : "wins"}
+                </p>
+                <p className="text-xs tabular-nums text-muted-foreground">
+                  {winRate === 0 ? "n/a" : `${Math.round(winRate * 100)}%`} win rate
+                </p>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {rest.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">#</th>
-                <th className="px-3 py-2">User</th>
-                <th className="px-3 py-2 text-right">Staked</th>
-                <th className="px-3 py-2 text-right">Win %</th>
-                <th className="px-3 py-2 text-right">P&L</th>
+                <th className="px-2 py-2">#</th>
+                <th className="px-2 py-2">User</th>
+                <th className="whitespace-nowrap px-2 py-2 text-right">Staked</th>
+                <th className="whitespace-nowrap px-2 py-2 text-right">Win %</th>
+                <th className="px-2 py-2 text-right">P&L</th>
               </tr>
             </thead>
             <tbody>
@@ -178,18 +190,18 @@ export function Leaderboard({ address }: Props) {
                 const winRate = winRateOf(row);
                 return (
                   <tr key={row.address} className={cn("border-t border-border bg-card", isYou && "bg-brand/5")}>
-                    <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{i + 4}</td>
-                    <td className="px-3 py-3 font-medium">
-                      <div className="flex items-center gap-2">
+                    <td className="px-2 py-3 font-mono text-xs text-muted-foreground">{i + 4}</td>
+                    <td className="max-w-[7.5rem] px-2 py-3 font-medium">
+                      <div className="flex min-w-0 items-center gap-2">
                         <Avatar entry={row} size="sm" />
-                        @{row.username}
+                        <span className="truncate">{handleOf(row.username)}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums">{num(row.totalStaked).toFixed(0)} G$</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
+                    <td className="whitespace-nowrap px-2 py-3 text-right tabular-nums">{num(row.totalStaked).toFixed(0)} G$</td>
+                    <td className="px-2 py-3 text-right tabular-nums text-muted-foreground">
                       {winRate === 0 ? "n/a" : `${Math.round(winRate * 100)}%`}
                     </td>
-                    <td className="px-3 py-3 text-right">
+                    <td className="px-2 py-3 text-right">
                       <PnlBadge value={num(row.realizedPnl)} />
                     </td>
                   </tr>
