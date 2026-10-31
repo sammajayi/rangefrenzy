@@ -128,11 +128,11 @@ function Navbar() {
 
         {/* desktop links */}
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#how-it-works" className="text-sm text-white/60 transition hover:text-white">How It Works</a>
+          <a href="#how-it-works" className="text-sm text-white/60 transition hover:text-white">How it works</a>
           <a href="#markets" className="text-sm text-white/60 transition hover:text-white">Markets</a>
           <a href="#features" className="text-sm text-white/60 transition hover:text-white">Features</a>
           <GlowBtn href="https://app.rangefrenzy.xyz" className="!px-5 !py-2.5 !text-sm">
-            Launch App
+            Launch app
           </GlowBtn>
         </div>
 
@@ -153,11 +153,11 @@ function Navbar() {
       {open && (
         <div id="mobile-menu" className="border-t border-white/5 bg-[#0A0A0F]/95 px-6 py-6 backdrop-blur-xl md:hidden">
           <div className="flex flex-col gap-4">
-            <a href="#how-it-works" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">How It Works</a>
+            <a href="#how-it-works" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">How it works</a>
             <a href="#markets" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">Markets</a>
             <a href="#features" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">Features</a>
             <GlowBtn href="https://app.rangefrenzy.xyz" className="!text-sm">
-              Launch App
+              Launch app
             </GlowBtn>
           </div>
         </div>
@@ -209,7 +209,7 @@ function Hero() {
       {/* CTA */}
       <div className="relative z-10 mt-10">
         <GlowBtn href="https://app.rangefrenzy.xyz">
-          Launch App
+          Launch app
           <ArrowRight01Icon className="h-5 w-5" />
         </GlowBtn>
       </div>
@@ -250,7 +250,7 @@ function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <RevealSection>
           <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            How It Works
+            How it works
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
             Verify once, claim your daily G$, then stake it on a range.
@@ -467,7 +467,7 @@ function CTASection() {
 
           <div className="relative z-10 mt-8">
             <GlowBtn href="https://app.rangefrenzy.xyz">
-              Launch App
+              Launch app
               <ArrowRight01Icon className="h-5 w-5" />
             </GlowBtn>
           </div>

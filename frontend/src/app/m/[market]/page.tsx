@@ -15,7 +15,7 @@ export async function generateMetadata({
   if (!data) {
     return {
       title: "Prediction market · RangeFrenzy",
-      description: "Predict outcome ranges. Stake G$. Win big.",
+      description: "Predict outcome ranges. Stake G$. Win.",
     };
   }
 

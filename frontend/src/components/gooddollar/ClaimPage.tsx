@@ -11,6 +11,8 @@ import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { createWalletClient, http } from "viem";
 import { celo } from "viem/chains";
 
+const WALLET_NOT_CONNECTED = "Wallet not connected. Reconnect your wallet and try again.";
+
 interface ClaimState {
   status: "not_whitelisted" | "can_claim" | "already_claimed" | "loading" | "error";
   amount: string;      // formatted G$ (2 dp)
@@ -115,10 +117,11 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
       }));
       setClaimBadge(canClaim);
     } catch (err) {
+      console.error("Claim status error:", err);
       setState((prev) => ({
         ...prev,
         status: "error",
-        error: err instanceof Error ? err.message : "Failed to load claim status.",
+        error: "We couldn't load your claim status. Try again in a moment.",
       }));
     }
   }, [address, buildReadSDKs, setClaimBadge]);
@@ -146,7 +149,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
     setState((prev) => ({ ...prev, claiming: true, error: null }));
     try {
       const sdks = await buildWriteSDKs();
-      if (!sdks) throw new Error("Wallet not connected. Please reconnect your wallet.");
+      if (!sdks) throw new Error(WALLET_NOT_CONNECTED);
       await sdks.claimSDK.claim();
       // Claiming daily G$ is an action that extends the daily streak.
       if (address) {
@@ -167,7 +170,10 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
     } catch (err) {
       setState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : "Claim failed. Please try again.",
+        error:
+          err instanceof Error && err.message === WALLET_NOT_CONNECTED
+            ? WALLET_NOT_CONNECTED
+            : "The claim didn't go through. Check your wallet, then try again.",
         claiming: false,
       }));
     }
@@ -228,7 +234,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
           ) : canClaim ? (
             `Claim ${state.amount} G$`
           ) : (
-            "Come back tomorrow"
+            "Claimed for today"
           )}
         </Button>
       </div>
@@ -307,7 +313,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
           ) : canClaim ? (
             `Claim ${state.amount} G$`
           ) : (
-            "Come back tomorrow"
+            "Claimed for today"
           )}
         </Button>
       </div>

@@ -20,7 +20,7 @@ export default async function Image({
   const { market, range } = await params;
   const data = await getShareData(market, Number(range));
 
-  const question = data?.question ?? "Predict the range. Win big.";
+  const question = data?.question ?? "Predict the range. Win.";
   const rangeLabel = data?.rangeLabel ?? "";
   const category = data?.category ?? null;
 

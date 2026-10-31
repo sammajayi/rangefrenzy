@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 // Route segment config
-export const alt = "RangeFrenzy - Predict outcome ranges. Stake G$. Win big.";
+export const alt = "RangeFrenzy: predict outcome ranges. Stake G$. Win.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -73,7 +73,7 @@ export default function Image() {
             letterSpacing: -0.5,
           }}
         >
-          Predict outcome ranges. Stake G$. Win big.
+          Predict outcome ranges. Stake G$. Win.
         </div>
 
         {/* Category pills */}

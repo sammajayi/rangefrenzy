@@ -62,5 +62,5 @@ function parseClaimError(err: any): string {
   if (msg.includes("MarketNotResolved")) return "Market has not been resolved yet.";
   if (msg.includes("MarketNotCancelled")) return "Market is not cancelled.";
   if (msg.includes("User rejected")) return "Transaction cancelled.";
-  return "Transaction failed. Please try again.";
+  return "This didn't go through. Check your wallet, then try again.";
 }

@@ -57,7 +57,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
               <PartyIcon className="h-7 w-7 text-primary" />
             </div>
           </div>
-          <h2 className="font-display text-xl font-bold">Welcome to RangeFrenzy!</h2>
+          <h2 className="font-display text-xl font-bold">Welcome to RangeFrenzy</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Stake G$ on outcome ranges for crypto, sports, weather and more.
           </p>
@@ -78,7 +78,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
               </svg>
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm">Follow on X (Twitter)</p>
+              <p className="font-semibold text-sm">Follow on X</p>
               <p className="text-xs text-muted-foreground">Earn 500 G$ reward</p>
             </div>
             {twitterDone && (
@@ -115,7 +115,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
         </Button>
 
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          You can skip this, rewards are distributed within 24 hours.
+          You can skip this step. Rewards are distributed within 24 hours.
         </p>
       </div>
     </Modal>

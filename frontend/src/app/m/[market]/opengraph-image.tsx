@@ -20,7 +20,7 @@ export default async function Image({
   const { market } = await params;
   const data = await getMarketShareData(market);
 
-  const question = data?.question ?? "Predict the range. Win big.";
+  const question = data?.question ?? "Predict the range. Win.";
   const category = data?.category ?? null;
   const deadlineLabel = data?.deadlineLabel ?? null;
   // Keep to a single row of pills so the layout stays clean.
@@ -130,7 +130,7 @@ export default async function Image({
           ) : null}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 28, color: "rgba(255,255,255,0.6)" }}>
-              Stake G$. Win big. →
+              Stake G$. Win. →
             </div>
             {deadlineLabel ? (
               <div style={{ fontSize: 24, color: "rgba(255,255,255,0.4)" }}>{deadlineLabel}</div>

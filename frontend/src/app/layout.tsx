@@ -21,7 +21,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.rangefrenzy.xyz"),
   title: {
-    default: "RangeFrenzy - Range-based prediction markets on Celo",
+    default: "RangeFrenzy: range-based prediction markets on Celo",
     template: "%s · RangeFrenzy",
   },
   description:
@@ -49,14 +49,14 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "RangeFrenzy",
     url: "https://app.rangefrenzy.xyz",
-    title: "RangeFrenzy - Predict outcome ranges. Stake G$. Win big.",
+    title: "RangeFrenzy: predict outcome ranges. Stake G$. Win.",
     description:
       "Stake G$ on outcome ranges for crypto, sports, and local events. A range-based prediction market on Celo.",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RangeFrenzy - Predict outcome ranges. Stake G$. Win big.",
+    title: "RangeFrenzy: predict outcome ranges. Stake G$. Win.",
     description:
       "Stake G$ on outcome ranges for crypto, sports, and local events. A range-based prediction market on Celo.",
   },

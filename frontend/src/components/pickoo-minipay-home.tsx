@@ -363,7 +363,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
             <div className="mb-4">
               <input
                 type="text"
-                placeholder="Search markets..."
+                placeholder="Search markets…"
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
                 className="h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30"
@@ -676,7 +676,7 @@ function StakeModal({
         {/* ── ACTIVE POSITION CARD ── */}
         {hasActivePosition && userStake && userStake.amountStaked > 0n && (
           <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Your Position</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Your position</p>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Range</span>
@@ -717,7 +717,7 @@ function StakeModal({
           <div className="mb-4">
             {sellStep === "success" ? (
               <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Position sold!</p>
+                <p className="font-semibold text-green-700">Position sold</p>
                 <p className="text-xs text-green-600 mt-1">Your G$ has been returned to your wallet.</p>
               </div>
             ) : (
@@ -740,7 +740,7 @@ function StakeModal({
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-destructive/30 border-t-destructive" />
                       Selling…
                     </span>
-                  ) : "Sell Position"}
+                  ) : "Sell position"}
                 </Button>
               </>
             )}
@@ -752,7 +752,7 @@ function StakeModal({
           <div className="mb-4">
             {claimStep === "success" ? (
               <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Winnings claimed!</p>
+                <p className="font-semibold text-green-700">Winnings claimed</p>
                 <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.estimatedPayout, tokenDecimals)} {tokenSymbol} sent to your wallet.</p>
               </div>
             ) : (
@@ -786,7 +786,7 @@ function StakeModal({
           <div className="mb-4">
             {claimStep === "success" ? (
               <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Refund received!</p>
+                <p className="font-semibold text-green-700">Refund received</p>
                 <p className="text-xs text-green-600 mt-1">{formatUnits(userStake!.amountStaked, tokenDecimals)} {tokenSymbol} returned to your wallet.</p>
               </div>
             ) : (
@@ -868,12 +868,18 @@ function StakeModal({
                   </div>
                 )}
                 {stakeError && <p className="mt-1.5 text-xs text-destructive">{stakeError}</p>}
+                {!stakeError && parseFloat(amount) > 0 && parseFloat(amount) < minStake && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">Minimum stake is {minStake} {tokenSymbol}.</p>
+                )}
+                {!stakeError && parseFloat(amount) > balance && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">You have {balance.toFixed(2)} {tokenSymbol} available.</p>
+                )}
               </div>
             )}
 
             {stakeStep === "success" && (
               <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                <p className="font-semibold text-green-700">Stake confirmed!</p>
+                <p className="font-semibold text-green-700">Stake placed</p>
                 <p className="text-xs text-green-600 mt-1">Your prediction is locked in.</p>
               </div>
             )}
@@ -1094,8 +1100,8 @@ function WeeklyCampaignSection() {
 
   if (!rows.length) return (
     <div className="py-16 text-center">
-      <p className="font-display text-xl font-bold">Weekly Campaign</p>
-      <p className="text-sm text-muted-foreground mt-2">No stakes this week yet, be first!</p>
+      <p className="font-display text-xl font-bold">Weekly campaign</p>
+      <p className="text-sm text-muted-foreground mt-2">No stakes this week yet. Be the first.</p>
     </div>
   );
 

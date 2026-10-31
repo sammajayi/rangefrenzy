@@ -125,12 +125,12 @@ export const BONUS_AMOUNTS: Record<BonusSource, number> = {
 };
 
 export const BONUS_LABELS: Record<BonusSource, string> = {
-  first_bet: "First Bet Bonus",
+  first_bet: "First stake bonus",
   streak_7: "7-Day Streak",
   streak_30: "30-Day Streak",
   referral_bonus: "Referral Bonus (You)",
   referral_reward: "Referral Reward (Friend)",
-  social_twitter: "Follow on X / Twitter",
+  social_twitter: "Follow on X",
   social_telegram: "Join Telegram",
 };
 

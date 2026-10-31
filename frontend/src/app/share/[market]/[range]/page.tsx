@@ -15,7 +15,7 @@ export async function generateMetadata({
   if (!data) {
     return {
       title: "Prediction · RangeFrenzy",
-      description: "Predict outcome ranges. Stake G$. Win big.",
+      description: "Predict outcome ranges. Stake G$. Win.",
     };
   }
 
@@ -60,7 +60,7 @@ export default async function SharePage({
           </span>
         )}
         <h1 className="mt-4 font-display text-2xl font-bold leading-tight text-foreground">
-          {data?.question ?? "Predict the range. Win big."}
+          {data?.question ?? "Predict the range. Win."}
         </h1>
 
         {data && (

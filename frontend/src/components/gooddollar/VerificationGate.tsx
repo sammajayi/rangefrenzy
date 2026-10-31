@@ -86,9 +86,8 @@ export function VerificationGate({ onVerified }: Props) {
       const link = await generateFVLink(viemWalletClient, callbackUrl);
       window.location.href = link;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Verification failed. Please try again."
-      );
+      console.error("GoodDollar verification error:", err);
+      setError("We couldn't start verification. Check your connection and try again.");
       setLoading(false);
     }
   };
@@ -114,11 +113,12 @@ export function VerificationGate({ onVerified }: Props) {
         </div>
 
         <h1 className="font-display text-2xl font-bold tracking-tight">
-          Verify your identity
+          Verify with GoodDollar
         </h1>
         <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-          RangeFrenzy is a range-based prediction market on Celo.
-          Stake G$ on outcome ranges for crypto, sports, weather and more.
+          You&apos;ll go to GoodDollar for a quick face check to confirm you&apos;re a
+          real person. Then you&apos;ll come back here to claim your daily G$ and
+          stake it on markets.
         </p>
 
         {error && (
@@ -140,13 +140,13 @@ export function VerificationGate({ onVerified }: Props) {
               Connecting…
             </span>
           ) : (
-            "Verify Identity"
+            "Verify with GoodDollar"
           )}
         </Button>
 
         <p className="mt-4 text-xs text-muted-foreground">
           Powered by <span className="font-semibold text-foreground">GoodDollar</span>.
-          {" "}Verification unlocks daily G$ UBI claiming.
+          {" "}Verifying unlocks your daily G$ claim.
         </p>
       </div>
     </div>

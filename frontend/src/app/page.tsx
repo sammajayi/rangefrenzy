@@ -213,7 +213,7 @@ function HomeInner() {
                       className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-accent transition"
                     >
                       <Copy01Icon className="h-4 w-4" />
-                      {copied ? "Copied!" : "Copy wallet address"}
+                      {copied ? "Copied" : "Copy wallet address"}
                     </button>
                     <div className="my-1 h-px bg-border" />
                     <button
@@ -253,7 +253,7 @@ function HomeInner() {
                 </button>
               </div>
               {copied && (
-                <p className="mt-1.5 text-xs text-brand">Copied!</p>
+                <p className="mt-1.5 text-xs text-brand">Copied</p>
               )}
 
               <Button
@@ -278,13 +278,13 @@ function HomeInner() {
                     Connecting…
                   </span>
                 ) : (
-                  "Verify Identity"
+                  "Verify with GoodDollar"
                 )}
               </Button>
             </div>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              Verify your identity to start staking on outcome ranges
+              Verify with GoodDollar to start staking on outcome ranges.
             </p>
           </div>
         </div>

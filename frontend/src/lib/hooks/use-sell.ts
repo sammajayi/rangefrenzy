@@ -58,7 +58,7 @@ async function waitForTx(hash: `0x${string}`) {
 function parseSellError(err: any): string {
   const msg: string = err?.message ?? err?.shortMessage ?? String(err);
   if (msg.includes("NoActivePosition")) return "You have no active position to sell.";
-  if (msg.includes("AlreadyResolvedOrCancelled")) return "Cannot sell after market is resolved or cancelled.";
+  if (msg.includes("AlreadyResolvedOrCancelled")) return "You can't sell once a market is resolved or cancelled.";
   if (msg.includes("User rejected")) return "Transaction cancelled.";
-  return "Transaction failed. Please try again.";
+  return "The sale didn't go through. Check your wallet, then try again.";
 }

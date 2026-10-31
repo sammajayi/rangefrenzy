@@ -105,12 +105,12 @@ export function EarnTab({ address }: Props) {
     {
       id: "first-bet",
       source: "first_bet",
-      label: "First Bet Bonus",
+      label: "First stake bonus",
       description: hasBonus("first_bet")
-        ? "Thanks for placing your first bet!"
+        ? "You earned your first stake bonus"
         : betCount > 0
-          ? "Your first bet is placed, bonus pending"
-          : "Place your first bet to earn 10 G$ instantly",
+          ? "First stake placed. Bonus pending"
+          : `Place your first stake to earn ${BONUS_AMOUNTS.first_bet} G$`,
       reward: BONUS_AMOUNTS.first_bet,
       status: hasBonus("first_bet") ? "completed" : betCount > 0 ? "pending" : "available",
       icon: Rocket01Icon,
@@ -119,9 +119,9 @@ export function EarnTab({ address }: Props) {
     {
       id: "streak",
       source: "streak_7",
-      label: "Streak Rewards",
+      label: "Streak rewards",
       description: streak === 0
-        ? "Place a bet or claim G$ daily to build your streak"
+        ? "Stake or claim G$ each day to build your streak"
         : `${streak} day${streak === 1 ? "" : "s"}, next milestone: ${streak < 7 ? "7 days" : "30 days"}`,
       reward: 0,
       status: "available",
@@ -144,7 +144,7 @@ export function EarnTab({ address }: Props) {
     {
       id: "social-twitter",
       source: "social_twitter",
-      label: "Follow on X / Twitter",
+      label: "Follow on X",
       description: hasBonus("social_twitter")
         ? "Following confirmed"
         : "Follow @RangeFrenzy on X and confirm",
@@ -213,8 +213,8 @@ export function EarnTab({ address }: Props) {
               <FireIcon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="font-semibold">Daily Streak</p>
-              <p className="text-xs text-muted-foreground">Bet or claim G$ daily</p>
+              <p className="font-semibold">Daily streak</p>
+              <p className="text-xs text-muted-foreground">Stake or claim G$ daily</p>
             </div>
           </div>
           <div className="text-right">

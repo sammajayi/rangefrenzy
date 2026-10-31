@@ -130,11 +130,11 @@ function parseContractError(err: any): string {
   const msg: string = err?.message ?? err?.shortMessage ?? String(err);
   if (msg.includes("MustSellPositionFirst")) return "You have an active position. Sell it first before staking on a new range.";
   if (msg.includes("BelowMinStake")) return "Amount is below the minimum stake.";
-  if (msg.includes("ZeroShares")) return "Amount too small, not enough to buy any shares at the current price.";
+  if (msg.includes("ZeroShares")) return "That amount is too small to buy any shares at the current price.";
   if (msg.includes("MarketNotOpen")) return "This market is no longer accepting stakes.";
-  if (msg.includes("DeadlinePassed")) return "The betting deadline has passed.";
-  if (msg.includes("InvalidRangeIndex")) return "Invalid range selected.";
+  if (msg.includes("DeadlinePassed")) return "Staking has closed for this market.";
+  if (msg.includes("InvalidRangeIndex")) return "That range isn't available. Pick another.";
   if (msg.includes("User rejected")) return "Transaction cancelled.";
-  if (msg.includes("insufficient funds")) return "Insufficient balance to stake.";
-  return "Transaction failed. Please try again.";
+  if (msg.includes("insufficient funds")) return "Your balance is too low to stake that amount.";
+  return "The stake didn't go through. Check your wallet, then try again.";
 }
