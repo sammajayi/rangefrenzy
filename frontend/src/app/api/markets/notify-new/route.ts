@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushToSubscription } from "@/lib/push-server";
+import { requireAdmin } from "@/lib/admin-session";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,10 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  // Notifies every user, so only a signed-in admin may call it.
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
   try {
     const { title, category, market_id } = await req.json();
     if (!title) {
