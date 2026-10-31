@@ -889,6 +889,13 @@ function StakeModal({
         )}
 
 
+        {!hasActivePosition && isOpen && stakeStep !== "success" && (
+          <p className="mb-3 text-xs text-muted-foreground">
+            You can lose the G$ you stake. Selling early pays the current price,
+            which can be lower than what you paid.
+          </p>
+        )}
+
         {/* Footer actions */}
         <div className="flex gap-3">
           <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>

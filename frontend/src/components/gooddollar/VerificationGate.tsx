@@ -37,7 +37,7 @@ export function VerificationGate({ onVerified }: Props) {
         .eq("title", "Welcome")
         .maybeSingle();
       if (!existing) {
-        await sendNotification(p.username, "Welcome", "Earn Daily G$, 10x it with RangeFrenzy");
+        await sendNotification(p.username, "Welcome", "Claim your daily G$ and stake it on a live market");
       }
     }
   };

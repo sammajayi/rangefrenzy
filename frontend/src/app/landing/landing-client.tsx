@@ -11,7 +11,6 @@ import {
   Fire03Icon,
   ShieldUserIcon,
   MapPinIcon,
-  Clock01Icon,
   CheckmarkBadge04Icon,
   SmartPhone01Icon,
   BitcoinCircleIcon,
@@ -20,7 +19,6 @@ import {
   SendToMobileIcon,
   Menu01Icon,
   CancelCircleIcon,
-  UserMultipleIcon,
 } from "hugeicons-react";
 import { useState, useEffect, useRef } from "react";
 
@@ -143,7 +141,9 @@ function Navbar() {
           type="button"
           className="text-white md:hidden"
           onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
+          aria-label="Menu"
+          aria-expanded={open}
+          aria-controls="mobile-menu"
         >
           {open ? <CancelCircleIcon className="h-6 w-6" /> : <Menu01Icon className="h-6 w-6" />}
         </button>
@@ -151,7 +151,7 @@ function Navbar() {
 
       {/* mobile menu */}
       {open && (
-        <div className="border-t border-white/5 bg-[#0A0A0F]/95 px-6 py-6 backdrop-blur-xl md:hidden">
+        <div id="mobile-menu" className="border-t border-white/5 bg-[#0A0A0F]/95 px-6 py-6 backdrop-blur-xl md:hidden">
           <div className="flex flex-col gap-4">
             <a href="#how-it-works" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">How It Works</a>
             <a href="#markets" onClick={() => setOpen(false)} className="text-sm text-white/60 transition hover:text-white">Markets</a>
@@ -202,7 +202,8 @@ function Hero() {
       {/* Subheadline */}
       <p className="relative z-10 mt-6 max-w-2xl text-center text-base text-white/60 sm:text-lg md:text-xl">
         The range-based prediction market built for GoodDollar users across
-        Africa. Stake G$ on crypto, sports, and local events, and win big.
+        Africa. Stake G$ on crypto, sports and local events. Pick the right
+        range and win a share of the pool.
       </p>
 
       {/* CTA */}
@@ -238,7 +239,7 @@ const steps = [
   {
     num: "3",
     title: "Win & Earn",
-    desc: "If the outcome lands in your range, you win a share of the prize pool. The earlier you bet, the bigger your reward.",
+    desc: "If the outcome lands in your range, you win a share of the prize pool. Earlier stakes cost less per share, so they can return more.",
     img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&q=80",
   },
 ];
@@ -252,7 +253,7 @@ function HowItWorks() {
             How It Works
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Three simple steps to start predicting and winning.
+            Verify once, claim your daily G$, then stake it on a range.
           </p>
         </RevealSection>
 
@@ -296,34 +297,25 @@ function HowItWorks() {
   );
 }
 
-/* LIVE MARKETS */
+/* EXAMPLE MARKETS */
 const markets = [
   {
     category: "Sports",
     categoryIcon: <StarAward01Icon className="h-3.5 w-3.5" />,
-    question: "How many goals will Portugal score at the World Cup?",
-    ranges: ["0–9", "10–19", "20–29", "30+"],
-    prize: "12,500",
-    countdown: "42d 22h",
-    participants: 342,
+    question: "How many goals will the winning team score in the final?",
+    ranges: ["0–1", "2–3", "4–5", "6+"],
   },
   {
     category: "Crypto",
     categoryIcon: <BitcoinCircleIcon className="h-3.5 w-3.5" />,
-    question: "What will ETH price be on Dec 31?",
+    question: "What will the ETH price be on 31 December?",
     ranges: ["$1.5k–2k", "$2k–2.5k", "$2.5k–3k", "$3k+"],
-    prize: "8,200",
-    countdown: "18d 6h",
-    participants: 518,
   },
   {
     category: "Local",
     categoryIcon: <MapPinIcon className="h-3.5 w-3.5" />,
-    question: "How many attendees at Lagos Tech Meetup?",
+    question: "How many people will attend the Lagos Tech Meetup?",
     ranges: ["0–500", "500–1k", "1k–2k", "2k+"],
-    prize: "3,400",
-    countdown: "5d 14h",
-    participants: 127,
   },
 ];
 
@@ -332,76 +324,43 @@ function LiveMarkets() {
     <section id="markets" className="relative py-24 px-6">
       <div className="mx-auto max-w-6xl">
         <RevealSection>
-          <div className="flex items-center justify-center gap-3">
-            <h2 className="font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-              Live Markets
-            </h2>
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-[#22C55E]" />
-            </span>
-          </div>
+          <h2 className="text-center font-display text-3xl font-bold text-white sm:text-4xl md:text-5xl">
+            Example markets
+          </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Active markets happening right now. Jump in before they close.
+            Every market splits an outcome into ranges. Open the app to see
+            what is live today.
           </p>
         </RevealSection>
 
         <div className="mt-14 flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
           {markets.map((m, i) => (
             <RevealSection key={m.question} delay={i * 120}>
-              <div
-                className="group flex min-w-[280px] snap-start flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-all duration-300 hover:border-[#22C55E]/30 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)] sm:min-w-0"
-              >
-              {/* category pill */}
-              <span className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
-                {m.categoryIcon}
-                {m.category}
-              </span>
-
-              {/* question */}
-              <h3 className="text-base font-bold leading-snug text-white">
-                {m.question}
-              </h3>
-
-              {/* range pills */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {m.ranges.map((r) => (
-                  <span
-                    key={r}
-                    className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/50 transition-colors group-hover:bg-white/10 group-hover:text-white/70"
-                  >
-                    {r}
-                  </span>
-                ))}
-              </div>
-
-              {/* meta */}
-              <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-4">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-[#22C55E]">
-                  <Coins01Icon className="h-4 w-4" />
-                  G$ {m.prize}
+              <div className="group flex h-full min-w-[280px] snap-start flex-col rounded-2xl border border-white/5 bg-[#12102A] p-6 transition-colors duration-300 hover:border-[#22C55E]/30 sm:min-w-0">
+                <span className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
+                  {m.categoryIcon}
+                  {m.category}
                 </span>
-                <span className="flex items-center gap-3 text-xs text-white/40">
-                  <span className="flex items-center gap-1">
-                    <UserMultipleIcon className="h-3.5 w-3.5" />
-                    {m.participants}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock01Icon className="h-3.5 w-3.5" />
-                    {m.countdown}
-                  </span>
-                </span>
-              </div>
 
-              {/* bet button */}
-              <a
-                href="https://app.rangefrenzy.xyz"
-                className="mt-5 flex items-center justify-center gap-2 rounded-full bg-[#22C55E] py-3 text-sm font-semibold text-white shadow-[0_0_16px_rgba(34,197,94,0.3)] transition-all duration-300 hover:shadow-[0_0_24px_rgba(34,197,94,0.5)] hover:scale-[1.02]"
-              >
-                Bet Now
-                <ArrowRight01Icon className="h-4 w-4" />
-              </a>
-            </div>
+                <h3 className="text-base font-bold leading-snug text-white">
+                  {m.question}
+                </h3>
+
+                <div className="mt-4 flex flex-1 flex-wrap content-start gap-2">
+                  {m.ranges.map((r) => (
+                    <span
+                      key={r}
+                      className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/60"
+                    >
+                      {r}
+                    </span>
+                  ))}
+                </div>
+
+                <p className="mt-5 border-t border-white/5 pt-4 text-xs text-white/40">
+                  Example only. Not a live market.
+                </p>
+              </div>
             </RevealSection>
           ))}
         </div>
@@ -409,9 +368,9 @@ function LiveMarkets() {
         <div className="mt-12 flex justify-center">
           <a
             href="https://app.rangefrenzy.xyz"
-            className="inline-flex items-center gap-2 rounded-full border border-[#22C55E]/30 px-6 py-3 text-sm font-semibold text-[#22C55E] transition-all duration-300 hover:bg-[#22C55E]/10 hover:shadow-[0_0_16px_rgba(34,197,94,0.15)]"
+            className="inline-flex items-center gap-2 rounded-full border border-[#22C55E]/30 px-6 py-3 text-sm font-semibold text-[#22C55E] transition-colors duration-300 hover:bg-[#22C55E]/10"
           >
-            View All Markets
+            See live markets
             <ArrowRight01Icon className="h-4 w-4" />
           </a>
         </div>
@@ -425,12 +384,12 @@ const features = [
   {
     icon: <Target01Icon className="h-7 w-7" />,
     title: "Range Betting",
-    desc: "Not just yes or no. Pick an exact range and win big if the outcome lands inside it.",
+    desc: "Not just yes or no. Pick a range and win a share of the pool if the outcome lands inside it.",
   },
   {
     icon: <ChartIncreaseIcon className="h-7 w-7" />,
-    title: "Bonding Curve Pricing",
-    desc: "Early bettors get better prices. The more people bet on a range, the more expensive it gets.",
+    title: "Earlier stakes cost less",
+    desc: "A range gets more expensive as more people stake on it, so early stakers get more shares for the same G$.",
   },
   {
     icon: <CoinsSwapIcon className="h-7 w-7" />,
@@ -450,7 +409,7 @@ const features = [
   {
     icon: <ShieldUserIcon className="h-7 w-7" />,
     title: "Verified Humans Only",
-    desc: "GoodDollar Identity SDK ensures every participant is a real, verified human, no bots.",
+    desc: "GoodDollar verifies that each account belongs to a real person, so bots can't claim or stake.",
   },
 ];
 
@@ -463,7 +422,7 @@ function Features() {
             Why RangeFrenzy
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-white/50">
-            Built for the future of decentralized prediction markets.
+            Stake on a range of outcomes, not just yes or no.
           </p>
         </RevealSection>
 
@@ -503,8 +462,7 @@ function CTASection() {
               Ready to put your G$ to work?
             </h2>
           <p className="relative z-10 mx-auto mt-4 max-w-lg text-white/50">
-            Join thousands of GoodDollar users across Africa predicting, staking,
-            and winning daily.
+            Claim your daily G$, pick a range and stake it on a live market.
           </p>
 
           <div className="relative z-10 mt-8">
@@ -570,20 +528,23 @@ function Footer() {
 
           {/* links */}
           <div>
-            <h4 className="mb-4 text-sm font-semibold text-white">Links</h4>
+            <h4 className="mb-4 text-sm font-semibold text-white">Explore</h4>
             <ul className="flex flex-col gap-3">
-              {["Home", "Markets", "Leaderboard", "Earn", "Launch App"].map(
-                (l) => (
-                  <li key={l}>
-                    <a
-                      href={l === "Launch App" ? "https://app.rangefrenzy.xyz" : "#"}
-                      className="text-sm text-white/40 transition hover:text-[#22C55E]"
-                    >
-                      {l}
-                    </a>
-                  </li>
-                )
-              )}
+              {[
+                { label: "How it works", href: "#how-it-works" },
+                { label: "Example markets", href: "#markets" },
+                { label: "Why RangeFrenzy", href: "#features" },
+                { label: "Launch app", href: "https://app.rangefrenzy.xyz" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <a
+                    href={l.href}
+                    className="text-sm text-white/40 transition hover:text-[#22C55E]"
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -626,8 +587,12 @@ function Footer() {
         </div>
 
         {/* bottom bar */}
-        <div className="mt-12 border-t border-white/5 pt-6 text-center text-xs text-white/30">
-          &copy; 2025 RangeFrenzy. All rights reserved.
+        <div className="mt-12 border-t border-white/5 pt-6 text-center text-xs text-white/40">
+          <p className="mx-auto max-w-xl text-pretty">
+            Staking carries risk. You can lose the G$ you stake, so only stake
+            what you can afford to lose.
+          </p>
+          <p className="mt-3">&copy; {new Date().getFullYear()} RangeFrenzy</p>
         </div>
       </div>
     </footer>
