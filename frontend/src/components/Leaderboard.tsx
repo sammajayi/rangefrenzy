@@ -13,8 +13,8 @@ const PODIUM_COLORS = [
 const PODIUM_ICONS = [MedalFirstPlaceIcon, MedalSecondPlaceIcon, MedalThirdPlaceIcon];
 
 const SORTS = [
-  { key: "wins", label: "By Wins" },
-  { key: "volume", label: "By Volume" },
+  { key: "wins", label: "By wins" },
+  { key: "volume", label: "By volume" },
 ] as const;
 type SortKey = (typeof SORTS)[number]["key"];
 
@@ -118,6 +118,7 @@ export function Leaderboard({ address }: Props) {
             <button
               key={s.key}
               type="button"
+              aria-pressed={sort === s.key}
               onClick={() => setSort(s.key)}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-semibold transition",
@@ -152,7 +153,7 @@ export function Leaderboard({ address }: Props) {
               <div>
                 <p className="text-xs font-bold leading-tight">@{entry.username}</p>
                 <p className="text-sm font-bold tabular-nums">{entry.wins}W</p>
-                <p className="text-[10px] opacity-70">{winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`} win</p>
+                <p className="text-xs opacity-70">{winRate === 0 ? "—" : `${Math.round(winRate * 100)}%`} win</p>
               </div>
             </div>
           );
@@ -162,7 +163,7 @@ export function Leaderboard({ address }: Props) {
       {rest.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">User</th>

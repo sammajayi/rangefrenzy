@@ -183,10 +183,9 @@ export function EarnTab({ address }: Props) {
       <ClaimPage compact />
 
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-brand/10 via-brand/5 to-transparent p-5 shadow-sm">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand/20 blur-3xl" />
+      <div className="rounded-3xl border border-border bg-card p-5">
         <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand shadow-lg shadow-brand/30">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand">
             <GiftIcon className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -195,7 +194,7 @@ export function EarnTab({ address }: Props) {
           </div>
         </div>
         {totalEarned > 0 && (
-          <div className="relative mt-3 rounded-xl bg-white/70 px-4 py-2.5 ring-1 ring-brand/15">
+          <div className="relative mt-3 rounded-xl bg-brand/5 px-4 py-2.5">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">
               Total earned
             </p>
@@ -205,11 +204,10 @@ export function EarnTab({ address }: Props) {
       </div>
 
       {/* Streak progress card */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-50 via-orange-50 to-white p-5 shadow-sm">
-        <div className="pointer-events-none absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-amber-300/20 blur-3xl" />
+      <div className="rounded-3xl border border-border bg-card p-5">
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500">
               <FireIcon className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -219,14 +217,14 @@ export function EarnTab({ address }: Props) {
           </div>
           <div className="text-right">
             <p className="font-display text-2xl font-bold tabular-nums text-amber-700">{streak}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">days</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">days</p>
           </div>
         </div>
 
         {/* Weekly strip */}
         <WeekStreak streak={streak} checkedInToday={checkedInToday} />
 
-        <div className="relative mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
+        <div className="relative mt-2 flex justify-between text-xs font-medium text-muted-foreground">
           <span className={cn(streak >= 7 && "text-amber-600 font-semibold")}>7 days (25 G$)</span>
           <span className={cn(streak >= 30 && "text-amber-600 font-semibold")}>30 days (100 G$)</span>
         </div>

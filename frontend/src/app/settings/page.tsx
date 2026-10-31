@@ -235,7 +235,7 @@ export default function SettingsPage() {
                 )
               }
               label="GoodDollar verification"
-              description={isVerified ? "Verified" : "Verify to unlock daily G$ UBI claiming"}
+              description={isVerified ? "Verified" : "Verify to claim your daily G$"}
               action={
                 isVerified ? (
                   <span className="text-[11px] font-semibold text-brand">Verified</span>

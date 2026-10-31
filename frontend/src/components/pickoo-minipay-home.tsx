@@ -42,22 +42,9 @@ interface Props {
   profile: Profile | null;
 }
 
-const CATEGORY_CHIP: Record<string, string> = {
-  crypto: "bg-blue-50 text-blue-700 border-blue-200",
-  sports: "bg-amber-50 text-amber-700 border-amber-200",
-  local: "bg-purple-50 text-purple-700 border-purple-200",
-  weather: "bg-sky-50 text-sky-700 border-sky-200",
-  stocks: "bg-green-50 text-green-700 border-green-200",
-  "social media": "bg-pink-50 text-pink-700 border-pink-200",
-};
-const CATEGORY_GRADIENT: Record<string, string> = {
-  crypto: "from-blue-50 to-blue-100",
-  sports: "from-amber-50 to-amber-100",
-  local: "from-purple-50 to-purple-100",
-  weather: "from-sky-50 to-sky-100",
-  stocks: "from-green-50 to-green-100",
-  "social media": "from-pink-50 to-pink-100",
-};
+// One neutral treatment for every category; colour is reserved for status and the brand accent.
+const CATEGORY_CHIP = "bg-muted text-muted-foreground border-border";
+const CATEGORY_PLACEHOLDER = "bg-muted";
 
 export function RangeFrenzyHome({ address, profile }: Props) {
   const pendingTab = useAppStore((s) => s.pendingTab);
@@ -174,6 +161,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                     <button
                       key={c}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => setSelectedCategory(isAll ? null : (selectedCategory === c ? null : c))}
                       className={cn(
                         "rounded-full px-4 py-1.5 text-xs font-semibold transition border",
@@ -204,9 +192,6 @@ export function RangeFrenzyHome({ address, profile }: Props) {
             ) : (
               <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                 {filteredMarkets.map((market) => {
-                  const catKey = market.categoryLabel.toLowerCase();
-                  const chipClass = CATEGORY_CHIP[catKey] ?? "bg-muted text-muted-foreground border-border";
-                  const gradientClass = CATEGORY_GRADIENT[catKey] ?? "from-muted to-muted/60";
                   return (
                     <li key={market.address}>
                       <button
@@ -214,7 +199,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                         onClick={() => handleSelectMarket(market)}
                         className="group w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-brand/30 hover:shadow-md"
                       >
-                        <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : `bg-gradient-to-br ${gradientClass}`)}>
+                        <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : CATEGORY_PLACEHOLDER)}>
                           {market.imageUrl ? (
                             <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
                           ) : (
@@ -224,7 +209,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="mb-1.5 flex items-center gap-1.5">
-                              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", chipClass)}>
+                              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
                                 {market.categoryLabel}
                               </span>
                               <span className="text-[11px] text-muted-foreground">·</span>
@@ -265,6 +250,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                 <button
                   key={sub}
                   type="button"
+                  aria-pressed={boardSub === sub}
                   onClick={() => setBoardSub(sub)}
                   className={cn(
                     "flex-1 rounded-xl py-2.5 text-center text-sm font-semibold transition",
@@ -364,6 +350,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
               <input
                 type="text"
                 placeholder="Search markets…"
+                aria-label="Search markets"
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
                 className="h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-2 ring-transparent focus:ring-primary/30"
@@ -377,6 +364,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                   <button
                     key={c}
                     type="button"
+                    aria-pressed={selectedCategory === c}
                     onClick={() => setSelectedCategory(selectedCategory === c ? null : c)}
                     className={cn(
                       "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
@@ -827,6 +815,7 @@ function StakeModal({
                   <button
                     key={r.index}
                     type="button"
+                    aria-pressed={selectedRange.index === r.index}
                     onClick={() => onRangeSelect(r)}
                     className={cn(
                       "rounded-xl border px-3 py-3 text-left text-sm font-medium transition cursor-pointer",
@@ -854,6 +843,7 @@ function StakeModal({
                   type="number"
                   min={minStake}
                   step="0.01"
+                  aria-label={`Amount in ${tokenSymbol}`}
                   placeholder={`Min ${minStake} ${tokenSymbol}`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -966,12 +956,10 @@ function MarketDetailModal({
     }
   };
 
-  const catKey = market.categoryLabel.toLowerCase();
-
   return (
     <Modal title={market.question} onClose={onClose}>
       <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
-        <div className={cn("flex h-36 items-center justify-center overflow-hidden shrink-0", market.imageUrl ? "" : `bg-gradient-to-br ${CATEGORY_GRADIENT[catKey] ?? "from-muted to-muted/60"}`)}>
+        <div className={cn("flex h-36 items-center justify-center overflow-hidden shrink-0", market.imageUrl ? "" : CATEGORY_PLACEHOLDER)}>
           {market.imageUrl ? (
             <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -981,7 +969,7 @@ function MarketDetailModal({
         <div className="p-6">
           <div className="mb-1 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP[catKey] ?? "bg-muted text-muted-foreground border-border")}>
+              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", CATEGORY_CHIP)}>
                 {market.categoryLabel}
               </span>
               <span className="text-xs text-muted-foreground">G$</span>
@@ -1036,6 +1024,7 @@ function MarketDetailModal({
                   <button
                     key={r.index}
                     type="button"
+                    aria-pressed={selectedRange.index === r.index}
                     onClick={() => setSelectedRange(r)}
                     className={cn(
                       "rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",

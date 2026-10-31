@@ -140,7 +140,7 @@ function HomeInner() {
           await sendNotification(
             p.username,
             "Verify on GoodDollar",
-            "earn daily g$, get rewarded",
+            "Verify to claim your daily G$.",
           );
         }
       }
@@ -156,9 +156,11 @@ function HomeInner() {
   }, [address, isVerified, syncVerification]);
 
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
 
   const handleVerify = async () => {
     setVerifyLoading(true);
+    setVerifyError("");
     try {
       const already = await isAddressVerified(address);
       if (already) {
@@ -170,7 +172,9 @@ function HomeInner() {
       const callbackUrl = `${window.location.origin}?gd_verified=true`;
       const link = await generateFVLink(viemWalletClient, callbackUrl);
       window.location.href = link;
-    } catch {
+    } catch (err) {
+      console.error("GoodDollar verification error:", err);
+      setVerifyError("We couldn't start verification. Check your connection and try again.");
       setVerifyLoading(false);
     }
   };
@@ -233,7 +237,7 @@ function HomeInner() {
           <div className="w-full max-w-sm">
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <p className="mb-4 text-xs text-muted-foreground">
-                Copy your wallet address to receive $CELO from the admin, then proceed to verify your identity.
+                Copy your wallet address to get CELO for network fees from the admin, then verify with GoodDollar.
               </p>
 
               <div className="flex items-center gap-2 rounded-xl bg-muted px-4 py-3">
@@ -259,9 +263,9 @@ function HomeInner() {
               <Button
                 className="mt-5 w-full rounded-xl bg-brand text-base font-semibold text-white hover:bg-brand-dark"
                 size="lg"
-                onClick={() => window.open("https://t.me/+Vz9Ze9dNIww0OGY0", "_blank")}
+                onClick={() => window.open("https://t.me/+Vz9Ze9dNIww0OGY0", "_blank", "noopener,noreferrer")}
               >
-                Get Gas
+                Get CELO
               </Button>
 
               <Button
@@ -282,6 +286,12 @@ function HomeInner() {
                 )}
               </Button>
             </div>
+
+            {verifyError && (
+              <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
+                {verifyError}
+              </p>
+            )}
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
               Verify with GoodDollar to start staking on outcome ranges.

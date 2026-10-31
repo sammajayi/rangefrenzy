@@ -363,7 +363,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "profile_setup"
               ? "Choose a username to get started"
-              : "Stake G$ on outcome ranges for crypto, sports, weather & more"}
+              : "Stake G$ on outcome ranges for crypto, sports and local events"}
           </p>
         </div>
 
@@ -376,7 +376,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               onClick={() => setStep("email_input")}
             >
               <Mail01Icon className="mr-2 h-5 w-5" />
-              Continue with Email
+              Continue with email
             </Button>
 
             <div className="relative my-1">
@@ -403,14 +403,14 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               ) : (
                 <>
                   <Wallet01Icon className="mr-2 h-5 w-5" />
-                  Connect Wallet
+                  Connect wallet
                 </>
               )}
             </Button>
 
 
             {authError && (
-              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-center text-xs text-destructive">
+              <p role="alert" className="rounded-lg bg-destructive/8 px-3 py-2 text-center text-xs text-destructive">
                 {authError}
               </p>
             )}
@@ -425,16 +425,19 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         {step === "email_input" && (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label htmlFor="auth-email" className="mb-1.5 block text-sm font-medium text-foreground">
                 Email address
               </label>
               <div className="relative">
                 <input
+                  id="auth-email"
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-4 pr-20 text-base outline-none ring-2 ring-transparent transition focus:ring-brand/25"
+                  className="h-12 w-full rounded-xl border border-input bg-muted/40 pl-4 pr-24 text-base outline-none ring-2 ring-transparent transition focus:ring-brand/25"
                   autoFocus
                   required
                 />
@@ -445,12 +448,12 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 >
                   {isSendingCode ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand/40 border-t-brand inline-block" />
-                  ) : "Submit"}
+                  ) : "Send code"}
                 </button>
               </div>
             </div>
             {authError && (
-              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+              <p role="alert" className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
                 {authError}
               </p>
             )}
@@ -475,10 +478,13 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               </p>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label htmlFor="auth-otp" className="mb-1.5 block text-sm font-medium text-foreground">
                 Verification code
               </label>
               <input
+                id="auth-otp"
+                name="otp"
+                autoComplete="one-time-code"
                 type="text"
                 inputMode="numeric"
                 placeholder="123456"
@@ -491,7 +497,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               />
             </div>
             {authError && (
-              <p className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+              <p role="alert" className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
                 {authError}
               </p>
             )}
@@ -527,10 +533,13 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         {step === "profile_setup" && (
           <form onSubmit={handleProfileSubmit} className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Username</label>
+              <label htmlFor="auth-username" className="mb-1.5 block text-sm font-medium text-foreground">Username</label>
               <div className="relative">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">@</span>
                 <input
+                  id="auth-username"
+                  name="username"
+                  autoComplete="username"
                   type="text"
                   placeholder="range_queen"
                   value={username}
@@ -543,7 +552,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 />
               </div>
               {usernameError && (
-                <p className="mt-1.5 rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
+                <p role="alert" className="mt-1.5 rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive">
                   {usernameError}
                 </p>
               )}

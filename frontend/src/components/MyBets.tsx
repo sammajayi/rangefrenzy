@@ -76,7 +76,7 @@ function BetCard({ bet, onClaimMarket }: { bet: SubgraphStake; onClaimMarket?: (
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider", meta.className)}>
+          <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider", meta.className)}>
             <Icon className="h-3 w-3" />
             {isClaimed ? "Claimed" : meta.label}
           </span>
@@ -98,11 +98,11 @@ function BetCard({ bet, onClaimMarket }: { bet: SubgraphStake; onClaimMarket?: (
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {new Date(Number(bet.createdAt) * 1000).toLocaleDateString()}
           </p>
           {isClaimed && bet.claimedAt && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               · Claimed {new Date(Number(bet.claimedAt) * 1000).toLocaleDateString()}
             </p>
           )}
@@ -112,15 +112,15 @@ function BetCard({ bet, onClaimMarket }: { bet: SubgraphStake; onClaimMarket?: (
             href={`${EXPLORER}/tx/${bet.transactionHash}`}
             target="_blank"
             rel="noreferrer"
-            className="text-[11px] text-brand underline-offset-4 hover:underline"
+            className="text-xs text-brand underline-offset-4 hover:underline"
           >
-            Tx ↗
+            View transaction ↗
           </a>
           {isClaimable && onClaimMarket && bet.market?.address && (
             <button
               type="button"
               onClick={() => onClaimMarket(bet.market!.address)}
-              className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white transition hover:bg-amber-600"
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-amber-600"
             >
               <Award01Icon className="h-3 w-3" />
               Claim winnings
@@ -167,7 +167,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
   if (isError) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-muted-foreground">Couldn't load your bets.</p>
+        <p className="text-sm text-muted-foreground">Couldn&apos;t load your stakes.</p>
         <button
           type="button"
           onClick={() => refetch()}
@@ -183,7 +183,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
     return (
       <div className="py-16 text-center">
         <Target01Icon className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-        <p className="font-display text-base font-semibold">No bets yet</p>
+        <p className="font-display text-base font-semibold">No stakes yet</p>
         <p className="text-sm text-muted-foreground mt-1">Stake G$ on a market to get started.</p>
       </div>
     );
@@ -223,8 +223,8 @@ export function MyBets({ address, onClaimMarket }: Props) {
           },
         ].map((s) => (
           <div key={s.label} className="px-1.5 py-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-            <p className={cn("font-display text-xs font-bold mt-0.5 tabular-nums", s.className)}>{s.value}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+            <p className={cn("font-display text-sm font-bold mt-0.5 tabular-nums", s.className)}>{s.value}</p>
           </div>
         ))}
       </div>
@@ -235,6 +235,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
           <button
             key={f.key}
             type="button"
+            aria-pressed={filter === f.key}
             onClick={() => setFilter(f.key)}
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition border",
@@ -257,7 +258,7 @@ export function MyBets({ address, onClaimMarket }: Props) {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">No bets in this category.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">No stakes in this category.</p>
       ) : (
         <ul className="space-y-2">
           {filtered.map((bet) => (

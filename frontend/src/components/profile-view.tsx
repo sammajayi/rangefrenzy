@@ -149,6 +149,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarUploading}
+                aria-label="Change profile photo"
                 className="group relative"
               >
                 {profile?.avatar_url ? (
@@ -194,7 +195,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
           <div className="flex shrink-0 items-center gap-2">
             {streak > 0 && (
               <div
-                className="flex items-center gap-1 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-2.5 py-1.5 shadow-sm shadow-amber-500/30"
+                className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1.5"
                 title={`${streak}-day streak`}
               >
                 <FireIcon className="h-4 w-4 text-white" strokeWidth={1} />
@@ -215,16 +216,16 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
         </div>
 
         {/* Stats */}
-        <div className="mt-5 grid grid-cols-4 rounded-2xl border border-border bg-card divide-x divide-border shadow-sm">
+        <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
           {stats.map((s) => {
             const Icon = s.icon;
             return (
-              <div key={s.label} className="flex flex-col items-center gap-1 px-1.5 py-2.5 text-center">
+              <div key={s.label} className="flex flex-col items-center gap-1 bg-card px-2 py-3 text-center">
                 <div className={cn("flex h-5 w-5 items-center justify-center rounded-md", s.tint)}>
                   <Icon className="h-3 w-3" />
                 </div>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                <p className={cn("font-display text-xs font-bold tabular-nums", s.valueClass)}>{s.value}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                <p className={cn("font-display text-sm font-bold tabular-nums", s.valueClass)}>{s.value}</p>
               </div>
             );
           })}
@@ -236,15 +237,15 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
             <Wallet01Icon className="h-3.5 w-3.5" />
             Wallet balances
           </h3>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-transparent px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-muted/40 px-4 py-3">
             <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/celo.png" alt="CELO" className="h-5 w-5 rounded-full shrink-0 shadow-sm" />
-              <span className="text-[10px] font-semibold uppercase text-muted-foreground">CELO</span>
+              <img src="/icons/celo.png" alt="CELO" className="h-5 w-5 rounded-full shrink-0" />
+              <span className="text-xs font-semibold uppercase text-muted-foreground">CELO</span>
               <span className="text-sm font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "—"}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/goodollar.png" alt="G$" className="h-5 w-5 rounded-full shrink-0 shadow-sm" />
-              <span className="text-[10px] font-semibold uppercase text-muted-foreground">G$</span>
+              <img src="/icons/goodollar.png" alt="G$" className="h-5 w-5 rounded-full shrink-0" />
+              <span className="text-xs font-semibold uppercase text-muted-foreground">G$</span>
               <span className="text-sm font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "—"}</span>
             </div>
           </div>
@@ -252,7 +253,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
 
         {/* My Bets */}
         <section className="mt-8">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">My Bets</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">My stakes</h3>
           <MyBets address={address} onClaimMarket={onClaimMarket} />
         </section>
       </div>

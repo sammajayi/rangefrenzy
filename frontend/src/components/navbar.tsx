@@ -24,7 +24,7 @@ function NotifToast({ notif, onClose }: { notif: Notification; onClose: () => vo
   const isWin = notif.title.toLowerCase().includes("won")
 
   return (
-    <div className="fixed bottom-24 left-1/2 z-[200] -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div role="status" className="fixed bottom-24 left-1/2 z-[200] -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md ${isWin ? "border-won/30 bg-won/10" : "border-border bg-card"}`}>
         <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${isWin ? "bg-won" : "bg-primary"}`} />
         <div className="min-w-0 flex-1">
@@ -52,6 +52,15 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
     setToast(n)
   }, [])
 
+  useEffect(() => {
+    if (!showNotifications) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowNotifications(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [showNotifications])
+
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(username, handleNew)
 
   return (
@@ -65,6 +74,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
           <button
             type="button"
             onClick={() => setShowNotifications((v) => !v)}
+            aria-expanded={showNotifications}
             className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
             aria-label="Notifications"
           >
@@ -80,6 +90,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
               <button
                 type="button"
                 onClick={onToggleSearch}
+                aria-label="Search markets"
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
               >
                 <Search01Icon className="h-5 w-5" />
@@ -87,6 +98,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
               <button
                 type="button"
                 onClick={onToggleFilter}
+                aria-label="Filter markets"
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
               >
                 <FilterHorizontalIcon className="h-5 w-5" />
@@ -98,6 +110,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
               <input
                 type="text"
                 placeholder="Search markets…"
+                aria-label="Search markets"
                 value={filterSearch ?? ""}
                 onChange={(e) => onSearchChange?.(e.target.value)}
                 className="h-9 w-36 rounded-xl border border-input bg-muted px-3 text-sm outline-none ring-2 ring-transparent focus:ring-brand/30"
@@ -106,6 +119,7 @@ export function Navbar({ tab, showSearch, filterSearch, onToggleSearch, onSearch
               <button
                 type="button"
                 onClick={() => { onSearchChange?.(""); onToggleSearch?.(); }}
+                aria-label="Close search"
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition"
               >
                 <Cancel01Icon className="h-5 w-5" />
