@@ -15,6 +15,7 @@ import {
 } from "hugeicons-react";
 
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
@@ -269,9 +270,8 @@ export default function SettingsPage() {
 
       {/* Username edit modal */}
       {showUsernameEdit && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUsernameEdit(false)} />
-          <div className="relative z-10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-card p-6 shadow-xl">
+        <Modal title="Change username" onClose={() => setShowUsernameEdit(false)} z="z-[100]" sheet overlayClassName="bg-black/50" className="max-w-sm">
+          <div className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-card p-6 shadow-xl">
             <h3 className="font-display text-base font-bold mb-1">Change username</h3>
             <p className="text-[13px] text-muted-foreground mb-4">3–30 chars, letters, numbers, and underscores only.</p>
             <input
@@ -303,7 +303,7 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

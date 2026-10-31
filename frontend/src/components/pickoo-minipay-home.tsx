@@ -9,6 +9,7 @@ import {
   GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -215,7 +216,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                       >
                         <div className={cn("mb-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl lg:h-44", market.imageUrl ? "" : `bg-gradient-to-br ${gradientClass}`)}>
                           {market.imageUrl ? (
-                            <img src={market.imageUrl} alt={market.question} className="h-full w-full object-cover" />
+                            <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <Chart01Icon className="h-8 w-8 text-muted-foreground/30" />
                           )}
@@ -316,6 +317,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[11px] font-semibold transition-all",
                   active ? "text-brand" : "text-muted-foreground"
@@ -344,13 +346,14 @@ export function RangeFrenzyHome({ address, profile }: Props) {
 
       {/* ── FILTER PANEL ── */}
       {showFilter && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center">
+        <Modal title="Filter markets" onClose={() => setShowFilter(false)} z="z-[70]" sheet overlayClassName="bg-black/40">
           <div className="w-full max-w-md rounded-t-3xl border border-border bg-card p-6 shadow-xl sm:rounded-3xl">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="font-display text-lg font-bold">Filter Markets</h3>
+              <h3 className="font-display text-lg font-bold">Filter markets</h3>
               <button
                 type="button"
                 onClick={() => setShowFilter(false)}
+                aria-label="Close"
                 className="text-muted-foreground hover:text-foreground transition"
               >
                 <Cancel01Icon className="h-5 w-5" />
@@ -410,7 +413,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── MARKET DETAIL MODAL ── */}
@@ -631,7 +634,7 @@ function StakeModal({
   const anySuccess = stakeStep === "success" || sellStep === "success" || claimStep === "success";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+    <Modal title={market.question} onClose={handleClose}>
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl max-h-[90dvh] overflow-y-auto">
 
         {/* Header */}
@@ -644,7 +647,7 @@ function StakeModal({
             <h3 className="font-display text-lg font-bold leading-snug">{market.question}</h3>
             <p className="mt-1 text-xs text-muted-foreground">{market.deadlineLabel}</p>
           </div>
-          <button type="button" onClick={handleClose} className="text-muted-foreground hover:text-foreground transition shrink-0">
+          <button type="button" onClick={handleClose} aria-label="Close" className="text-muted-foreground hover:text-foreground transition shrink-0">
             <Cancel01Icon className="h-5 w-5" />
           </button>
         </div>
@@ -925,7 +928,7 @@ function StakeModal({
           onClose={() => setShowShare(false)}
         />
       )}
-    </div>
+    </Modal>
   );
 }
 
@@ -960,11 +963,11 @@ function MarketDetailModal({
   const catKey = market.categoryLabel.toLowerCase();
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+    <Modal title={market.question} onClose={onClose}>
       <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
         <div className={cn("flex h-36 items-center justify-center overflow-hidden shrink-0", market.imageUrl ? "" : `bg-gradient-to-br ${CATEGORY_GRADIENT[catKey] ?? "from-muted to-muted/60"}`)}>
           {market.imageUrl ? (
-            <img src={market.imageUrl} alt={market.question} className="h-full w-full object-cover" />
+            <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             <Chart01Icon className="h-8 w-8 text-muted-foreground/40" />
           )}
@@ -1051,12 +1054,12 @@ function MarketDetailModal({
               className="flex-1 rounded-2xl bg-brand hover:bg-brand-dark text-white"
               onClick={handleCta}
             >
-              {hasActivePosition ? "Manage Position" : "Stake G$"}
+              {hasActivePosition ? "Manage position" : "Stake G$"}
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

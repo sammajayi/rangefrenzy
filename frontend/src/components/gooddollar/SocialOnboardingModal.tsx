@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PartyIcon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { useAppStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -48,7 +49,7 @@ export function SocialOnboardingModal({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+    <Modal title="Welcome to RangeFrenzy" onClose={onClose} z="z-[90]" dismissable={false}>
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl">
         <div className="text-center mb-6">
           <div className="mb-3 flex justify-center">
@@ -117,6 +118,6 @@ export function SocialOnboardingModal({ onClose }: Props) {
           You can skip this, rewards are distributed within 24 hours.
         </p>
       </div>
-    </div>
+    </Modal>
   );
 }

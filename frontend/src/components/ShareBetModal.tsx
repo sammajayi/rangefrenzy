@@ -14,6 +14,7 @@ import {
   Loading03Icon,
 } from "hugeicons-react";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
 
 interface Props {
   marketAddress: string;
@@ -120,7 +121,7 @@ export function ShareBetModal({ marketAddress, rangeIndex, rangeLabel, question,
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+    <Modal title="Share your prediction" onClose={onClose} z="z-[80]">
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-xl max-h-[92dvh] overflow-y-auto">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
@@ -226,6 +227,6 @@ export function ShareBetModal({ marketAddress, rangeIndex, rangeLabel, question,
           Done
         </button>
       </div>
-    </div>
+    </Modal>
   );
 }

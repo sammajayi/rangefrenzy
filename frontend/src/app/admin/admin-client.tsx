@@ -282,6 +282,7 @@ export default function AdminPage() {
   const [resolving, setResolving] = useState<Market | null>(null);
   const [resolveValue, setResolveValue] = useState("");
   const [resolveLoading, setResolveLoading] = useState(false);
+  const [resolveError, setResolveError] = useState("");
   const [reFixMsg, setReFixMsg] = useState<string | null>(null);
   const [reFixMarket, setReFixMarket] = useState<Market | null>(null);
   const [reFixValue, setReFixValue] = useState("");
@@ -617,6 +618,7 @@ export default function AdminPage() {
     e.preventDefault();
     if (!resolving) return;
     setResolveLoading(true);
+    setResolveError("");
     try {
       const outcomeNum = parseFloat(resolveValue);
       const contractAddress = (resolving as any).contract_address as string | null;
@@ -707,7 +709,9 @@ export default function AdminPage() {
       fetchData();
     } catch (err) {
       console.error("Resolve error:", err);
-      alert(`Resolution failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setResolveError(
+        `Resolution failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setResolveLoading(false);
     }
@@ -1827,6 +1831,11 @@ export default function AdminPage() {
                   autoFocus
                 />
               </Field>
+              {resolveError && (
+                <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                  {resolveError}
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button
                   type="button"
@@ -1835,6 +1844,7 @@ export default function AdminPage() {
                   onClick={() => {
                     setResolving(null);
                     setResolveValue("");
+                    setResolveError("");
                   }}
                 >
                   Cancel

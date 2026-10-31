@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(216 33% 97.3%);
   --color-ring: hsl(215 20.2% 65.1%);
@@ -49,8 +47,20 @@
   --color-astra-text-muted: #9CA3AF;
 }
 
+/* next/font exposes the loaded families as --font-archivo and --font-dm-sans on <html>. */
+@theme inline {
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Base layer, so border-* colour utilities (border-white/5, border-brand, ...) can override it. */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}
+
 * {
-  border-color: var(--color-border);
   scroll-behavior: smooth;
 }
 
@@ -72,10 +82,6 @@ select {
 .font-display {
   font-family: var(--font-display), var(--font-body), ui-sans-serif, system-ui,
     sans-serif;
-}
-
-.font-body {
-  font-family: "Inter", var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
 @keyframes splash-bounce {
@@ -201,6 +207,22 @@ select {
 .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
 .animate-float-medium { animation: float-medium 9s ease-in-out infinite; }
 .animate-float-fast { animation: float-fast 7s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast,
+  .animate-gradient-border::before,
+  .animate-splash-bounce,
+  .animate-splash-dot,
+  .animate-splash-glow {
+    animation: none;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
+}
 
 /* Animated gradient border */
 @keyframes gradient-rotate {

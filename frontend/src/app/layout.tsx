@@ -1,9 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Archivo, DM_Sans } from "next/font/google";
 import "./globals.css";
 
 import { WalletProvider } from "@/components/wallet-provider";
 import RegisterSW from "@/components/register-sw";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.rangefrenzy.xyz"),
@@ -70,17 +83,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${archivo.variable} ${dmSans.variable}`}>
       <head>
         <meta name="talentapp:project_verification" content="97b86451041e1f4ce8c5f94b1c2820be64ac2e14715561dbdd2a8cde1ac7150fdb31461c2599f0f13d27a786bf4750a0573d2ccc6b39a0babab81933c66254" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <div className="relative flex min-h-screen flex-col">
