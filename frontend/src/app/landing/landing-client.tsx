@@ -43,25 +43,105 @@ function useReveal(threshold = 0.15) {
   return { ref, visible };
 }
 
+/* Calls onFrame(0..1) as `ref` travels through the viewport. rAF-throttled,
+   passive listeners, and a single call at 1 when the user prefers reduced motion.
+   "enter": 0 until the element's top reaches `anchor` of the viewport, 1 once its
+   bottom has. "leave": 0 while its top is at the top edge, 1 once it has scrolled away. */
+function useScrollProgress<T extends HTMLElement>(
+  ref: React.RefObject<T | null>,
+  onFrame: (progress: number) => void,
+  { anchor = 0.75, mode = "enter" }: { anchor?: number; mode?: "enter" | "leave" } = {}
+) {
+  const frame = useRef(onFrame);
+  useEffect(() => {
+    frame.current = onFrame;
+  });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      frame.current(mode === "leave" ? 0 : 1);
+      return;
+    }
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const p =
+        mode === "leave"
+          ? -rect.top / rect.height
+          : (window.innerHeight * anchor - rect.top) / rect.height;
+      frame.current(Math.min(1, Math.max(0, p)));
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [ref, anchor, mode]);
+}
+
 function Reveal({
   children,
   className = "",
   delay = 0,
+  variant = "up",
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  variant?: "up" | "scale";
 }) {
   const { ref, visible } = useReveal();
+  const hidden = variant === "scale" ? "scale-[0.96] opacity-0" : "translate-y-6 opacity-0";
+  const shown = variant === "scale" ? "scale-100 opacity-100" : "translate-y-0 opacity-100";
   return (
     <div
       ref={ref}
-      className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${
-        visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+      className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:opacity-100 motion-reduce:transition-none ${
+        visible ? shown : hidden
       } ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
+    </div>
+  );
+}
+
+/* Thin brand line under the header that fills as the page scrolls. */
+function ScrollBar() {
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? window.scrollY / max : 0;
+      if (barRef.current) barRef.current.style.transform = `scaleX(${Math.min(1, Math.max(0, p))})`;
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-[-1px] h-px">
+      <div ref={barRef} className="h-full origin-left scale-x-0 bg-astra-brand" />
     </div>
   );
 }
@@ -124,6 +204,7 @@ function Navbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-astra-line bg-astra-bg/85 backdrop-blur-xl">
+      <ScrollBar />
       <nav
         aria-label="Main"
         className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4"
@@ -260,10 +341,25 @@ function RangeLadder() {
   );
 }
 
+const headlineWords = ["Predict.", "Stake.", "Win."];
+
 function Hero() {
+  const driftRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+
+  // The ladder card drifts up slower than the page while the hero scrolls away.
+  useScrollProgress(
+    heroRef,
+    (p) => {
+      if (driftRef.current) driftRef.current.style.transform = `translateY(${-p * 72}px)`;
+    },
+    { mode: "leave" }
+  );
+
   return (
     <section
       id="top"
+      ref={heroRef}
       className="relative flex min-h-dvh items-center overflow-hidden px-6 pb-20 pt-28"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgba(34,197,94,0.10),transparent_70%)]" />
@@ -271,7 +367,15 @@ function Hero() {
       <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
         <div>
           <h1 className="font-display text-5xl font-extrabold leading-[0.95] tracking-tighter text-balance text-astra-text sm:text-6xl lg:text-7xl xl:text-8xl">
-            Predict. Stake. Win.
+            {headlineWords.map((w, i) => (
+              <span
+                key={w}
+                className="animate-rise mr-[0.25em] inline-block last:mr-0"
+                style={{ animationDelay: `${i * 120}ms` }}
+              >
+                {w}
+              </span>
+            ))}
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg text-astra-muted md:text-xl">
             The range-based prediction market built for GoodDollar users across
@@ -298,7 +402,9 @@ function Hero() {
         </div>
 
         <div className="lg:justify-self-end">
-          <RangeLadder />
+          <div ref={driftRef} className="will-change-transform">
+            <RangeLadder />
+          </div>
         </div>
       </div>
     </section>
@@ -325,6 +431,15 @@ const steps = [
 ];
 
 function HowItWorks() {
+  const listRef = useRef<HTMLOListElement>(null);
+  const fillRef = useRef<HTMLSpanElement>(null);
+  const [reached, setReached] = useState(0);
+
+  useScrollProgress(listRef, (p) => {
+    if (fillRef.current) fillRef.current.style.transform = `scaleY(${p})`;
+    setReached(Math.min(steps.length, Math.floor(p * steps.length + 0.35)));
+  });
+
   return (
     <section id="how-it-works" className="px-6 py-24 md:py-32">
       <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
@@ -335,12 +450,32 @@ function HowItWorks() {
           />
         </Reveal>
 
-        <ol>
-          {steps.map((s, i) => (
-            <li key={s.num}>
-              <Reveal delay={i * 120}>
-                <div className="grid grid-cols-[3.5rem_1fr] gap-4 border-t border-astra-line py-8 first:border-t-0 first:pt-0">
-                  <span className="font-display text-2xl font-bold tabular-nums text-astra-brand">
+        <ol ref={listRef} className="relative border-l border-astra-line pl-10">
+          <span
+            ref={fillRef}
+            aria-hidden
+            className="absolute -left-px top-0 h-full w-px origin-top scale-y-0 bg-astra-brand motion-reduce:scale-y-100"
+          />
+          {steps.map((s, i) => {
+            const on = i < reached;
+            return (
+              <li key={s.num} className="relative">
+                <span
+                  aria-hidden
+                  className={`absolute -left-[2.875rem] h-3 w-3 rounded-full border-2 transition-colors duration-500 ${
+                    i === 0 ? "top-2" : "top-10"
+                  } ${on ? "border-astra-brand bg-astra-brand" : "border-astra-line bg-astra-bg"}`}
+                />
+                <div
+                  className={`grid grid-cols-[3.5rem_1fr] gap-4 py-8 transition-opacity duration-500 first:pt-0 ${
+                    on ? "opacity-100" : "opacity-40"
+                  } motion-reduce:opacity-100`}
+                >
+                  <span
+                    className={`font-display text-2xl font-bold tabular-nums transition-colors duration-500 ${
+                      on ? "text-astra-brand" : "text-astra-subtle"
+                    }`}
+                  >
                     {s.num}
                   </span>
                   <div>
@@ -352,9 +487,9 @@ function HowItWorks() {
                     </p>
                   </div>
                 </div>
-              </Reveal>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ol>
       </div>
     </section>
@@ -402,6 +537,7 @@ function ExampleMarkets() {
             <Reveal
               key={m.question}
               delay={i * 100}
+              variant="scale"
               className="min-w-[280px] snap-start sm:min-w-0"
             >
               <div className="flex h-full flex-col rounded-xl bg-astra-surface p-6 transition-colors duration-200 hover:bg-astra-surface-raised">
@@ -522,7 +658,7 @@ function CTASection() {
   return (
     <section className="px-6 pb-24 md:pb-32">
       <div className="mx-auto max-w-6xl">
-        <Reveal>
+        <Reveal variant="scale">
           <div className="rounded-2xl border border-astra-brand/25 bg-astra-surface px-8 py-14 sm:px-14">
             <h2 className="max-w-xl font-display text-3xl font-bold tracking-tight text-balance text-astra-text sm:text-4xl md:text-5xl">
               Ready to put your G$ to work?
