@@ -249,7 +249,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[11px] font-bold uppercase",
+        "rounded-md px-2 py-0.5 text-xs font-semibold capitalize",
         map[status] ?? "bg-muted text-muted-foreground"
       )}
     >
@@ -798,6 +798,11 @@ export default function AdminPage() {
     }
   }
 
+  async function signOut() {
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => {});
+    window.location.assign("/admin");
+  }
+
   const tabs: { id: AdminTab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "markets", label: "Markets" },
@@ -844,23 +849,29 @@ export default function AdminPage() {
               <Activity01Icon className="h-3.5 w-3.5" />
               {loading ? "Loading…" : "Refresh"}
             </button>
-            <div className="flex h-6 items-center rounded-full bg-brand/10 px-3 text-[11px] font-semibold text-brand">
-              RangeFrenzy Admin
-            </div>
+            <button
+              type="button"
+              onClick={signOut}
+              className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+            >
+              Sign out
+            </button>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto max-w-4xl px-4 py-6">
         {/* Tab bar */}
-        <div className="mb-6 flex gap-1 rounded-2xl border border-border bg-muted/40 p-1 overflow-x-auto">
+        <div role="tablist" aria-label="Admin sections" className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-border bg-muted/40 p-1">
           {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex-1 whitespace-nowrap rounded-xl py-2.5 text-center text-xs font-semibold transition",
+                "flex-1 whitespace-nowrap rounded-xl min-h-10 px-3 text-center text-sm font-medium transition",
                 tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               )}
             >
@@ -875,46 +886,41 @@ export default function AdminPage() {
             {/* Stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <OverviewCard
-                label="Total G$ Staked"
+                label="Total staked (G$)"
                 value={fmtGD(totalStaked)}
                 icon={<DollarSquareIcon className="h-5 w-5" />}
-                color="green"
               />
               <OverviewCard
-                label="Active Markets"
+                label="Active markets"
                 value={String(activeMarkets.length)}
                 icon={<Chart01Icon className="h-5 w-5" />}
-                color="blue"
               />
               <OverviewCard
-                label="Total Stakers"
+                label="Stakers"
                 value={String(uniqueStakers)}
                 icon={<UserGroupIcon className="h-5 w-5" />}
-                color="purple"
               />
               <OverviewCard
-                label="Win Rate"
+                label="Stakes won"
                 value={`${winRate}%`}
                 icon={<ChartIncreaseIcon className="h-5 w-5" />}
-                color="green"
               />
               <OverviewCard
-                label="Pending Resolution"
+                label="Awaiting resolution"
                 value={String(expiredMarkets.length)}
                 icon={<Clock01Icon className="h-5 w-5" />}
-                color={expiredMarkets.length > 0 ? "amber" : "default"}
+                attention={expiredMarkets.length > 0}
               />
               <OverviewCard
-                label="Total Users"
+                label="Users"
                 value={String(profiles.length)}
                 icon={<User02Icon className="h-5 w-5" />}
-                color="default"
               />
             </div>
 
             {/* Volume chart */}
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-3">
                 Stakes volume, last 14 days
               </p>
               <AreaChart data={volumeChartData} />
@@ -924,8 +930,8 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Category bars */}
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                  Category Breakdown
+                <p className="text-xs font-semibold text-muted-foreground mb-3">
+                  Markets by category
                 </p>
                 {categoryBreakdown.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No markets yet.</p>
@@ -954,8 +960,8 @@ export default function AdminPage() {
 
               {/* Donut */}
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                  Market Status
+                <p className="text-xs font-semibold text-muted-foreground mb-3">
+                  Market status
                 </p>
                 <DonutChart
                   slices={[
@@ -970,8 +976,8 @@ export default function AdminPage() {
             {/* Recent activity */}
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="px-4 pt-4 pb-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Recent Activity
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Recent stakes
                 </p>
               </div>
               {stakes.length === 0 ? (
@@ -979,7 +985,7 @@ export default function AdminPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <thead className="bg-muted text-xs font-semibold text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Market</th>
@@ -1111,7 +1117,7 @@ export default function AdminPage() {
             {/* Re-fix resolved markets */}
             {resolvedMarkets.length > 0 && (
               <div className="mt-6">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="text-xs font-semibold text-muted-foreground mb-3">
                   Re-apply resolution to stakes
                 </p>
                 {resolvedMarkets.map((m) => (
@@ -1182,7 +1188,7 @@ export default function AdminPage() {
             {/* Summary row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Total Amount
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-brand">
@@ -1195,7 +1201,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Won
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-emerald-600">
@@ -1203,7 +1209,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Lost
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-red-600">
@@ -1211,7 +1217,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Open
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-blue-600">
@@ -1232,7 +1238,7 @@ export default function AdminPage() {
                 <div className="overflow-hidden rounded-2xl border border-border">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <thead className="bg-muted text-xs font-semibold text-muted-foreground">
                         <tr>
                           <th className="px-3 py-2">#</th>
                           <th className="px-3 py-2">User</th>
@@ -1557,27 +1563,23 @@ export default function AdminPage() {
                 label="Total users"
                 value={String(profiles.length)}
                 icon={<User02Icon className="h-5 w-5" />}
-                color="default"
               />
               <OverviewCard
                 label="GD Verified"
                 value={String(verifiedCount)}
                 subtext={`${profiles.length ? Math.round((verifiedCount / profiles.length) * 100) : 0}% of users`}
                 icon={<Tick01Icon className="h-5 w-5" />}
-                color="green"
               />
               <OverviewCard
                 label="Total volume"
                 value={fmtGD(totalUsersVolume)}
                 icon={<DollarSquareIcon className="h-5 w-5" />}
-                color="purple"
               />
               <OverviewCard
                 label="Active (7d)"
                 value={String(activeLast7d)}
                 subtext={`${profiles.length ? Math.round((activeLast7d / profiles.length) * 100) : 0}% of users`}
                 icon={<Activity01Icon className="h-5 w-5" />}
-                color="blue"
               />
             </div>
 
@@ -1634,7 +1636,7 @@ export default function AdminPage() {
                 </p>
                 <div className="overflow-x-auto rounded-2xl border border-border">
                   <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <thead className="bg-muted text-xs font-semibold text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Wallet</th>
@@ -1884,36 +1886,28 @@ function OverviewCard({
   value,
   subtext,
   icon,
-  color,
+  attention = false,
 }: {
   label: string;
   value: string;
   subtext?: string;
   icon: React.ReactNode;
-  color: "green" | "blue" | "purple" | "amber" | "default";
+  /** Something here needs the admin to act. */
+  attention?: boolean;
 }) {
-  const colorMap = {
-    green: "bg-emerald-50 border-emerald-100 text-emerald-700",
-    blue: "bg-blue-50 border-blue-100 text-blue-700",
-    purple: "bg-purple-50 border-purple-100 text-purple-700",
-    amber: "bg-amber-50 border-amber-200 text-amber-700",
-    default: "bg-card border-border text-muted-foreground",
-  };
-  const iconColor = {
-    green: "text-emerald-600",
-    blue: "text-blue-600",
-    purple: "text-purple-600",
-    amber: "text-amber-600",
-    default: "text-muted-foreground",
-  };
   return (
-    <div className={cn("rounded-2xl border p-4", colorMap[color])}>
-      <div className={cn("flex items-center gap-1.5 mb-2", iconColor[color])}>
+    <div
+      className={cn(
+        "rounded-2xl border p-4",
+        attention ? "border-amber-300 bg-amber-50" : "border-border bg-card"
+      )}
+    >
+      <div className={cn("mb-2 flex items-center gap-1.5", attention ? "text-amber-700" : "text-muted-foreground")}>
         {icon}
-        <p className="text-[11px] font-bold uppercase tracking-wider">{label}</p>
+        <p className="text-xs font-medium">{label}</p>
       </div>
-      <p className="font-display text-xl font-bold tabular-nums text-foreground">{value}</p>
-      {subtext && <p className={cn("mt-0.5 text-[11px]", iconColor[color])}>{subtext}</p>}
+      <p className="font-display text-2xl font-bold tabular-nums text-foreground">{value}</p>
+      {subtext && <p className="mt-0.5 text-xs text-muted-foreground">{subtext}</p>}
     </div>
   );
 }
