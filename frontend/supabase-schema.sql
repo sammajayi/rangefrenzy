@@ -162,3 +162,26 @@ alter table public.profiles
 
 create index if not exists idx_profiles_last_seen
   on public.profiles (last_seen desc nulls last);
+
+-- ─── Weekly contests ─────────────────────────────────────────────────────────
+-- A contest ranks players by G$ staked between starts_at and ends_at.
+-- Players read it; only the admin API (service role) writes it.
+create table if not exists public.contests (
+  id             uuid default gen_random_uuid() primary key,
+  title          text not null,
+  description    text,
+  starts_at      timestamptz not null,
+  ends_at        timestamptz not null,
+  prize_pool_gd  numeric default 0 not null,
+  prizes         jsonb default '[]'::jsonb not null,   -- [{ "rank": 1, "amount": 100 }, ...]
+  min_picks      integer default 1 not null,
+  status         text default 'active' not null
+    check (status in ('active', 'ended', 'paid')),
+  created_at     timestamptz default timezone('utc', now()) not null,
+  check (ends_at > starts_at)
+);
+
+alter table public.contests enable row level security;
+
+create policy "Anyone can read contests" on public.contests
+  for select using (true);

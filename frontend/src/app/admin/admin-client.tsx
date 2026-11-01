@@ -20,9 +20,10 @@ import {
   DollarSquareIcon,
 } from "hugeicons-react";
 import { Link } from "wouter";
+import { ContestsSection } from "./contests-section";
 import { useWallets } from "@privy-io/react-auth";
 
-type AdminTab = "overview" | "markets" | "expired" | "stakes" | "create" | "users" | "notify";
+type AdminTab = "overview" | "markets" | "expired" | "stakes" | "contests" | "create" | "users" | "notify";
 type RangeInput = { label: string; min: string; max: string };
 
 const USERS_PER_PAGE = 10;
@@ -842,6 +843,7 @@ export default function AdminPage() {
       label: `Expired${expiredMarkets.length ? ` (${expiredMarkets.length})` : ""}`,
     },
     { id: "stakes", label: "Stakes" },
+    { id: "contests", label: "Contests" },
     { id: "create", label: "Create" },
     { id: "users", label: "Users" },
     { id: "notify", label: "Notify" },
@@ -1830,6 +1832,7 @@ export default function AdminPage() {
         )}
 
         {/* ── NOTIFY ── */}
+        {tab === "contests" && <ContestsSection />}
         {tab === "notify" && <NotifySection profiles={profiles} />}
       </div>
 

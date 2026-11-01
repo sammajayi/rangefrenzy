@@ -15,9 +15,11 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { ClaimPage } from "@/components/gooddollar/ClaimPage";
+import { ContestTeaser } from "@/components/contest-teaser";
 
 interface Props {
   address: string;
+  onOpenContest?: () => void;
 }
 
 const MILESTONES: { days: number; source: BonusSource }[] = [
@@ -25,7 +27,7 @@ const MILESTONES: { days: number; source: BonusSource }[] = [
   { days: 30, source: "streak_30" },
 ];
 
-export function EarnTab({ address }: Props) {
+export function EarnTab({ address, onOpenContest }: Props) {
   const isVerified = useAppStore((s) => s.isVerified);
   const setVerified = useAppStore((s) => s.setVerified);
   const setHasSkippedVerification = useAppStore((s) => s.setHasSkippedVerification);
@@ -90,6 +92,8 @@ export function EarnTab({ address }: Props) {
   return (
     <div className="mx-auto max-w-lg space-y-6 pb-4">
       <ClaimPage compact />
+
+      <ContestTeaser address={address} onOpen={onOpenContest} />
 
       <StreakCard
         streak={streak}

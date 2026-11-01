@@ -16,6 +16,7 @@ import { supabase, uploadAvatar } from "@/lib/supabase";
 import type { Profile } from "@/lib/supabase";
 import { useAppStore } from "@/lib/store";
 import { MyBets } from "@/components/MyBets";
+import { ContestTeaser } from "@/components/contest-teaser";
 import { useUserStakes } from "@/lib/hooks/use-user-stakes";
 import { computeStakeStats } from "@/lib/stake-stats";
 import { useBalance, useReadContract } from "wagmi";
@@ -26,9 +27,10 @@ interface Props {
   address: string;
   profile: Profile | null;
   onClaimMarket?: (marketAddress: string) => void;
+  onOpenContest?: () => void;
 }
 
-export function ProfileView({ address, profile, onClaimMarket }: Props) {
+export function ProfileView({ address, profile, onClaimMarket, onOpenContest }: Props) {
   const router = useRouter();
   const { wallets } = useWallets();
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
@@ -203,6 +205,10 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
           <p className="mt-1.5 font-display text-2xl font-bold tabular-nums">{celo ?? "…"}</p>
         </div>
       </section>
+
+      <div className="mt-4">
+        <ContestTeaser address={address} onOpen={onOpenContest} />
+      </div>
 
       {/* Stakes */}
       <section className="mt-8">

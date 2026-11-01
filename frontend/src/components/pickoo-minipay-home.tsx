@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { HowItWorksGuide } from "@/components/how-it-works-guide";
 import { Celebration } from "@/components/celebration";
+import { ContestBoard } from "@/components/contest-board";
 import { useExperience } from "@/lib/experience-store";
 import { MarketCard } from "@/components/market-card";
 import { PositionPanel, Notice } from "@/components/position-panel";
@@ -40,7 +41,7 @@ const ClaimPage = lazy(() =>
 );
 
 type Tab = "play" | "board" | "earn" | "profile";
-type BoardSub = "leaderboard" | "weekly";
+type BoardSub = "contest" | "alltime";
 
 interface Props {
   address: string;
@@ -66,7 +67,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
   useEffect(() => {
     if (pendingTab) setPendingTab(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [boardSub, setBoardSub] = useState<BoardSub>("leaderboard");
+  const [boardSub, setBoardSub] = useState<BoardSub>("contest");
   const [selected, setSelected] = useState<{
     market: OnChainMarket;
     range: OnChainRange;
@@ -136,6 +137,11 @@ export function RangeFrenzyHome({ address, profile }: Props) {
     if (!market) return;
     setSelected({ market, range: market.ranges[0] });
     setShowStakeModal(true);
+  };
+
+  const openContest = () => {
+    setBoardSub("contest");
+    setTab("board");
   };
 
   const handleCloseAll = () => {
@@ -229,7 +235,7 @@ export function RangeFrenzyHome({ address, profile }: Props) {
         {tab === "board" && (
           <div className="space-y-4 pt-2">
             <div className="flex gap-1 rounded-2xl border border-border bg-muted/40 p-1">
-              {(["leaderboard", "weekly"] as const).map((sub) => (
+              {(["contest", "alltime"] as const).map((sub) => (
                 <button
                   key={sub}
                   type="button"
@@ -242,29 +248,25 @@ export function RangeFrenzyHome({ address, profile }: Props) {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {sub === "leaderboard" ? "Leaderboard" : "Weekly campaign"}
+                  {sub === "contest" ? "This week" : "All time"}
                 </button>
               ))}
             </div>
 
-            {boardSub === "leaderboard" ? (
-              <Leaderboard address={address} />
-            ) : (
-              <WeeklyCampaignSection />
-            )}
+            {boardSub === "contest" ? <ContestBoard address={address} /> : <Leaderboard address={address} />}
           </div>
         )}
 
         {/* ── EARN TAB ── */}
         {tab === "earn" && (
           <div className="pt-4">
-            <EarnTab address={address} />
+            <EarnTab address={address} onOpenContest={openContest} />
           </div>
         )}
 
         {/* ── PROFILE TAB ── */}
         {tab === "profile" && (
-          <ProfileView address={address} profile={profile} onClaimMarket={handleClaimMarket} />
+          <ProfileView address={address} profile={profile} onClaimMarket={handleClaimMarket} onOpenContest={openContest} />
         )}
       </div>
 
@@ -834,73 +836,5 @@ function StakeModal({
         />
       )}
     </Modal>
-  );
-}
-
-/* ── Weekly Campaign ── */
-type CampaignRow = { username: string; wallet: string; totalStaked: number; picks: number };
-
-function WeeklyCampaignSection() {
-  const [rows, setRows] = useState<CampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    supabase
-      .from("stakes")
-      .select("wallet_address, amount_gd, profile:profiles!stakes_wallet_address_fkey(username)")
-      .gte("created_at", weekAgo)
-      .then(({ data }) => {
-        if (!data?.length) { setLoading(false); return; }
-        const map: Record<string, CampaignRow> = {};
-        for (const row of data as any[]) {
-          const addr = row.wallet_address as string;
-          if (!map[addr]) map[addr] = { username: row.profile?.username ?? addr.slice(0, 6), wallet: addr, totalStaked: 0, picks: 0 };
-          map[addr].totalStaked += parseFloat(row.amount_gd ?? "0");
-          map[addr].picks += 1;
-        }
-        setRows(Object.values(map).sort((a, b) => b.totalStaked - a.totalStaked).slice(0, 10));
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <div className="flex justify-center py-12"><div className="h-7 w-7 animate-spin rounded-full border-4 border-muted border-t-primary" /></div>;
-
-  if (!rows.length) return (
-    <div className="py-16 text-center">
-      <p className="font-display text-xl font-bold">Weekly campaign</p>
-      <p className="text-sm text-muted-foreground mt-2">No stakes this week yet. Be the first.</p>
-    </div>
-  );
-
-  return (
-    <>
-      <div>
-        <h2 className="font-display text-xl font-bold">Weekly campaign</h2>
-        <p className="text-sm text-muted-foreground">Top stakers this week by G$ volume</p>
-      </div>
-      <div className="overflow-hidden rounded-2xl border border-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2">#</th>
-              <th className="px-3 py-2">User</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">Staked</th>
-              <th className="px-3 py-2 text-right">Picks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.wallet} className="border-t border-border bg-card">
-                <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{i + 1}</td>
-                <td className="px-3 py-3 font-medium">@{row.username}</td>
-                <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{row.totalStaked.toFixed(2)} G$</td>
-                <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{row.picks}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
   );
 }
