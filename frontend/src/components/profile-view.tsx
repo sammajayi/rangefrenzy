@@ -7,7 +7,6 @@ import {
   Copy01Icon,
   Setting07Icon,
   Upload01Icon,
-  Wallet01Icon,
   FireIcon,
 } from "hugeicons-react";
 
@@ -101,149 +100,123 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
   };
 
   const pnl = stakeStats.pnl;
-  const pnlTone = pnl > 0 ? "text-emerald-600" : pnl < 0 ? "text-red-600" : "";
-  const stats = [
-    {
-      label: "Total P&L",
-      value: `${pnl > 0 ? "+" : ""}${pnl.toFixed(2)} G$`,
-      valueClass: pnlTone,
-    },
-    {
-      label: "Open",
-      value: String(stakeStats.open),
-      valueClass: "",
-    },
-    {
-      label: "Closed",
-      value: String(stakeStats.closed),
-      valueClass: "",
-    },
-    {
-      label: "Win rate",
-      value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "n/a",
-      valueClass: "",
-    },
-  ];
+  const pnlTone = pnl > 0 ? "text-emerald-600" : pnl < 0 ? "text-red-600" : "text-foreground";
+  const gd = gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : null;
+  const celo = celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : null;
 
   return (
-    <div className="relative min-h-[calc(100dvh-8rem)] pb-8 pt-5 text-foreground">
-      <div className="px-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex gap-3">
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                aria-label="Change profile photo"
-                className="group relative"
-              >
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={displayName} className="h-16 w-16 rounded-full object-cover ring-4 ring-primary/10 shadow-sm" />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary ring-4 ring-primary/10 shadow-sm">
-                    {initials}
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition group-hover:opacity-100">
-                  <Upload01Icon className="h-5 w-5 text-white" />
-                </div>
-              </button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-foreground text-background"
-              >
-                <Upload01Icon className="h-3 w-3" />
-              </span>
-              {avatarUploading && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                </div>
+    <div className="mx-auto min-h-[calc(100dvh-8rem)] max-w-lg px-4 pb-8 pt-5 text-foreground">
+      {/* Identity */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              aria-label="Change profile photo"
+              className="block"
+            >
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 font-display text-lg font-bold text-brand">
+                  {initials}
+                </span>
               )}
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold tracking-tight">{displayName}</h2>
-              <button
-                type="button"
-                onClick={copy}
-                className="-ml-1 mt-0.5 inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
-              >
-                {short}
-                <Copy01Icon className="h-3 w-3" />
-                {copied && <span className="text-primary">Copied</span>}
-              </button>
-            </div>
-          </div>
-
-          {/* Streak + Settings */}
-          <div className="flex shrink-0 items-center gap-2">
-            {streak > 0 && (
-              <div
-                className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1.5"
-                title={`${streak}-day streak`}
-              >
-                <FireIcon className="h-4 w-4 text-white" strokeWidth={1} />
-                <span className="font-display text-sm font-bold tabular-nums text-white">{streak}</span>
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-foreground text-background"
+            >
+              <Upload01Icon className="h-3 w-3" />
+            </span>
+            {avatarUploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               </div>
             )}
-            <Button
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate font-display text-xl font-bold tracking-tight">{displayName}</h2>
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 rounded-full border-border bg-card"
-              onClick={() => router.push("/settings")}
-              aria-label="Settings"
+              onClick={copy}
+              aria-label="Copy wallet address"
+              className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground hover:text-foreground"
             >
-              <Setting07Icon className="h-4 w-4" />
-            </Button>
+              {short}
+              <Copy01Icon aria-hidden className="h-3 w-3" />
+              {copied && <span className="font-sans font-semibold text-brand">Copied</span>}
+            </button>
           </div>
         </div>
-
-        {/* Stats */}
-        <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
-          {stats.map((s) => {
-            return (
-              <div key={s.label} className="flex flex-col items-center gap-1 bg-card px-2 py-3 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                <p className={cn("font-display text-sm font-bold tabular-nums", s.valueClass)}>{s.value}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Wallet balances — live from chain */}
-        <section className="mt-4">
-          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            <Wallet01Icon className="h-3.5 w-3.5" />
-            Wallet balances
-          </h3>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-muted/40 px-4 py-3">
-            <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/celo.png" alt="CELO" className="h-5 w-5 rounded-full shrink-0" />
-              <span className="text-xs font-semibold uppercase text-muted-foreground">CELO</span>
-              <span className="text-sm font-bold tabular-nums">{celoBalance ? parseFloat(formatUnits(celoBalance.value, 18)).toFixed(4) : "…"}</span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <img src="/icons/goodollar.png" alt="G$" className="h-5 w-5 rounded-full shrink-0" />
-              <span className="text-xs font-semibold uppercase text-muted-foreground">G$</span>
-              <span className="text-sm font-bold tabular-nums">{gdBalance != null ? parseFloat(formatUnits(gdBalance as bigint, 18)).toFixed(2) : "…"}</span>
-            </div>
-          </div>
-        </section>
-
-        {/* My Bets */}
-        <section className="mt-8">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">My stakes</h3>
-          <MyBets address={address} onClaimMarket={onClaimMarket} />
-        </section>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-full"
+          onClick={() => router.push("/settings")}
+          aria-label="Settings"
+        >
+          <Setting07Icon className="h-4 w-4" />
+        </Button>
       </div>
+
+      {/* Performance */}
+      <section aria-label="Performance" className="mt-6 rounded-3xl border border-border bg-card p-5">
+        <p className="text-sm text-muted-foreground">Total profit and loss</p>
+        <p className={cn("mt-1 font-display text-4xl font-black tabular-nums tracking-tight", pnlTone)}>
+          {pnl > 0 ? "+" : ""}
+          {pnl.toFixed(2)}
+          <span className="ml-1.5 text-lg font-bold text-muted-foreground">G$</span>
+        </p>
+        <dl className="mt-5 grid grid-cols-3 divide-x divide-border border-t border-border pt-4 text-center">
+          {[
+            { label: "Open", value: String(stakeStats.open) },
+            { label: "Closed", value: String(stakeStats.closed) },
+            { label: "Win rate", value: stakeStats.closed ? `${Math.round(stakeStats.winRate * 100)}%` : "n/a" },
+          ].map((s) => (
+            <div key={s.label} className="px-2">
+              <dd className="font-display text-xl font-bold tabular-nums">{s.value}</dd>
+              <dt className="text-xs text-muted-foreground">{s.label}</dt>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Balances, live from chain */}
+      <section aria-label="Wallet balances" className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <img src="/icons/goodollar.png" alt="" className="h-5 w-5 rounded-full" />
+            G$
+          </div>
+          <p className="mt-1.5 font-display text-2xl font-bold tabular-nums">{gd ?? "…"}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <img src="/icons/celo.png" alt="" className="h-5 w-5 rounded-full" />
+            CELO
+          </div>
+          <p className="mt-1.5 font-display text-2xl font-bold tabular-nums">{celo ?? "…"}</p>
+        </div>
+      </section>
+
+      {/* Stakes */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="font-display text-lg font-bold">My stakes</h3>
+          {streak > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
+              <FireIcon aria-hidden className="h-3.5 w-3.5" />
+              {streak}-day streak
+            </span>
+          )}
+        </div>
+        <MyBets address={address} onClaimMarket={onClaimMarket} />
+      </section>
     </div>
   );
 }

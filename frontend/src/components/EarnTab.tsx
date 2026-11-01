@@ -2,10 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  GiftIcon,
   CheckmarkCircle01Icon,
-  Loading03Icon,
-  Link03Icon,
   FireIcon,
   Rocket01Icon,
   UserGroupIcon,
@@ -15,7 +12,6 @@ import { supabase } from "@/lib/supabase";
 import type { BonusEarning, BonusSource } from "@/lib/supabase";
 import { BONUS_AMOUNTS } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { VerificationGate } from "@/components/gooddollar/VerificationGate";
 import { ClaimPage } from "@/components/gooddollar/ClaimPage";
@@ -24,23 +20,10 @@ interface Props {
   address: string;
 }
 
-interface TaskState {
-  id: string;
-  source: BonusSource;
-  label: string;
-  description: string;
-  reward: number;
-  status: "completed" | "pending" | "available";
-  icon: typeof GiftIcon;
-  accent: string;
-  actionLabel?: string;
-  actionHref?: string;
-  onAction?: () => Promise<void>;
-  actionLoading?: boolean;
-  comingSoon?: boolean;
-}
-
-type Platform = "twitter" | "telegram";
+const MILESTONES: { days: number; source: BonusSource }[] = [
+  { days: 7, source: "streak_7" },
+  { days: 30, source: "streak_30" },
+];
 
 export function EarnTab({ address }: Props) {
   const isVerified = useAppStore((s) => s.isVerified);
@@ -53,9 +36,6 @@ export function EarnTab({ address }: Props) {
   const [betCount, setBetCount] = useState(0);
   const [streak, setStreak] = useState(0);
   const [lastActiveDate, setLastActiveDate] = useState<string | null>(null);
-  const [referredBy, setReferredBy] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   const checkedInToday = lastActiveDate === todayStr;
@@ -64,14 +44,14 @@ export function EarnTab({ address }: Props) {
     const [bonusRes, betRes, profileRes] = await Promise.all([
       supabase.from("bonus_earnings").select("*").eq("wallet_address", address.toLowerCase()),
       supabase.from("stakes").select("id", { count: "exact", head: true }).eq("wallet_address", address.toLowerCase()),
-      supabase.from("profiles").select("current_streak, last_active_date, referred_by").eq("wallet_address", address.toLowerCase()).maybeSingle(),
+      supabase.from("profiles").select("current_streak, last_active_date").eq("wallet_address", address.toLowerCase()).maybeSingle(),
     ]);
     if (bonusRes.data) setBonuses(bonusRes.data as BonusEarning[]);
     setBetCount(betRes.count ?? 0);
     if (profileRes.data) {
-      setStreak((profileRes.data as any).current_streak ?? 0);
-      setLastActiveDate((profileRes.data as any).last_active_date ?? null);
-      setReferredBy((profileRes.data as any).referred_by ?? null);
+      const p = profileRes.data as { current_streak?: number; last_active_date?: string | null };
+      setStreak(p.current_streak ?? 0);
+      setLastActiveDate(p.last_active_date ?? null);
     }
     setLoading(false);
   }, [address]);
@@ -81,87 +61,13 @@ export function EarnTab({ address }: Props) {
   }, [fetchData, isVerified]);
 
   const hasBonus = (source: BonusSource) => bonuses.some((b) => b.source === source);
-
-  const doAction = async (source: BonusSource, apiPath: string, body: Record<string, string>) => {
-    setActionLoading((prev) => ({ ...prev, [source]: true }));
-    try {
-      await fetch(apiPath, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet_address: address.toLowerCase(), ...body }),
-      });
-      await fetchData();
-    } catch (err) {
-      console.error(`action ${source} error:`, err);
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [source]: false }));
-    }
-  };
-
-  const handleSocialConfirm = (platform: Platform) =>
-    doAction("social_twitter", "/api/earn/social-follow", { platform });
-
-  const tasks: TaskState[] = [
-    {
-      id: "first-bet",
-      source: "first_bet",
-      label: "First stake bonus",
-      description: hasBonus("first_bet")
-        ? "You earned your first stake bonus"
-        : betCount > 0
-          ? "First stake placed. Bonus pending"
-          : `Place your first stake to earn ${BONUS_AMOUNTS.first_bet} G$`,
-      reward: BONUS_AMOUNTS.first_bet,
-      status: hasBonus("first_bet") ? "completed" : betCount > 0 ? "pending" : "available",
-      icon: Rocket01Icon,
-      accent: "from-brand to-emerald-400",
-    },
-    {
-      id: "streak",
-      source: "streak_7",
-      label: "Streak rewards",
-      description: streak === 0
-        ? "Stake or claim G$ each day to build your streak"
-        : `${streak} day${streak === 1 ? "" : "s"}, next milestone: ${streak < 7 ? "7 days" : "30 days"}`,
-      reward: 0,
-      status: "available",
-      icon: FireIcon,
-      accent: "from-amber-400 to-orange-500",
-    },
-    {
-      id: "referral",
-      source: "referral_bonus",
-      label: "Referral",
-      description: referredBy
-        ? `You were referred by ${referredBy.slice(0, 6)}…`
-        : "Share your link and earn when friends place their first bet",
-      reward: BONUS_AMOUNTS.referral_bonus,
-      status: hasBonus("referral_bonus") || hasBonus("referral_reward") ? "completed" : "available",
-      comingSoon: true,
-      icon: UserGroupIcon,
-      accent: "from-sky-400 to-blue-500",
-    },
-    {
-      id: "social-twitter",
-      source: "social_twitter",
-      label: "Follow on X",
-      description: hasBonus("social_twitter")
-        ? "Following confirmed"
-        : "Follow @RangeFrenzy on X and confirm",
-      reward: BONUS_AMOUNTS.social_twitter,
-      status: hasBonus("social_twitter") ? "completed" : "available",
-      comingSoon: true,
-      icon: NewTwitterIcon,
-      accent: "from-neutral-700 to-neutral-900",
-    },
-  ];
-
   const totalEarned = bonuses.reduce((sum, b) => sum + b.amount_gd, 0);
 
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-brand" />
+      <div className="mx-auto max-w-lg space-y-4" aria-hidden>
+        <div className="h-64 animate-pulse rounded-3xl bg-muted" />
+        <div className="h-44 animate-pulse rounded-3xl bg-muted/70" />
       </div>
     );
   }
@@ -177,173 +83,196 @@ export function EarnTab({ address }: Props) {
     );
   }
 
+  const next = MILESTONES.find((m) => !hasBonus(m.source) && streak < m.days);
+  const firstStakeDone = hasBonus("first_bet");
+
   return (
-    <div className="space-y-6">
-      {/* G$ Claim card — most dominant, first thing user sees */}
+    <div className="mx-auto max-w-lg space-y-6 pb-4">
       <ClaimPage compact />
 
-      <div className="flex items-end justify-between gap-3 px-1">
-        <h2 className="font-display text-xl font-bold">Rewards</h2>
-        {totalEarned > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Earned so far{" "}
-            <span className="font-display text-base font-bold tabular-nums text-foreground">{totalEarned} G$</span>
-          </p>
-        )}
-      </div>
+      <StreakCard
+        streak={streak}
+        checkedInToday={checkedInToday}
+        next={next ? { days: next.days, reward: BONUS_AMOUNTS[next.source] } : null}
+        milestones={MILESTONES.map((m) => ({ ...m, reward: BONUS_AMOUNTS[m.source], done: hasBonus(m.source) }))}
+      />
 
-      {/* Streak progress card */}
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500">
-              <FireIcon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold">Daily streak</p>
-              <p className="text-xs text-muted-foreground">Stake or claim G$ daily</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="font-display text-2xl font-bold tabular-nums text-amber-700">{streak}</p>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">days</p>
-          </div>
+      <section aria-labelledby="missions">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <h2 id="missions" className="font-display text-lg font-bold">
+            Missions
+          </h2>
+          {totalEarned > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Earned <span className="font-semibold tabular-nums text-foreground">{totalEarned} G$</span>
+            </p>
+          )}
         </div>
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+          <Mission
+            icon={Rocket01Icon}
+            title="Place your first stake"
+            detail={
+              firstStakeDone
+                ? "Bonus received"
+                : betCount > 0
+                  ? "Stake placed. Your bonus is on its way"
+                  : "Pick a range on any live market"
+            }
+            reward={BONUS_AMOUNTS.first_bet}
+            done={firstStakeDone}
+          />
+        </ul>
 
-        {/* Weekly strip */}
-        <WeekStreak streak={streak} checkedInToday={checkedInToday} />
-
-        <div className="relative mt-2 flex justify-between text-xs font-medium text-muted-foreground">
-          <span className={cn(streak >= 7 && "text-amber-600 font-semibold")}>7 days (25 G$)</span>
-          <span className={cn(streak >= 30 && "text-amber-600 font-semibold")}>30 days (100 G$)</span>
-        </div>
-      </div>
-
-      {/* Task list */}
-      <div className="space-y-2">
-        <p className="px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Tasks
-        </p>
-        {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
-        ))}
-      </div>
+        <h3 className="mb-2 mt-5 text-sm font-medium text-muted-foreground">Coming soon</h3>
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-dashed border-border">
+          <Mission
+            icon={UserGroupIcon}
+            title="Invite a friend"
+            detail="Earn when they place their first stake"
+            reward={BONUS_AMOUNTS.referral_bonus}
+            muted
+          />
+          <Mission
+            icon={NewTwitterIcon}
+            title="Follow RangeFrenzy on X"
+            detail="Follow and confirm to earn"
+            reward={BONUS_AMOUNTS.social_twitter}
+            muted
+          />
+        </ul>
+      </section>
     </div>
   );
 }
 
-function TaskCard({ task }: { task: TaskState }) {
-  const isDone = task.status === "completed";
-  const Icon = task.icon;
+function Mission({
+  icon: Icon,
+  title,
+  detail,
+  reward,
+  done = false,
+  muted = false,
+}: {
+  icon: typeof Rocket01Icon;
+  title: string;
+  detail: string;
+  reward: number;
+  done?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <li className={cn("flex items-center gap-3 p-4", muted && "opacity-60")}>
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+          done ? "bg-brand text-white" : "bg-brand/10 text-brand"
+        )}
+      >
+        {done ? <CheckmarkCircle01Icon aria-hidden className="h-5 w-5" /> : <Icon aria-hidden className="h-5 w-5" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">{title}</p>
+        <p className="text-sm text-muted-foreground">{detail}</p>
+      </div>
+      <span
+        className={cn(
+          "shrink-0 text-sm font-bold tabular-nums",
+          done ? "text-muted-foreground line-through" : "text-brand"
+        )}
+      >
+        +{reward} G$
+      </span>
+    </li>
+  );
+}
+
+function StreakCard({
+  streak,
+  checkedInToday,
+  next,
+  milestones,
+}: {
+  streak: number;
+  checkedInToday: boolean;
+  next: { days: number; reward: number } | null;
+  milestones: { days: number; reward: number; done: boolean }[];
+}) {
+  const left = next ? next.days - streak : 0;
+  const pct = next ? Math.min(100, Math.round((streak / next.days) * 100)) : 100;
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border p-4",
-        isDone ? "border-border/60 bg-muted/30 opacity-70" : "border-border bg-card"
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-1 min-w-0 items-start gap-3">
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-              isDone ? "bg-muted text-muted-foreground" : "bg-brand/10 text-brand"
-            )}
-          >
-            {isDone ? <CheckmarkCircle01Icon className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-          </div>
-          <div className="min-w-0">
-            <p className={cn("font-semibold", isDone && "text-muted-foreground line-through")}>
-              {task.label}
+    <section aria-labelledby="streak" className="rounded-3xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white">
+            <FireIcon aria-hidden className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="streak" className="font-display text-lg font-bold">
+              {streak === 0 ? "Start a streak" : `${streak}-day streak`}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {checkedInToday
+                ? "Counted for today"
+                : streak === 0
+                  ? "Claim or stake today to begin"
+                  : "Claim or stake today to keep it going"}
             </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">{task.description}</p>
           </div>
         </div>
-        {task.reward > 0 && !isDone && (
-          <span className="shrink-0 rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand tabular-nums">
-            +{task.reward} G$
-          </span>
-        )}
       </div>
 
-      {/* Streak sub-tasks */}
-      {task.source === "streak_7" && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {[
-            { source: "streak_7" as BonusSource, label: "7-day streak", reward: BONUS_AMOUNTS.streak_7, streak: 7 },
-            { source: "streak_30" as BonusSource, label: "30-day streak", reward: BONUS_AMOUNTS.streak_30, streak: 30 },
-          ].map((ms) => {
-            const done = task.status === "completed" && task.source === ms.source;
-            return (
-              <div
-                key={ms.source}
-                className={cn(
-                  "rounded-xl border p-3 text-center transition",
-                  done
-                    ? "border-border/60 bg-muted/30 opacity-60"
-                    : "border-border bg-muted/30"
-                )}
-              >
-                <p className={cn("text-xs font-semibold", done && "text-muted-foreground line-through")}>
-                  {ms.label}
-                </p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-brand">
-                  +{ms.reward} G$
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <WeekStreak streak={streak} checkedInToday={checkedInToday} />
 
-      {/* Coming Soon badge */}
-      {!isDone && task.comingSoon && (
-        <div className="mt-3">
-          <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-            Coming soon
-          </span>
+      <div className="mt-5">
+        <div
+          role="progressbar"
+          aria-label="Progress to next streak reward"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={pct}
+          className="h-2 overflow-hidden rounded-full bg-muted"
+        >
+          <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
         </div>
-      )}
-
-      {/* Action button */}
-      {!isDone && !task.comingSoon && task.actionLabel && (
-        <div className="mt-3 flex gap-2">
-          {task.actionHref && (
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 rounded-xl"
-              onClick={() => window.open(task.actionHref, "_blank")}
-            >
-              <Link03Icon className="mr-1.5 h-4 w-4" />
-              Open
-            </Button>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {next ? (
+            <>
+              <span className="font-semibold tabular-nums text-foreground">
+                {left} more day{left === 1 ? "" : "s"}
+              </span>{" "}
+              to earn <span className="font-semibold tabular-nums text-foreground">{next.reward} G$</span>
+            </>
+          ) : (
+            "You have earned every streak reward."
           )}
-          <Button
-            type="button"
-            className={cn("flex-1 rounded-xl", task.actionHref ? "" : "w-full")}
-            disabled={task.actionLoading}
-            onClick={task.onAction}
-          >
-            {task.actionLoading ? (
-              <span className="flex items-center gap-1.5">
-                <Loading03Icon className="h-4 w-4 animate-spin" />
-                Confirming…
-              </span>
-            ) : (
-              task.actionLabel
+        </p>
+      </div>
+
+      <ul className="mt-4 grid grid-cols-2 gap-2">
+        {milestones.map((m) => (
+          <li
+            key={m.days}
+            className={cn(
+              "rounded-xl border px-3 py-2.5",
+              m.done ? "border-brand/30 bg-brand/5" : "border-border bg-muted/30"
             )}
-          </Button>
-        </div>
-      )}
-    </div>
+          >
+            <p className="text-xs text-muted-foreground">{m.days} days</p>
+            <p className={cn("font-display text-base font-bold tabular-nums", m.done ? "text-brand" : "text-foreground")}>
+              {m.done ? "Earned" : `+${m.reward} G$`}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
 const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-// UTC-safe date helpers — mirror the streak API, which stores last_active_date
+// UTC-safe date helpers: mirror the streak API, which stores last_active_date
 // as a UTC calendar date (new Date().toISOString().slice(0,10)).
 function addDaysUTC(iso: string, delta: number): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -367,18 +296,16 @@ function WeekStreak({ streak, checkedInToday }: { streak: number; checkedInToday
   for (let k = 0; k < streak; k++) active.add(addDaysUTC(lastActive, -k));
 
   return (
-    <ol aria-label="This week" className="relative mt-4 grid grid-cols-7 gap-1.5">
+    <ol aria-label="This week" className="mt-5 grid grid-cols-7 gap-1.5">
       {DOW.map((d, i) => {
         const inStreak = active.has(weekDates[i]);
         const isToday = i === todayIdx;
         return (
           <li key={d} className="flex flex-col items-center gap-1.5">
-            <span className={cn("text-xs font-medium", isToday ? "text-foreground" : "text-muted-foreground")}>
-              {d}
-            </span>
+            <span className={cn("text-xs font-medium", isToday ? "text-foreground" : "text-muted-foreground")}>{d}</span>
             <span
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full border",
+                "flex h-9 w-9 items-center justify-center rounded-full border",
                 inStreak
                   ? "border-amber-500 bg-amber-500 text-white"
                   : isToday
@@ -386,7 +313,7 @@ function WeekStreak({ streak, checkedInToday }: { streak: number; checkedInToday
                     : "border-border"
               )}
             >
-              {inStreak && <FireIcon className="h-4 w-4" />}
+              {inStreak && <FireIcon aria-hidden className="h-4 w-4" />}
             </span>
             <span className="sr-only">
               {inStreak ? "In your streak" : isToday ? "Today, not counted yet" : "No activity"}
