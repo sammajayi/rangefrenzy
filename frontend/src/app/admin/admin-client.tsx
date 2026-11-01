@@ -95,10 +95,10 @@ function fmtGD(val: string | number): string {
 // ── SVG Charts ────────────────────────────────────────────────────────────────
 
 function AreaChart({ data }: { data: { label: string; value: number }[] }) {
-  if (!data.length)
+  if (!data.length || data.every((d) => d.value === 0))
     return (
       <div className="h-[120px] flex items-center justify-center text-xs text-muted-foreground">
-        No data yet
+        No stakes in this period
       </div>
     );
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -901,8 +901,9 @@ export default function AdminPage() {
                 icon={<UserGroupIcon className="h-5 w-5" />}
               />
               <OverviewCard
-                label="Stakes won"
-                value={`${winRate}%`}
+                label="Settled stakes won"
+                value={wonCount + lostCount > 0 ? `${winRate}%` : "None yet"}
+                subtext={wonCount + lostCount > 0 ? `${wonCount} of ${wonCount + lostCount} settled` : undefined}
                 icon={<ChartIncreaseIcon className="h-5 w-5" />}
               />
               <OverviewCard

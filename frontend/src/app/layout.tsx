@@ -89,7 +89,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
-      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+      <body suppressHydrationWarning className="min-h-screen bg-background font-sans text-foreground antialiased">
         <div className="relative flex min-h-screen flex-col">
           <WalletProvider>
             <main className="flex-1">{children}</main>
