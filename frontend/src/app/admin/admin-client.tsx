@@ -72,6 +72,29 @@ async function setStakeStatuses(
   }
 }
 
+function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
+  const cell = (v: string | number | null | undefined) => {
+    const t = String(v ?? "");
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const blob = new Blob([rows.map((r) => r.map(cell).join(",")).join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** "Overdue by 3 days", for a deadline that has passed. */
+function overdueLabel(deadline: string): string {
+  const mins = Math.floor((Date.now() - new Date(deadline).getTime()) / 60_000);
+  if (mins < 60) return "Overdue by less than an hour";
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `Overdue by ${hours} hour${hours === 1 ? "" : "s"}`;
+  return `Overdue by ${Math.floor(hours / 24)} days`;
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -287,6 +310,8 @@ export default function AdminPage() {
   );
   const [marketsFilter, setMarketsFilter] = useState<"all" | "active" | "resolved">("all");
   const [userSearch, setUserSearch] = useState("");
+  const [marketSearch, setMarketSearch] = useState("");
+  const [stakeSearch, setStakeSearch] = useState("");
   const [usersFilter, setUsersFilter] = useState<"all" | "verified" | "unverified">("all");
   const [usersSort, setUsersSort] = useState<"active" | "volume" | "joined">("active");
 
@@ -403,14 +428,20 @@ export default function AdminPage() {
 
   // ── Filtered markets ──────────────────────────────────────────────────────
   const filteredMarkets = markets.filter((m) => {
+    const q = marketSearch.trim().toLowerCase();
+    if (q && !`${m.title} ${m.category} ${m.asset ?? ""}`.toLowerCase().includes(q)) return false;
     if (marketsFilter === "active") return m.status === "active" && new Date(m.deadline) >= new Date();
     if (marketsFilter === "resolved") return m.status === "resolved";
     return true;
   });
 
   // ── Filtered stakes ───────────────────────────────────────────────────────
-  const filteredStakes =
-    stakesFilter === "all" ? stakes : stakes.filter((s) => s.status === stakesFilter);
+  const filteredStakes = stakes.filter((s) => {
+    if (stakesFilter !== "all" && s.status !== stakesFilter) return false;
+    const q = stakeSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${s.wallet_address} ${s.market?.title ?? ""} ${s.range_label}`.toLowerCase().includes(q);
+  });
   const stakesTotalPages = Math.max(1, Math.ceil(filteredStakes.length / STAKES_PER_PAGE));
   const pagedStakes = filteredStakes.slice(
     (stakesPage - 1) * STAKES_PER_PAGE,
@@ -1028,6 +1059,14 @@ export default function AdminPage() {
         {/* ── MARKETS ── */}
         {tab === "markets" && (
           <div className="space-y-4">
+            <input
+              type="search"
+              aria-label="Search markets"
+              value={marketSearch}
+              onChange={(e) => setMarketSearch(e.target.value)}
+              placeholder="Search markets by title or category…"
+              className={inputCls}
+            />
             {/* Filter chips */}
             <div className="flex gap-2">
               {(["all", "active", "resolved"] as const).map((f) => (
@@ -1075,9 +1114,11 @@ export default function AdminPage() {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground mb-2">
-                  These markets have passed their deadline and need manual resolution.
+                  Oldest first. Stakers can&apos;t claim until each market is resolved.
                 </p>
-                {expiredMarkets.map((m) => (
+                {[...expiredMarkets]
+                  .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+                  .map((m) => (
                   <div
                     key={m.id}
                     className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4"
@@ -1087,9 +1128,11 @@ export default function AdminPage() {
                         <StatusBadge status="expired" />
                         <p className="mt-1 font-display font-semibold">{m.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {m.category} · {m.asset} · Expired{" "}
-                          {new Date(m.deadline).toLocaleString()}
+                          {m.category}
+                          {m.asset ? ` · ${m.asset}` : ""} · Ended{" "}
+                          {new Date(m.deadline).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                         </p>
+                        <p className="mt-0.5 text-xs font-semibold text-amber-700">{overdueLabel(m.deadline)}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {m.ranges.map((r) => (
                             <span
@@ -1158,6 +1201,30 @@ export default function AdminPage() {
         {/* ── STAKES ── */}
         {tab === "stakes" && (
           <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="search"
+                aria-label="Search stakes"
+                value={stakeSearch}
+                onChange={(e) => { setStakeSearch(e.target.value); setStakesPage(1); }}
+                placeholder="Search by wallet, market or range…"
+                className={inputCls}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 shrink-0"
+                disabled={filteredStakes.length === 0}
+                onClick={() =>
+                  downloadCsv("stakes.csv", [
+                    ["Wallet", "Market", "Range", "Amount (G$)", "Status", "Created"],
+                    ...filteredStakes.map((s) => [s.wallet_address, s.market?.title, s.range_label, s.amount_gd, s.status, s.created_at]),
+                  ])
+                }
+              >
+                Export CSV
+              </Button>
+            </div>
             {/* Filter chips */}
             <div className="flex flex-wrap gap-2">
               {(["all", "open", "won", "lost", "refunded"] as const).map((f) => {
@@ -1632,9 +1699,26 @@ export default function AdminPage() {
               <p className="py-12 text-center text-sm text-muted-foreground">No users found.</p>
             ) : (
               <>
-                <p className="text-xs text-muted-foreground">
-                  Showing {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {filteredProfiles.length} user{filteredProfiles.length !== 1 ? "s" : ""}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+                    onClick={() =>
+                      downloadCsv("users.csv", [
+                        ["Username", "Wallet", "Email", "GoodDollar verified", "Volume (G$)", "Joined"],
+                        ...filteredProfiles.map((p) => [
+                          p.username, p.wallet_address, p.email, p.is_whitelisted_gd ? "yes" : "no",
+                          walletVolume.get(p.wallet_address.toLowerCase()) ?? 0, p.created_at,
+                        ]),
+                      ])
+                    }
+                  >
+                    Export CSV
+                  </button>
+                </div>
                 <div className="overflow-x-auto rounded-2xl border border-border">
                   <table className="w-full min-w-[720px] text-left text-sm">
                     <thead className="bg-muted text-xs font-semibold text-muted-foreground">
@@ -1746,7 +1830,7 @@ export default function AdminPage() {
         )}
 
         {/* ── NOTIFY ── */}
-        {tab === "notify" && <NotifySection />}
+        {tab === "notify" && <NotifySection profiles={profiles} />}
       </div>
 
       {/* ── RE-FIX MODAL ── */}
@@ -1966,14 +2050,14 @@ function MarketList({
               isExpired ? "border-amber-200" : "border-border"
             )}
           >
-            {m.image_url && (
-              <img
-                src={m.image_url}
-                alt={m.title}
-                className="mb-3 h-28 w-full rounded-xl object-cover"
-              />
-            )}
             <div className="flex items-start justify-between gap-3">
+              {m.image_url && (
+                <img
+                  src={m.image_url}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-xl bg-muted object-contain p-1"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <StatusBadge
@@ -2066,82 +2150,129 @@ function MarketList({
 }
 
 // ── Notify ────────────────────────────────────────────────────────────────────
-function NotifySection() {
+function NotifySection({ profiles }: { profiles: Profile[] }) {
+  const [audience, setAudience] = useState<"users" | "everyone">("users");
   const [username, setUsername] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !title.trim()) return;
+  const known = new Set(profiles.map((p) => p.username.toLowerCase()));
+  const typed = username.split(",").map((u) => u.trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
+  const unknown = typed.filter((u) => !known.has(u));
+  const recipients = audience === "everyone" ? profiles.map((p) => p.username.toLowerCase()) : typed.filter((u) => known.has(u));
+  const canSend = title.trim().length > 0 && recipients.length > 0 && !sending;
+
+  const send = async () => {
     setSending(true);
-    setMsg(null);
-    try {
-      const usernames = username
-        .split(",")
-        .map((u) => u.trim())
-        .filter(Boolean);
-      for (const u of usernames) {
-        await sendNotification(u, title, body || undefined);
-      }
-      setMsg(`Sent to ${usernames.length} user${usernames.length > 1 ? "s" : ""}`);
-      setTitle("");
-      setBody("");
-    } catch (err) {
-      setMsg(`Error: ${(err as Error).message}`);
-    }
+    setResult(null);
+    const { error } = await supabase
+      .from("notifications")
+      .insert(recipients.map((u) => ({ username: u, title: title.trim(), body: body.trim() || null })));
     setSending(false);
+    setConfirming(false);
+    if (error) {
+      setResult({ ok: false, text: `Couldn't send: ${error.message}` });
+      return;
+    }
+    setResult({ ok: true, text: `Sent to ${recipients.length} user${recipients.length === 1 ? "" : "s"}.` });
+    setTitle("");
+    setBody("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSend) return;
+    // Messaging everyone can't be undone, so ask once.
+    if (audience === "everyone" && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    void send();
   };
 
   return (
-    <form onSubmit={handleSend} className="space-y-4">
-      <Field label="Username(s)">
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="sammajayi, ekenepaul"
-          className={inputCls}
-        />
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Separate multiple usernames with commas
-        </p>
-      </Field>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div role="radiogroup" aria-label="Audience" className="flex gap-2">
+        {([["users", "Specific users"], ["everyone", `Everyone (${profiles.length})`]] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={audience === id}
+            onClick={() => { setAudience(id); setConfirming(false); }}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-sm font-medium transition",
+              audience === id ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {audience === "users" && (
+        <Field label="Usernames">
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="sammajayi, ekenepaul"
+            className={inputCls}
+          />
+          <p className={cn("mt-1 text-xs", unknown.length ? "text-destructive" : "text-muted-foreground")}>
+            {unknown.length
+              ? `No user named ${unknown.map((u) => `@${u}`).join(", ")}. They will be skipped.`
+              : "Separate several usernames with commas."}
+          </p>
+        </Field>
+      )}
+
       <Field label="Title">
         <input
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); setConfirming(false); }}
+          maxLength={80}
           placeholder="Notification title"
           className={inputCls}
           required
         />
       </Field>
-      <Field label="Body (optional)">
+      <Field label="Message (optional)">
         <textarea
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Notification body text"
+          onChange={(e) => { setBody(e.target.value); setConfirming(false); }}
+          maxLength={240}
+          placeholder="What do you want them to know?"
           rows={3}
           className={inputCls + " resize-none pt-2"}
         />
+        <p className="mt-1 text-right text-xs tabular-nums text-muted-foreground">{body.length}/240</p>
       </Field>
-      {msg && (
-        <p
-          className={cn(
-            "text-sm font-medium",
-            msg.startsWith("Sent") ? "text-emerald-600" : "text-destructive"
-          )}
-        >
-          {msg}
+
+      {title.trim() && (
+        <div aria-label="Preview" className="rounded-2xl border border-border bg-muted/30 p-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Preview</p>
+          <p className="text-sm font-semibold">{title}</p>
+          {body.trim() && <p className="mt-0.5 text-sm text-muted-foreground">{body}</p>}
+        </div>
+      )}
+
+      {result && (
+        <p role="status" className={cn("text-sm font-medium", result.ok ? "text-emerald-600" : "text-destructive")}>
+          {result.text}
         </p>
       )}
-      <Button
-        type="submit"
-        className="w-full h-12 cursor-pointer font-semibold"
-        disabled={sending}
-      >
-        {sending ? "Sending…" : "Send notification"}
+
+      <Button type="submit" className="h-12 w-full font-semibold" disabled={!canSend}>
+        {sending
+          ? "Sending…"
+          : confirming
+          ? `Confirm: send to all ${recipients.length} users`
+          : recipients.length > 0
+          ? `Send to ${recipients.length} user${recipients.length === 1 ? "" : "s"}`
+          : "Send notification"}
       </Button>
     </form>
   );
