@@ -65,9 +65,10 @@ export function EarnTab({ address }: Props) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-lg space-y-4" aria-hidden>
-        <div className="h-64 animate-pulse rounded-3xl bg-muted" />
-        <div className="h-44 animate-pulse rounded-3xl bg-muted/70" />
+      <div role="status" className="mx-auto max-w-lg space-y-4">
+        <span className="sr-only">Loading your rewards…</span>
+        <div aria-hidden className="h-64 animate-pulse rounded-3xl bg-muted" />
+        <div aria-hidden className="h-44 animate-pulse rounded-3xl bg-muted/70" />
       </div>
     );
   }
@@ -104,7 +105,7 @@ export function EarnTab({ address }: Props) {
           </h2>
           {totalEarned > 0 && (
             <p className="text-sm text-muted-foreground">
-              Earned <span className="font-semibold tabular-nums text-foreground">{totalEarned} G$</span>
+              Earned <span className="font-semibold tabular-nums text-foreground">{totalEarned} G$</span>
             </p>
           )}
         </div>
@@ -181,7 +182,7 @@ function Mission({
           done ? "text-muted-foreground line-through" : "text-brand"
         )}
       >
-        +{reward} G$
+        +{reward} G$
       </span>
     </li>
   );
@@ -234,7 +235,7 @@ function StreakCard({
           aria-valuenow={pct}
           className="h-2 overflow-hidden rounded-full bg-muted"
         >
-          <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          <div className="h-full origin-left rounded-full bg-amber-500 transition-transform duration-500 ease-out" style={{ transform: `scaleX(${pct / 100})` }} />
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           {next ? (
@@ -242,7 +243,7 @@ function StreakCard({
               <span className="font-semibold tabular-nums text-foreground">
                 {left} more day{left === 1 ? "" : "s"}
               </span>{" "}
-              to earn <span className="font-semibold tabular-nums text-foreground">{next.reward} G$</span>
+              to earn <span className="font-semibold tabular-nums text-foreground">{next.reward} G$</span>
             </>
           ) : (
             "You have earned every streak reward."
@@ -261,7 +262,7 @@ function StreakCard({
           >
             <p className="text-xs text-muted-foreground">{m.days} days</p>
             <p className={cn("font-display text-base font-bold tabular-nums", m.done ? "text-brand" : "text-foreground")}>
-              {m.done ? "Earned" : `+${m.reward} G$`}
+              {m.done ? "Earned" : `+${m.reward} G$`}
             </p>
           </li>
         ))}

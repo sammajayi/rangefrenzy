@@ -48,7 +48,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
   });
   const [countdown, setCountdown] = useState("");
 
-  // Read-only SDK build — uses an http wallet client so it never blocks on
+  // Read-only SDK build: uses an http wallet client so it never blocks on
   // WalletConnect reconnection. Safe for getWalletClaimStatus (pure reads).
   const buildReadSDKs = useCallback(async () => {
     if (!address) return null;
@@ -75,7 +75,7 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
     return { identitySDK, claimSDK };
   }, [address]);
 
-  // Full SDK build — requires the real wallet provider for signing (claim tx).
+  // Full SDK build: requires the real wallet provider for signing (claim tx).
   const buildWriteSDKs = useCallback(async () => {
     if (!address || !wallets.length) return null;
     const walletClient = await buildEmbeddedViemClient(wallets, address);
@@ -191,7 +191,11 @@ export function ClaimPage({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     if (isLoading) {
-      return <div aria-hidden className="h-64 animate-pulse rounded-3xl bg-astra-bg/90" />;
+      return (
+        <div role="status" className="h-64 animate-pulse rounded-3xl bg-astra-bg/90">
+          <span className="sr-only">Checking your daily claim…</span>
+        </div>
+      );
     }
     const chip =
       state.status === "can_claim"

@@ -40,7 +40,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const setProfile = useAppStore((s) => s.setProfile);
 
-  // Daily streak — extended by claiming G$ or placing a bet (see streak API).
+  // Daily streak, extended by claiming G$ or placing a bet (see streak API).
   useEffect(() => {
     let cancelled = false;
     supabase
