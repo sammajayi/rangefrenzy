@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Celebration } from "@/components/celebration";
 
 export function Notice({ title, body }: { title: string; body: string }) {
   return (
@@ -30,6 +31,8 @@ const money = (n: number) => n.toFixed(2);
 
 export interface PositionPanelProps {
   symbol: string;
+  /** Identifies this market's claim, so the celebration plays once. */
+  celebrateKey: string;
   /** Show the summary card (an open stake exists). */
   showCard: boolean;
   rangeLabel: string;
@@ -137,7 +140,7 @@ export function PositionPanel(p: PositionPanelProps) {
 
       {p.canClaim &&
         (p.claim.step === "success" ? (
-          <Notice title="Winnings claimed" body={`${money(p.payout ?? 0)} ${p.symbol} sent to your wallet.`} />
+          <Celebration celebrateKey={p.celebrateKey} title="Winnings claimed" body={`${money(p.payout ?? 0)} ${p.symbol} sent to your wallet.`} />
         ) : (
           <div className="space-y-2">
             {p.claim.step === "error" && p.claim.error && (

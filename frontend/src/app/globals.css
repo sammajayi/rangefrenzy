@@ -214,7 +214,42 @@ select {
   animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes burst {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.animate-pop {
+  animation: pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-burst {
+  animation: burst 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-pop,
+  .animate-burst,
   .animate-toast-in,
   .animate-rise,
   .animate-splash-bounce,

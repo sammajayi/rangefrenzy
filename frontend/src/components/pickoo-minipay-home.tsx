@@ -10,6 +10,9 @@ import {
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { HowItWorksGuide } from "@/components/how-it-works-guide";
+import { Celebration } from "@/components/celebration";
+import { useExperience } from "@/lib/experience-store";
 import { MarketCard } from "@/components/market-card";
 import { PositionPanel, Notice } from "@/components/position-panel";
 import { supabase } from "@/lib/supabase";
@@ -50,6 +53,15 @@ export function RangeFrenzyHome({ address, profile }: Props) {
   const setPendingTab = useAppStore((s) => s.setPendingTab);
   const claimBadgeActive = useAppStore((s) => s.claimBadgeActive);
   const [tab, setTab] = useState<Tab>(pendingTab ?? "play");
+  const guideSeen = useExperience((s) => s.guideSeen);
+  const markGuideSeen = useExperience((s) => s.markGuideSeen);
+  const [guideOpen, setGuideOpen] = useState(false);
+  // First visit to Play shows the guide once; the "How it works" link reopens it.
+  const showGuide = guideOpen || (!guideSeen && tab === "play");
+  const closeGuide = () => {
+    markGuideSeen();
+    setGuideOpen(false);
+  };
 
   useEffect(() => {
     if (pendingTab) setPendingTab(null);
@@ -151,6 +163,16 @@ export function RangeFrenzyHome({ address, profile }: Props) {
         {/* ── PLAY TAB ── */}
         {tab === "play" && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="font-display text-xl font-bold">Live markets</h1>
+              <button
+                type="button"
+                onClick={() => setGuideOpen(true)}
+                className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
+              >
+                How it works
+              </button>
+            </div>
             {/* Category filter pills */}
             <div className="-mx-4 overflow-x-auto px-4">
               <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
@@ -290,6 +312,8 @@ export function RangeFrenzyHome({ address, profile }: Props) {
           })}
         </div>
       </nav>
+
+      {showGuide && !showStakeModal && <HowItWorksGuide onClose={closeGuide} />}
 
       {/* ── FILTER PANEL ── */}
       {showFilter && (
@@ -635,6 +659,7 @@ function StakeModal({
         {/* Body */}
         <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-5">
           <PositionPanel
+            celebrateKey={`claim:${market.address}`}
             symbol={tokenSymbol}
             showCard={!!(hasActivePosition && userStake && userStake.amountStaked > 0n)}
             rangeLabel={positionRangeLabel}
@@ -738,7 +763,13 @@ function StakeModal({
             </>
           )}
 
-          {stakeStep === "success" && <Notice title="Stake placed" body="Your prediction is locked in." />}
+          {stakeStep === "success" && (
+            <Celebration
+              celebrateKey={`stake:${stakeTxHash ?? market.address}`}
+              title="Stake placed"
+              body="Your prediction is locked in. We'll tell you when the market resolves."
+            />
+          )}
 
           {!hasActivePosition && !isOpen && !canRefund && (
             <p className="rounded-2xl bg-muted/50 p-4 text-sm text-muted-foreground">
