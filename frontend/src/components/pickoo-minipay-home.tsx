@@ -6,7 +6,7 @@ import { parseUnits, formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import {
   Activity02Icon, User02Icon, Chart01Icon,
-  GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon, ArrowDown01Icon,
+  GiftIcon, Notification03Icon, Cancel01Icon, Share01Icon, CheckmarkCircle01Icon, ArrowDown01Icon, Clock01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -606,7 +606,10 @@ function StakeModal({
                 {market.pool > 0n ? market.poolLabel + " pool" : "Empty pool"}
                 {market.numStakers > 0 && ` · ${market.numStakers} ${market.numStakers === 1 ? "staker" : "stakers"}`}
               </span>
-              <span className="whitespace-nowrap">{market.deadlineLabel}</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <Clock01Icon aria-hidden className="h-4 w-4" />
+                {market.deadlineLabel}
+              </span>
             </p>
           </div>
           <div className="-mr-2 -mt-1 flex shrink-0">

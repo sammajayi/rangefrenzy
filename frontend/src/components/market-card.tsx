@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight01Icon } from "hugeicons-react";
+import { ArrowRight01Icon, Clock01Icon } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 import { formatRangeLabel, type OnChainMarket } from "@/lib/hooks/use-factory-markets";
 
@@ -29,7 +29,10 @@ export function MarketCard({ market, onSelect }: Props) {
     >
       <div className="flex items-center justify-between gap-3 text-xs">
         <span className="font-semibold uppercase tracking-wide text-brand">{market.categoryLabel}</span>
-        <span className="text-muted-foreground">{market.deadlineLabel}</span>
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <Clock01Icon aria-hidden className="h-3.5 w-3.5" />
+          {market.deadlineLabel}
+        </span>
       </div>
 
       <div className="flex items-start gap-3">
