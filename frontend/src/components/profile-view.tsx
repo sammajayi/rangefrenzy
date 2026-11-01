@@ -66,7 +66,7 @@ export function ProfileView({ address, profile, onClaimMarket }: Props) {
     args: [addr],
   });
 
-  // Real stats from the subgraph — same query/computation as My Bets, so the
+  // Real stats from the subgraph, same query/computation as My Bets, so the
   // numbers shown here can never disagree with the My Bets list below.
   const { data: bets } = useUserStakes(address);
   const { open, closed, winRate, realizedPnl } = computeStakeStats(bets ?? []);
